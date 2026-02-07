@@ -168,11 +168,11 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
   })();
 
   // Broadcast task update
-  const updatedTask = queryOne('SELECT * FROM tasks WHERE id = ?', [taskId]);
+  const updatedTask = queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [taskId]);
   if (updatedTask) {
     broadcast({
       type: 'task_updated',
-      payload: updatedTask as any, // Cast to any to satisfy SSEEvent payload union type
+      payload: updatedTask,
     });
   }
 

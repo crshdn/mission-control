@@ -3,7 +3,7 @@
 interface AutoDispatchOptions {
   taskId: string;
   taskTitle: string;
-  agentId: string | undefined | null;
+  agentId: string | null;
   agentName: string;
   workspaceId?: string;
 }
@@ -46,7 +46,7 @@ export async function triggerAutoDispatch(options: AutoDispatchOptions): Promise
 export function shouldTriggerAutoDispatch(
   previousStatus: string | undefined,
   newStatus: string,
-  assignedAgentId: string | undefined
+  assignedAgentId: string | null
 ): boolean {
   const wasNotInProgress = previousStatus !== 'in_progress';
   const isNowInProgress = newStatus === 'in_progress';
