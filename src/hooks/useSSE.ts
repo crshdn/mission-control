@@ -13,6 +13,8 @@ import type { SSEEvent, Task } from '@/lib/types';
 export function useSSE() {
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  // Use ref to track selectedTask ID without causing re-renders
+  const selectedTaskIdRef = useRef<string | undefined>();
   const {
     updateTask,
     addTask,
@@ -20,6 +22,11 @@ export function useSSE() {
     selectedTask,
     setSelectedTask,
   } = useMissionControl();
+
+  // Update ref when selectedTask changes (outside the SSE effect)
+  useEffect(() => {
+    selectedTaskIdRef.current = selectedTask?.id;
+  }, [selectedTask]);
 
   useEffect(() => {
     let isConnecting = false;
@@ -71,7 +78,8 @@ export function useSSE() {
               updateTask(incomingTask);
 
               // Update selected task if viewing this task (for modal)
-              if (selectedTask?.id === incomingTask.id) {
+              // Use ref to avoid dependency on selectedTask
+              if (selectedTaskIdRef.current === incomingTask.id) {
                 debug.sse('Also updating selectedTask for modal');
                 setSelectedTask(incomingTask);
               }
@@ -135,5 +143,7 @@ export function useSSE() {
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [addTask, updateTask, setIsOnline, selectedTask, setSelectedTask]);
+  // selectedTask and setSelectedTask removed from deps to prevent re-connection loop
+  // We use selectedTaskIdRef to check the current selected task ID without triggering re-renders
+  }, [addTask, updateTask, setIsOnline]);
 }

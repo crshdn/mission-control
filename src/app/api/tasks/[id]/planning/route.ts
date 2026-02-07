@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, queryAll } from '@/lib/db';
+import { getDb, queryAll, queryOne, run } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
 // File system imports removed - using OpenClaw API instead
@@ -103,28 +103,12 @@ export async function GET(
     }
 
     // Parse planning messages from JSON
-    let messages = task.planning_messages ? JSON.parse(task.planning_messages) : [];
-    
+    const messages = task.planning_messages ? JSON.parse(task.planning_messages) : [];
+
     // Find the latest question (last assistant message with question structure)
-    let lastAssistantMessage = [...messages].reverse().find((m: { role: string }) => m.role === 'assistant');
+    const lastAssistantMessage = [...messages].reverse().find((m: { role: string }) => m.role === 'assistant');
     let currentQuestion = null;
-    
-    // If no assistant response in DB but session exists, check OpenClaw for new messages
-    if (!lastAssistantMessage && task.planning_session_key && messages.length > 0) {
-      console.log('[Planning GET] No assistant message in DB, checking OpenClaw...');
-      const openclawMessages = await getMessagesFromOpenClaw(task.planning_session_key);
-      if (openclawMessages.length > 0) {
-        const newAssistant = [...openclawMessages].reverse().find(m => m.role === 'assistant');
-        if (newAssistant) {
-          console.log('[Planning GET] Found assistant message in OpenClaw, syncing to DB');
-          messages.push({ role: 'assistant', content: newAssistant.content, timestamp: Date.now() });
-          getDb().prepare('UPDATE tasks SET planning_messages = ? WHERE id = ?')
-            .run(JSON.stringify(messages), taskId);
-          lastAssistantMessage = { role: 'assistant', content: newAssistant.content };
-        }
-      }
-    }
-    
+
     if (lastAssistantMessage) {
       // Use extractJSON to handle code blocks and surrounding text
       const parsed = extractJSON(lastAssistantMessage.content);
@@ -167,7 +151,7 @@ export async function POST(
       planning_session_key?: string;
       planning_messages?: string;
     } | undefined;
-    
+
     if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
@@ -233,8 +217,7 @@ Respond with ONLY valid JSON in this format:
       await client.connect();
     }
 
-    // Send planning request to the main session with a special marker
-    // The message will be processed by Charlie who will respond with questions
+    // Send planning request to the planning session
     await client.call('chat.send', {
       sessionKey: sessionKey,
       message: planningPrompt,
@@ -243,65 +226,20 @@ Respond with ONLY valid JSON in this format:
 
     // Store the session key and initial message
     const messages = [{ role: 'user', content: planningPrompt, timestamp: Date.now() }];
-    
+
     getDb().prepare(`
-      UPDATE tasks 
+      UPDATE tasks
       SET planning_session_key = ?, planning_messages = ?, status = 'planning'
       WHERE id = ?
     `).run(sessionKey, JSON.stringify(messages), taskId);
 
-    // Poll for response (give OpenClaw time to process)
-    // Use OpenClaw API to get messages
-    let response = null;
-    for (let i = 0; i < 30; i++) { // Poll for up to 30 seconds
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Get messages via OpenClaw API
-      const transcriptMessages = await getMessagesFromOpenClaw(sessionKey);
-      console.log('[Planning] API messages:', transcriptMessages.length);
-      
-      if (transcriptMessages.length > 0) {
-        // Get the last assistant message
-        const lastAssistant = [...transcriptMessages].reverse().find(m => m.role === 'assistant');
-        if (lastAssistant) {
-          response = lastAssistant.content;
-          console.log('[Planning] Found response in transcript');
-          break;
-        }
-      }
-    }
-
-    if (response) {
-      // Parse and store the response using extractJSON to handle code blocks
-      messages.push({ role: 'assistant', content: response, timestamp: Date.now() });
-      
-      getDb().prepare(`
-        UPDATE tasks SET planning_messages = ? WHERE id = ?
-      `).run(JSON.stringify(messages), taskId);
-
-      const parsed = extractJSON(response);
-      if (parsed && 'question' in parsed) {
-        return NextResponse.json({
-          success: true,
-          sessionKey,
-          currentQuestion: parsed,
-          messages,
-        });
-      } else {
-        return NextResponse.json({
-          success: true,
-          sessionKey,
-          rawResponse: response,
-          messages,
-        });
-      }
-    }
-
+    // Return immediately - frontend will poll for updates
+    // This eliminates the aggressive polling loop that was making 30+ OpenClaw API calls
     return NextResponse.json({
       success: true,
       sessionKey,
       messages,
-      note: 'Planning started, waiting for response. Poll GET endpoint for updates.',
+      note: 'Planning started. Poll GET endpoint for updates.',
     });
   } catch (error) {
     console.error('Failed to start planning:', error);
@@ -317,21 +255,22 @@ export async function DELETE(
   const { id: taskId } = await params;
 
   try {
-    const db = getDb();
-
     // Get task to check session key
-    const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId) as {
+    const task = queryOne<{
       id: string;
       planning_session_key?: string;
       status: string;
-    } | undefined;
+    }>(
+      'SELECT * FROM tasks WHERE id = ?',
+      [taskId]
+    );
 
     if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
     // Clear planning-related fields
-    db.prepare(`
+    run(`
       UPDATE tasks
       SET planning_session_key = NULL,
           planning_messages = NULL,
@@ -341,10 +280,10 @@ export async function DELETE(
           status = 'inbox',
           updated_at = datetime('now')
       WHERE id = ?
-    `).run(taskId);
+    `, [taskId]);
 
     // Broadcast task update
-    const updatedTask = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId);
+    const updatedTask = queryOne('SELECT * FROM tasks WHERE id = ?', [taskId]);
     if (updatedTask) {
       broadcast({
         type: 'task_updated',

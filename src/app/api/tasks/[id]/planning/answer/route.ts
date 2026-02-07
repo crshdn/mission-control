@@ -151,174 +151,38 @@ If planning is complete, respond with JSON:
     // Connect to OpenClaw and send the answer
     const client = getOpenClawClient();
     if (!client.isConnected()) {
+      console.log('[Planning Answer] Connecting to OpenClaw...');
       await client.connect();
     }
 
-    await client.call('chat.send', {
-      sessionKey: task.planning_session_key,
-      message: answerPrompt,
-      idempotencyKey: `planning-answer-${taskId}-${Date.now()}`,
-    });
+    console.log('[Planning Answer] Sending answer to OpenClaw, session:', task.planning_session_key);
+    console.log('[Planning Answer] Answer text:', answerText);
+
+    try {
+      const sendResult = await client.call('chat.send', {
+        sessionKey: task.planning_session_key,
+        message: answerPrompt,
+        idempotencyKey: `planning-answer-${taskId}-${Date.now()}`,
+      });
+      console.log('[Planning Answer] Send successful, result:', sendResult);
+    } catch (sendError) {
+      console.error('[Planning Answer] Failed to send to OpenClaw:', sendError);
+      return NextResponse.json({ error: 'Failed to send answer to Charlie: ' + (sendError as Error).message }, { status: 500 });
+    }
 
     // Update messages in DB
     getDb().prepare(`
       UPDATE tasks SET planning_messages = ? WHERE id = ?
     `).run(JSON.stringify(messages), taskId);
 
-    // Poll for response via OpenClaw API
-    let response = null;
-    const initialMessages = await getMessagesFromOpenClaw(task.planning_session_key!);
-    const initialMsgCount = initialMessages.length;
-    
-    for (let i = 0; i < 30; i++) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const transcriptMessages = await getMessagesFromOpenClaw(task.planning_session_key!);
-      console.log('[Planning] Answer poll - API messages:', transcriptMessages.length, 'initial:', initialMsgCount);
-      
-      // Check if there's a new assistant message
-      if (transcriptMessages.length > initialMsgCount) {
-        const lastAssistant = [...transcriptMessages].reverse().find(m => m.role === 'assistant');
-        if (lastAssistant) {
-          response = lastAssistant.content;
-          console.log('[Planning] Found new response in transcript');
-          break;
-        }
-      }
-    }
-
-    if (response) {
-      messages.push({ role: 'assistant', content: response, timestamp: Date.now() });
-
-      // Use extractJSON to handle code blocks and surrounding text
-      const parsed = extractJSON(response) as {
-        status?: string;
-        question?: string;
-        spec?: object;
-        agents?: Array<{
-          name: string;
-          role: string;
-          avatar_emoji?: string;
-          soul_md?: string;
-          instructions?: string;
-        }>;
-        execution_plan?: object;
-      } | null;
-
-      if (parsed) {
-        // Check if planning is complete
-        if (parsed.status === 'complete') {
-          getDb().prepare(`
-            UPDATE tasks 
-            SET planning_messages = ?, 
-                planning_complete = 1,
-                planning_spec = ?,
-                planning_agents = ?,
-                status = 'inbox'
-            WHERE id = ?
-          `).run(
-            JSON.stringify(messages),
-            JSON.stringify(parsed.spec),
-            JSON.stringify(parsed.agents),
-            taskId
-          );
-
-          // Create the agents in the workspace and track first agent for auto-assign
-          let firstAgentId: string | null = null;
-          
-          if (parsed.agents && parsed.agents.length > 0) {
-            const insertAgent = getDb().prepare(`
-              INSERT INTO agents (id, workspace_id, name, role, description, avatar_emoji, status, soul_md, created_at, updated_at)
-              VALUES (?, (SELECT workspace_id FROM tasks WHERE id = ?), ?, ?, ?, ?, 'standby', ?, datetime('now'), datetime('now'))
-            `);
-
-            for (const agent of parsed.agents) {
-              const agentId = crypto.randomUUID();
-              if (!firstAgentId) firstAgentId = agentId;
-              
-              insertAgent.run(
-                agentId,
-                taskId,
-                agent.name,
-                agent.role,
-                agent.instructions || '',
-                agent.avatar_emoji || '🤖',
-                agent.soul_md || ''
-              );
-            }
-          }
-
-          // AUTO-DISPATCH: Assign to first agent and trigger dispatch
-          if (firstAgentId) {
-            // Assign task to the first created agent
-            getDb().prepare(`
-              UPDATE tasks SET assigned_agent_id = ? WHERE id = ?
-            `).run(firstAgentId, taskId);
-
-            console.log(`[Planning] Auto-assigned task ${taskId} to agent ${firstAgentId}`);
-
-            // Trigger dispatch - use localhost since we're in the same process
-            const dispatchUrl = `http://localhost:${process.env.PORT || 3000}/api/tasks/${taskId}/dispatch`;
-            console.log(`[Planning] Triggering dispatch: ${dispatchUrl}`);
-            
-            try {
-              const dispatchRes = await fetch(dispatchUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-              });
-              
-              if (dispatchRes.ok) {
-                const dispatchData = await dispatchRes.json();
-                console.log(`[Planning] Dispatch successful:`, dispatchData);
-              } else {
-                const errorText = await dispatchRes.text();
-                console.error(`[Planning] Dispatch failed (${dispatchRes.status}):`, errorText);
-              }
-            } catch (err) {
-              console.error('[Planning] Auto-dispatch error:', err);
-            }
-          }
-
-          return NextResponse.json({
-            complete: true,
-            spec: parsed.spec,
-            agents: parsed.agents,
-            executionPlan: parsed.execution_plan,
-            messages,
-            autoDispatched: !!firstAgentId,
-          });
-        }
-
-        // Not complete, return next question if it has one
-        if (parsed.question) {
-          getDb().prepare(`
-            UPDATE tasks SET planning_messages = ? WHERE id = ?
-          `).run(JSON.stringify(messages), taskId);
-
-          return NextResponse.json({
-            complete: false,
-            currentQuestion: parsed,
-            messages,
-          });
-        }
-      }
-      
-      // Response wasn't valid JSON or didn't have expected structure
-      getDb().prepare(`
-        UPDATE tasks SET planning_messages = ? WHERE id = ?
-      `).run(JSON.stringify(messages), taskId);
-
-      return NextResponse.json({
-        complete: false,
-        rawResponse: response,
-        messages,
-      });
-    }
+    // Poll for response via OpenClaw API - removed aggressive polling
+    // Return immediately and let frontend poll for updates
+    // This eliminates 30 OpenClaw API calls per answer submission
 
     return NextResponse.json({
-      complete: false,
+      success: true,
       messages,
-      note: 'Answer submitted, waiting for response.',
+      note: 'Answer submitted. Poll GET endpoint for updates.',
     });
   } catch (error) {
     console.error('Failed to submit answer:', error);

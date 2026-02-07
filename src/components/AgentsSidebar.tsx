@@ -61,8 +61,8 @@ export function AgentsSidebar({ workspaceId }: AgentsSidebarProps) {
 
     loadSubAgentCount();
 
-    // Poll every 10 seconds to keep count updated
-    const interval = setInterval(loadSubAgentCount, 10000);
+    // Poll every 30 seconds (reduced from 10s to reduce load)
+    const interval = setInterval(loadSubAgentCount, 30000);
     return () => clearInterval(interval);
   }, []);
 

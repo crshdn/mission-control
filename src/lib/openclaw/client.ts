@@ -6,6 +6,14 @@ import type { OpenClawMessage, OpenClawSessionInfo } from '../types';
 const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL || 'ws://127.0.0.1:18789';
 const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || '';
 
+// Global deduplication cache that persists across module reloads in Next.js dev
+// Use globalThis to ensure it's shared across all instances
+const GLOBAL_EVENT_CACHE_KEY = '__openclaw_processed_events__';
+if (!(GLOBAL_EVENT_CACHE_KEY in globalThis)) {
+  (globalThis as Record<string, unknown>)[GLOBAL_EVENT_CACHE_KEY] = new Set<string>();
+}
+const globalProcessedEvents = (globalThis as unknown as Record<string, Set<string>>)[GLOBAL_EVENT_CACHE_KEY];
+
 export class OpenClawClient extends EventEmitter {
   private ws: WebSocket | null = null;
   private reconnectTimer: NodeJS.Timeout | null = null;
@@ -16,6 +24,8 @@ export class OpenClawClient extends EventEmitter {
   private connecting: Promise<void> | null = null; // Lock to prevent multiple simultaneous connection attempts
   private autoReconnect = true;
   private token: string;
+  private messageHandlers = new Set<(event: MessageEvent) => void>(); // Track all message handlers for cleanup
+  private readonly MAX_PROCESSED_EVENTS = 1000; // Limit the size of the processed events cache
 
   constructor(private url: string = GATEWAY_URL, token: string = GATEWAY_TOKEN) {
     super();
@@ -38,8 +48,10 @@ export class OpenClawClient extends EventEmitter {
     // Create a new connection attempt
     this.connecting = new Promise((resolve, reject) => {
       try {
-        // Clean up any existing connection
+        // Clean up any existing connection and handlers
         if (this.ws) {
+          // Remove all tracked message handlers
+          this.messageHandlers.clear();
           this.ws.onclose = null;
           this.ws.onerror = null;
           this.ws.onmessage = null;
@@ -79,6 +91,8 @@ export class OpenClawClient extends EventEmitter {
           this.connected = false;
           this.authenticated = false;
           this.connecting = null;
+          this.messageHandlers.clear(); // Clear handlers on disconnect
+          // Note: globalProcessedEvents is NOT cleared as it's shared across all instances
           this.emit('disconnected');
           // Log close reason for debugging
           console.log(`[OpenClaw] Disconnected from Gateway (code: ${event.code}, reason: "${event.reason}", wasClean: ${event.wasClean})`);
@@ -98,10 +112,42 @@ export class OpenClawClient extends EventEmitter {
           }
         };
 
-        this.ws.onmessage = (event) => {
-          console.log('[OpenClaw] Received:', event.data);
+        // Create message handler
+        const messageHandler = (event: MessageEvent) => {
           try {
             const data = JSON.parse(event.data as string);
+
+            // Create a unique ID for this event for deduplication
+            // Use combination of event type, payload properties, and timestamp
+            let eventId = `${data.type}_${data.seq || Date.now()}`;
+            if (data.payload) {
+              const payload = data.payload as { runId?: string; stream?: string; seq?: number };
+              if (payload.runId) eventId += `_${payload.runId}`;
+              if (payload.seq !== undefined) eventId += `_${payload.seq}`;
+            }
+
+            // Skip if we've already processed this event (using global cache for all instances)
+            if (globalProcessedEvents.has(eventId)) {
+              console.log('[OpenClaw] Skipping duplicate event:', eventId);
+              return;
+            }
+
+            // Mark this event as processed in the global cache
+            globalProcessedEvents.add(eventId);
+
+            // Limit the cache size - clear oldest entries when limit exceeded
+            // Since Set preserves insertion order, we can efficiently remove multiple entries
+            if (globalProcessedEvents.size > this.MAX_PROCESSED_EVENTS) {
+              const entriesToRemove = globalProcessedEvents.size - this.MAX_PROCESSED_EVENTS + 100; // Remove extra to avoid frequent cleanup
+              let removed = 0;
+              for (const entry of globalProcessedEvents) {
+                if (removed >= entriesToRemove) break;
+                globalProcessedEvents.delete(entry);
+                removed++;
+              }
+            }
+
+            console.log('[OpenClaw] Received:', eventId);
 
             // Handle challenge-response authentication (OpenClaw RequestFrame format)
             if (data.type === 'event' && data.event === 'connect.challenge') {
@@ -154,6 +200,10 @@ export class OpenClawClient extends EventEmitter {
             console.error('[OpenClaw] Failed to parse message:', err);
           }
         };
+
+        // Track and assign the message handler
+        this.messageHandlers.add(messageHandler);
+        this.ws.onmessage = messageHandler;
       } catch (err) {
         this.connecting = null;
         reject(err);
@@ -282,6 +332,8 @@ export class OpenClawClient extends EventEmitter {
     this.connected = false;
     this.authenticated = false;
     this.connecting = null;
+    this.messageHandlers.clear(); // Clear all tracked handlers
+    // Note: globalProcessedEvents is NOT cleared as it's shared across all instances
   }
 
   isConnected(): boolean {

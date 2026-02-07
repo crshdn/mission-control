@@ -4,10 +4,24 @@ import { homedir } from 'os';
 import { join } from 'path';
 
 interface OpenClawConfig {
-  defaultModel?: string;
-  providers?: Record<string, {
-    models?: string[];
-  }>;
+  agents?: {
+    defaults?: {
+      model?: {
+        primary?: string;
+      };
+      models?: Record<string, {
+        alias?: string;
+      }>;
+    };
+  };
+  models?: {
+    providers?: Record<string, {
+      models?: Array<{
+        id: string;
+        name: string;
+      }>;
+    }>;
+  };
 }
 
 interface OpenClawModelsResponse {
@@ -39,21 +53,30 @@ export async function GET() {
     const configContent = readFileSync(configPath, 'utf-8');
     const config: OpenClawConfig = JSON.parse(configContent);
 
-    // Extract default model
-    const defaultModel = config.defaultModel;
+    // Extract default model from agents.defaults.model.primary
+    const defaultModel = config?.agents?.defaults?.model?.primary;
 
-    // Extract all available models from providers
+    // Extract all available models from both sources
     const models = new Set<string>();
 
-    if (config.providers) {
-      for (const [providerName, provider] of Object.entries(config.providers)) {
+    // 1. From models.providers (structured provider catalog)
+    if (config.models?.providers) {
+      for (const [providerName, provider] of Object.entries(config.models.providers)) {
         if (provider.models) {
           for (const model of provider.models) {
-            // Add both with and without provider prefix
-            models.add(model);
-            models.add(`${providerName}/${model}`);
+            // Add with provider prefix
+            models.add(`${providerName}/${model.id}`);
+            // Also add as just the model id for convenience
+            models.add(model.id);
           }
         }
+      }
+    }
+
+    // 2. From agents.defaults.models (flat model list with optional aliases)
+    if (config.agents?.defaults?.models) {
+      for (const modelKey of Object.keys(config.agents.defaults.models)) {
+        models.add(modelKey);
       }
     }
 

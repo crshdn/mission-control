@@ -39,8 +39,8 @@ export function Header({ workspace }: HeaderProps) {
 
     loadSubAgentCount();
 
-    // Poll every 10 seconds
-    const interval = setInterval(loadSubAgentCount, 10000);
+    // Poll every 30 seconds (reduced from 10s to reduce load)
+    const interval = setInterval(loadSubAgentCount, 30000);
     return () => clearInterval(interval);
   }, []);
 

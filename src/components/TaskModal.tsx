@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { ActivityLog } from './ActivityLog';
@@ -25,6 +25,11 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
   const [usePlanningMode, setUsePlanningMode] = useState(false);
   // Auto-switch to planning tab if task is in planning status
   const [activeTab, setActiveTab] = useState<TabType>(task?.status === 'planning' ? 'planning' : 'overview');
+
+  // Stable callback for when spec is locked - use window.location.reload() to refresh data
+  const handleSpecLocked = useCallback(() => {
+    window.location.reload();
+  }, []);
 
   const [form, setForm] = useState({
     title: task?.title || '',
@@ -296,12 +301,9 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
 
           {/* Planning Tab */}
           {activeTab === 'planning' && task && (
-            <PlanningTab 
-              taskId={task.id} 
-              onSpecLocked={() => {
-                // Refresh task data when spec is locked
-                window.location.reload();
-              }}
+            <PlanningTab
+              taskId={task.id}
+              onSpecLocked={handleSpecLocked}
             />
           )}
 
