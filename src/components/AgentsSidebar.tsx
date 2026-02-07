@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, ChevronRight, Zap, ZapOff, Loader2 } from 'lucide-react';
+import { Plus, ChevronRight, ChevronLeft, Zap, ZapOff, Loader2 } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import type { Agent, AgentStatus, OpenClawSession } from '@/lib/types';
 import { AgentModal } from './AgentModal';
@@ -19,6 +19,9 @@ export function AgentsSidebar({ workspaceId }: AgentsSidebarProps) {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [connectingAgentId, setConnectingAgentId] = useState<string | null>(null);
   const [activeSubAgents, setActiveSubAgents] = useState(0);
+  const [isMinimized, setIsMinimized] = useState(false);
+
+  const toggleMinimize = () => setIsMinimized(!isMinimized);
 
   // Load OpenClaw session status for all agents on mount
   useEffect(() => {
@@ -110,54 +113,111 @@ export function AgentsSidebar({ workspaceId }: AgentsSidebarProps) {
   };
 
   return (
-    <aside className="w-64 bg-mc-bg-secondary border-r border-mc-border flex flex-col">
+    <aside
+      className={`bg-mc-bg-secondary border-r border-mc-border flex flex-col transition-all duration-300 ease-in-out ${
+        isMinimized ? 'w-12' : 'w-64'
+      }`}
+    >
       {/* Header */}
       <div className="p-3 border-b border-mc-border">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <ChevronRight className="w-4 h-4 text-mc-text-secondary" />
-            <span className="text-sm font-medium uppercase tracking-wider">Agents</span>
-            <span className="bg-mc-bg-tertiary text-mc-text-secondary text-xs px-2 py-0.5 rounded">
-              {agents.length}
-            </span>
-          </div>
+        <div className="flex items-center">
+          <button
+            onClick={toggleMinimize}
+            className="p-1 rounded hover:bg-mc-bg-tertiary text-mc-text-secondary hover:text-mc-text transition-colors"
+            aria-label={isMinimized ? 'Expand agents' : 'Minimize agents'}
+          >
+            {isMinimized ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <ChevronLeft className="w-4 h-4" />
+            )}
+          </button>
+          {!isMinimized && (
+            <>
+              <span className="text-sm font-medium uppercase tracking-wider">Agents</span>
+              <span className="bg-mc-bg-tertiary text-mc-text-secondary text-xs px-2 py-0.5 rounded ml-2">
+                {agents.length}
+              </span>
+            </>
+          )}
         </div>
 
-        {/* Active Sub-Agents Counter */}
-        {activeSubAgents > 0 && (
-          <div className="mb-3 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-lg">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-green-400">●</span>
-              <span className="text-mc-text">Active Sub-Agents:</span>
-              <span className="font-bold text-green-400">{activeSubAgents}</span>
+        {!isMinimized && (
+          <>
+            {/* Active Sub-Agents Counter */}
+            {activeSubAgents > 0 && (
+              <div className="mb-3 mt-3 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-green-400">●</span>
+                  <span className="text-mc-text">Active Sub-Agents:</span>
+                  <span className="font-bold text-green-400">{activeSubAgents}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Filter Tabs */}
+            <div className="flex gap-1">
+              {(['all', 'working', 'standby'] as FilterTab[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setFilter(tab)}
+                  className={`px-3 py-1 text-xs rounded uppercase ${
+                    filter === tab
+                      ? 'bg-mc-accent text-mc-bg font-medium'
+                      : 'text-mc-text-secondary hover:bg-mc-bg-tertiary'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
-          </div>
+          </>
         )}
-
-        {/* Filter Tabs */}
-        <div className="flex gap-1">
-          {(['all', 'working', 'standby'] as FilterTab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-3 py-1 text-xs rounded uppercase ${
-                filter === tab
-                  ? 'bg-mc-accent text-mc-bg font-medium'
-                  : 'text-mc-text-secondary hover:bg-mc-bg-tertiary'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Agent List */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {filteredAgents.map((agent) => {
           const openclawSession = agentOpenClawSessions[agent.id];
-          const isConnecting = connectingAgentId === agent.id;
 
+          if (isMinimized) {
+            // Minimized view - just avatar
+            return (
+              <div key={agent.id} className="flex justify-center py-3">
+                <button
+                  onClick={() => {
+                    setSelectedAgent(agent);
+                    setEditingAgent(agent);
+                  }}
+                  className="relative group"
+                  title={`${agent.name} - ${agent.role}`}
+                >
+                  <span className="text-2xl">{agent.avatar_emoji}</span>
+                  {openclawSession && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-mc-bg-secondary" />
+                  )}
+                  {!!agent.is_master && (
+                    <span className="absolute -top-1 -right-1 text-xs text-mc-accent-yellow">★</span>
+                  )}
+                  {/* Status indicator */}
+                  <span
+                    className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${
+                      agent.status === 'working' ? 'bg-mc-accent-green' :
+                      agent.status === 'standby' ? 'bg-mc-text-secondary' :
+                      'bg-gray-500'
+                    }`}
+                  />
+                  {/* Tooltip */}
+                  <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-mc-bg text-mc-text text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 border border-mc-border">
+                    {agent.name}
+                  </div>
+                </button>
+              </div>
+            );
+          }
+
+          // Expanded view - full agent card
+          const isConnecting = connectingAgentId === agent.id;
           return (
             <div
               key={agent.id}
@@ -240,15 +300,17 @@ export function AgentsSidebar({ workspaceId }: AgentsSidebarProps) {
       </div>
 
       {/* Add Agent Button */}
-      <div className="p-3 border-t border-mc-border">
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-mc-bg-tertiary hover:bg-mc-border rounded text-sm text-mc-text-secondary hover:text-mc-text transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Agent
-        </button>
-      </div>
+      {!isMinimized && (
+        <div className="p-3 border-t border-mc-border">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-mc-bg-tertiary hover:bg-mc-border rounded text-sm text-mc-text-secondary hover:text-mc-text transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Agent
+          </button>
+        </div>
+      )}
 
       {/* Modals */}
       {showCreateModal && (
