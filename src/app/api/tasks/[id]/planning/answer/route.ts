@@ -258,7 +258,7 @@ If planning is complete, respond with JSON:
             console.log(`[Planning] Auto-assigned task ${taskId} to agent ${firstAgentId}`);
 
             // Trigger dispatch - use localhost since we're in the same process
-            const dispatchUrl = `http://localhost:${process.env.PORT || 3000}/api/tasks/${taskId}/dispatch`;
+            const dispatchUrl = `http://localhost:4000/api/tasks/${taskId}/dispatch`;
             console.log(`[Planning] Triggering dispatch: ${dispatchUrl}`);
             
             try {

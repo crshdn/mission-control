@@ -8,7 +8,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 (production server) or http://localhost:3000 (local)
+Open http://localhost:4000 (production server) or http://localhost:4000 (local)
 
 ## Test Scenarios
 
@@ -48,7 +48,7 @@ Open http://localhost:3000 (production server) or http://localhost:3000 (local)
 4. Send POST request to log activities:
 
 ```bash
-curl -X POST http://localhost:3000/api/tasks/TASK_ID/activities \
+curl -X POST http://localhost:4000/api/tasks/TASK_ID/activities \
   -H "Content-Type: application/json" \
   -d '{
     "activity_type": "updated",
@@ -72,7 +72,7 @@ curl -X POST http://localhost:3000/api/tasks/TASK_ID/activities \
 3. Send POST request to add a deliverable:
 
 ```bash
-curl -X POST http://localhost:3000/api/tasks/TASK_ID/deliverables \
+curl -X POST http://localhost:4000/api/tasks/TASK_ID/deliverables \
   -H "Content-Type: application/json" \
   -d '{
     "deliverable_type": "file",
@@ -97,7 +97,7 @@ curl -X POST http://localhost:3000/api/tasks/TASK_ID/deliverables \
 3. Register a sub-agent via API:
 
 ```bash
-curl -X POST http://localhost:3000/api/tasks/TASK_ID/subagent \
+curl -X POST http://localhost:4000/api/tasks/TASK_ID/subagent \
   -H "Content-Type: application/json" \
   -d '{
     "openclaw_session_id": "agent:main:subagent:test-123",
@@ -166,7 +166,7 @@ sqlite3 mission-control.db
 
 1. **Charlie (main agent) creates task:**
    ```bash
-   curl -X POST http://localhost:3000/api/tasks \
+   curl -X POST http://localhost:4000/api/tasks \
      -H "Content-Type: application/json" \
      -d '{
        "title": "Build authentication system",
@@ -181,7 +181,7 @@ sqlite3 mission-control.db
    TASK_ID="..." # from step 1
    
    # Log triage activity
-   curl -X POST http://localhost:3000/api/tasks/$TASK_ID/activities \
+   curl -X POST http://localhost:4000/api/tasks/$TASK_ID/activities \
      -H "Content-Type: application/json" \
      -d '{
        "activity_type": "updated",
@@ -189,7 +189,7 @@ sqlite3 mission-control.db
      }'
    
    # Update status to assigned
-   curl -X PATCH http://localhost:3000/api/tasks/$TASK_ID \
+   curl -X PATCH http://localhost:4000/api/tasks/$TASK_ID \
      -H "Content-Type: application/json" \
      -d '{"status": "assigned"}'
    ```
@@ -197,7 +197,7 @@ sqlite3 mission-control.db
 3. **Sub-agent spawns:**
    ```bash
    # Register sub-agent
-   curl -X POST http://localhost:3000/api/tasks/$TASK_ID/subagent \
+   curl -X POST http://localhost:4000/api/tasks/$TASK_ID/subagent \
      -H "Content-Type: application/json" \
      -d '{
        "openclaw_session_id": "agent:main:subagent:dev-auth",
@@ -205,7 +205,7 @@ sqlite3 mission-control.db
      }'
    
    # Log spawn activity
-   curl -X POST http://localhost:3000/api/tasks/$TASK_ID/activities \
+   curl -X POST http://localhost:4000/api/tasks/$TASK_ID/activities \
      -H "Content-Type: application/json" \
      -d '{
        "activity_type": "spawned",
@@ -216,7 +216,7 @@ sqlite3 mission-control.db
 4. **Sub-agent creates deliverables:**
    ```bash
    # Add file deliverable
-   curl -X POST http://localhost:3000/api/tasks/$TASK_ID/deliverables \
+   curl -X POST http://localhost:4000/api/tasks/$TASK_ID/deliverables \
      -H "Content-Type: application/json" \
      -d '{
        "deliverable_type": "file",
@@ -226,7 +226,7 @@ sqlite3 mission-control.db
      }'
    
    # Log file creation
-   curl -X POST http://localhost:3000/api/tasks/$TASK_ID/activities \
+   curl -X POST http://localhost:4000/api/tasks/$TASK_ID/activities \
      -H "Content-Type: application/json" \
      -d '{
        "activity_type": "file_created",
@@ -237,7 +237,7 @@ sqlite3 mission-control.db
 5. **Sub-agent completes:**
    ```bash
    # Log completion
-   curl -X POST http://localhost:3000/api/tasks/$TASK_ID/activities \
+   curl -X POST http://localhost:4000/api/tasks/$TASK_ID/activities \
      -H "Content-Type: application/json" \
      -d '{
        "activity_type": "completed",
@@ -245,7 +245,7 @@ sqlite3 mission-control.db
      }'
    
    # Move to review
-   curl -X PATCH http://localhost:3000/api/tasks/$TASK_ID \
+   curl -X PATCH http://localhost:4000/api/tasks/$TASK_ID \
      -H "Content-Type: application/json" \
      -d '{"status": "review"}'
    ```
@@ -280,7 +280,7 @@ for (let i = 0; i < 50; i++) {
 **Send rapid updates:**
 ```bash
 for i in {1..100}; do
-  curl -X POST http://localhost:3000/api/tasks/TASK_ID/activities \
+  curl -X POST http://localhost:4000/api/tasks/TASK_ID/activities \
     -H "Content-Type: application/json" \
     -d "{\"activity_type\": \"updated\", \"message\": \"Test $i\"}" &
 done

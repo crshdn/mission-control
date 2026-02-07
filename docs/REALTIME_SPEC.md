@@ -114,7 +114,7 @@ Add tabs:
 #### WebSocket Client
 ```typescript
 // Connect to WebSocket
-const ws = new WebSocket('ws://localhost:3000/api/ws');
+const ws = new WebSocket('ws://localhost:4000/api/ws');
 
 // Listen for events
 ws.onmessage = (event) => {
@@ -156,10 +156,10 @@ Charlie's workflow when orchestrating tasks:
 
 ```typescript
 // 1. Task found in inbox
-const task = await fetch('http://localhost:3000/api/tasks?status=inbox').then(r => r.json());
+const task = await fetch('http://localhost:4000/api/tasks?status=inbox').then(r => r.json());
 
 // 2. Log triage activity
-await fetch(`http://localhost:3000/api/tasks/${task.id}/activities`, {
+await fetch(`http://localhost:4000/api/tasks/${task.id}/activities`, {
   method: 'POST',
   body: JSON.stringify({
     activity_type: 'updated',
@@ -169,7 +169,7 @@ await fetch(`http://localhost:3000/api/tasks/${task.id}/activities`, {
 });
 
 // 3. Update status
-await fetch(`http://localhost:3000/api/tasks/${task.id}`, {
+await fetch(`http://localhost:4000/api/tasks/${task.id}`, {
   method: 'PATCH',
   body: JSON.stringify({ status: 'assigned' })
 });
@@ -178,7 +178,7 @@ await fetch(`http://localhost:3000/api/tasks/${task.id}`, {
 const { childSessionKey } = await spawnSubAgent(task);
 
 // 5. Register sub-agent in Mission Control
-await fetch(`http://localhost:3000/api/tasks/${task.id}/subagent`, {
+await fetch(`http://localhost:4000/api/tasks/${task.id}/subagent`, {
   method: 'POST',
   body: JSON.stringify({
     openclaw_session_id: childSessionKey,
@@ -187,7 +187,7 @@ await fetch(`http://localhost:3000/api/tasks/${task.id}/subagent`, {
 });
 
 // 6. Log spawn activity
-await fetch(`http://localhost:3000/api/tasks/${task.id}/activities`, {
+await fetch(`http://localhost:4000/api/tasks/${task.id}/activities`, {
   method: 'POST',
   body: JSON.stringify({
     activity_type: 'spawned',
@@ -197,7 +197,7 @@ await fetch(`http://localhost:3000/api/tasks/${task.id}/activities`, {
 });
 
 // 7. When sub-agent completes and creates files
-await fetch(`http://localhost:3000/api/tasks/${task.id}/deliverables`, {
+await fetch(`http://localhost:4000/api/tasks/${task.id}/deliverables`, {
   method: 'POST',
   body: JSON.stringify({
     deliverable_type: 'file',
@@ -208,7 +208,7 @@ await fetch(`http://localhost:3000/api/tasks/${task.id}/deliverables`, {
 });
 
 // 8. Log completion
-await fetch(`http://localhost:3000/api/tasks/${task.id}/activities`, {
+await fetch(`http://localhost:4000/api/tasks/${task.id}/activities`, {
   method: 'POST',
   body: JSON.stringify({
     activity_type: 'completed',
@@ -217,7 +217,7 @@ await fetch(`http://localhost:3000/api/tasks/${task.id}/activities`, {
 });
 
 // 9. Update to review
-await fetch(`http://localhost:3000/api/tasks/${task.id}`, {
+await fetch(`http://localhost:4000/api/tasks/${task.id}`, {
   method: 'PATCH',
   body: JSON.stringify({ status: 'review' })
 });

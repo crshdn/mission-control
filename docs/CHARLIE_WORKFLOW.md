@@ -114,7 +114,7 @@ if (!hasDeliverables) {
 }
 
 // Now safe to approve
-await fetch('http://localhost:3000/api/tasks/task-abc123', {
+await fetch('http://localhost:4000/api/tasks/task-abc123', {
   method: 'PATCH',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -135,7 +135,7 @@ If you can't import the TypeScript module, use direct fetch:
 
 ```typescript
 // Register sub-agent
-await fetch('http://localhost:3000/api/tasks/TASK_ID/subagent', {
+await fetch('http://localhost:4000/api/tasks/TASK_ID/subagent', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -145,7 +145,7 @@ await fetch('http://localhost:3000/api/tasks/TASK_ID/subagent', {
 });
 
 // Log activity
-await fetch('http://localhost:3000/api/tasks/TASK_ID/activities', {
+await fetch('http://localhost:4000/api/tasks/TASK_ID/activities', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -155,7 +155,7 @@ await fetch('http://localhost:3000/api/tasks/TASK_ID/activities', {
 });
 
 // Log deliverable
-await fetch('http://localhost:3000/api/tasks/TASK_ID/deliverables', {
+await fetch('http://localhost:4000/api/tasks/TASK_ID/deliverables', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -166,7 +166,7 @@ await fetch('http://localhost:3000/api/tasks/TASK_ID/deliverables', {
 });
 
 // Complete session
-await fetch('http://localhost:3000/api/openclaw/sessions/SESSION_ID', {
+await fetch('http://localhost:4000/api/openclaw/sessions/SESSION_ID', {
   method: 'PATCH',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({

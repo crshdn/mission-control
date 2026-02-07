@@ -262,7 +262,7 @@ POST /api/tasks/[id]/activities
 - ✅ Real-time UI updates
 
 ### Manual Testing
-- ✅ Tested on production server (localhost:3000)
+- ✅ Tested on production server (localhost:4000)
 - ✅ Tested with multiple browsers
 - ✅ Tested under load (50+ concurrent clients)
 - ✅ Memory leak testing (no leaks detected)
@@ -364,14 +364,14 @@ No additional environment variables required. Uses existing:
 
 ### Port Configuration
 
-- Development: `http://localhost:3000`
+- Development: `http://localhost:4000`
 - Production: Configure nginx/reverse proxy for SSE support
 
 ### SSE Proxy Configuration (if using nginx)
 
 ```nginx
 location /api/events/stream {
-    proxy_pass http://localhost:3000;
+    proxy_pass http://localhost:4000;
     proxy_http_version 1.1;
     proxy_set_header Connection '';
     proxy_buffering off;

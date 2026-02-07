@@ -16,7 +16,7 @@ npm install
 npm run dev
 ```
 
-Open: http://localhost:3000
+Open: http://localhost:4000
 
 ### 3. Verify Real-Time is Working
 
@@ -70,7 +70,7 @@ When orchestrating tasks, log activities so users can see what's happening:
 
 ```typescript
 // Log when you triage a task
-await fetch(`http://localhost:3000/api/tasks/${taskId}/activities`, {
+await fetch(`http://localhost:4000/api/tasks/${taskId}/activities`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -93,7 +93,7 @@ await fetch(`http://localhost:3000/api/tasks/${taskId}/activities`, {
 When a sub-agent creates files:
 
 ```typescript
-await fetch(`http://localhost:3000/api/tasks/${taskId}/deliverables`, {
+await fetch(`http://localhost:4000/api/tasks/${taskId}/deliverables`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -114,7 +114,7 @@ When spawning a sub-agent:
 const session = await spawnSubAgent(task);
 
 // 2. Register it in Mission Control
-await fetch(`http://localhost:3000/api/tasks/${taskId}/subagent`, {
+await fetch(`http://localhost:4000/api/tasks/${taskId}/subagent`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -129,8 +129,8 @@ await fetch(`http://localhost:3000/api/tasks/${taskId}/subagent`, {
 ### Test Real-Time Updates
 
 1. **Open two browser windows:**
-   - Window 1: http://localhost:3000
-   - Window 2: http://localhost:3000
+   - Window 1: http://localhost:4000
+   - Window 2: http://localhost:4000
 
 2. **Create a task in Window 1:**
    - Click "+ New Task"
@@ -151,12 +151,12 @@ Using your terminal:
 
 ```bash
 # Create a test task (copy the ID from response)
-curl -X POST http://localhost:3000/api/tasks \
+curl -X POST http://localhost:4000/api/tasks \
   -H "Content-Type: application/json" \
   -d '{"title": "Test Activity Log", "status": "inbox"}'
 
 # Log an activity (replace TASK_ID)
-curl -X POST http://localhost:3000/api/tasks/TASK_ID/activities \
+curl -X POST http://localhost:4000/api/tasks/TASK_ID/activities \
   -H "Content-Type: application/json" \
   -d '{"activity_type": "updated", "message": "This is a test activity"}'
 

@@ -8,25 +8,25 @@ You are the Mission Control orchestrator. Your job is to:
 
 ## CRITICAL: You MUST call Mission Control APIs
 
-Every action you take MUST be reflected in Mission Control via API calls. The dashboard at http://YOUR_SERVER_IP:3000 shows task status in real-time.
+Every action you take MUST be reflected in Mission Control via API calls. The dashboard at http://YOUR_SERVER_IP:4000 shows task status in real-time.
 
 ## On Every Heartbeat
 
 ### Step 1: Check for INBOX tasks
 ```bash
-curl -s http://YOUR_SERVER_IP:3000/api/tasks?status=inbox
+curl -s http://YOUR_SERVER_IP:4000/api/tasks?status=inbox
 ```
 
 If tasks exist in INBOX, process them. If not, check REVIEW tasks.
 
 ### Step 2: Check TESTING tasks (Auto-Test)
 ```bash
-curl -s http://YOUR_SERVER_IP:3000/api/tasks?status=testing
+curl -s http://YOUR_SERVER_IP:4000/api/tasks?status=testing
 ```
 
 For each TESTING task, run automated tests before human review:
 ```bash
-curl -X POST http://YOUR_SERVER_IP:3000/api/tasks/{TASK_ID}/test
+curl -X POST http://YOUR_SERVER_IP:4000/api/tasks/{TASK_ID}/test
 ```
 
 The test endpoint will:
@@ -43,14 +43,14 @@ The test endpoint will:
 
 ### Step 3: Check IN_PROGRESS tasks
 ```bash
-curl -s http://YOUR_SERVER_IP:3000/api/tasks?status=in_progress
+curl -s http://YOUR_SERVER_IP:4000/api/tasks?status=in_progress
 ```
 
 For each IN_PROGRESS task, check if work is complete and move to TESTING.
 
 ### Step 4: Check ASSIGNED tasks (Rework Loop)
 ```bash
-curl -s http://YOUR_SERVER_IP:3000/api/tasks?status=assigned
+curl -s http://YOUR_SERVER_IP:4000/api/tasks?status=assigned
 ```
 
 For each ASSIGNED task, this means it failed automated testing and needs rework:
@@ -65,14 +65,14 @@ This creates the rework loop: `TESTING (fail) → ASSIGNED → IN_PROGRESS → T
 
 ### 1. Move task to IN_PROGRESS
 ```bash
-curl -X PATCH http://YOUR_SERVER_IP:3000/api/tasks/{TASK_ID} \
+curl -X PATCH http://YOUR_SERVER_IP:4000/api/tasks/{TASK_ID} \
   -H "Content-Type: application/json" \
   -d '{"status": "in_progress"}'
 ```
 
 ### 2. Log that you're starting
 ```bash
-curl -X POST http://YOUR_SERVER_IP:3000/api/tasks/{TASK_ID}/activities \
+curl -X POST http://YOUR_SERVER_IP:4000/api/tasks/{TASK_ID}/activities \
   -H "Content-Type: application/json" \
   -d '{"activity_type": "updated", "message": "Starting work on task"}'
 ```
@@ -85,7 +85,7 @@ When you spawn a subagent session, you MUST also register it with Mission Contro
 SUBAGENT_SESSION_ID="your-subagent-session-id"
 
 # Register with Mission Control
-curl -X POST http://YOUR_SERVER_IP:3000/api/tasks/{TASK_ID}/subagent \
+curl -X POST http://YOUR_SERVER_IP:4000/api/tasks/{TASK_ID}/subagent \
   -H "Content-Type: application/json" \
   -d '{
     "openclaw_session_id": "'$SUBAGENT_SESSION_ID'",
@@ -100,7 +100,7 @@ You may not have direct filesystem access. Use the upload API to send files to M
 
 ```bash
 # Upload a file to Mission Control server
-curl -X POST http://YOUR_SERVER_IP:3000/api/files/upload \
+curl -X POST http://YOUR_SERVER_IP:4000/api/files/upload \
   -H "Content-Type: application/json" \
   -d '{
     "relativePath": "{project-name}/index.html",
@@ -129,13 +129,13 @@ Before registering deliverables, you can verify files exist and read their conte
 
 ```bash
 # Download via relative path (preferred)
-curl -s "http://YOUR_SERVER_IP:3000/api/files/download?relativePath={project-name}/index.html"
+curl -s "http://YOUR_SERVER_IP:4000/api/files/download?relativePath={project-name}/index.html"
 
 # Download via full path
-curl -s "http://YOUR_SERVER_IP:3000/api/files/download?path=$PROJECTS_PATH/{project-name}/index.html"
+curl -s "http://YOUR_SERVER_IP:4000/api/files/download?path=$PROJECTS_PATH/{project-name}/index.html"
 
 # Get raw file content (no JSON wrapper)
-curl -s "http://YOUR_SERVER_IP:3000/api/files/download?relativePath={project-name}/index.html&raw=true"
+curl -s "http://YOUR_SERVER_IP:4000/api/files/download?relativePath={project-name}/index.html&raw=true"
 ```
 
 Use this to:
@@ -145,7 +145,7 @@ Use this to:
 
 ### 6. Register the deliverable (use the path from upload response)
 ```bash
-curl -X POST http://YOUR_SERVER_IP:3000/api/tasks/{TASK_ID}/deliverables \
+curl -X POST http://YOUR_SERVER_IP:4000/api/tasks/{TASK_ID}/deliverables \
   -H "Content-Type: application/json" \
   -d '{
     "deliverable_type": "file",
@@ -157,21 +157,21 @@ curl -X POST http://YOUR_SERVER_IP:3000/api/tasks/{TASK_ID}/deliverables \
 
 ### 7. Log completion
 ```bash
-curl -X POST http://YOUR_SERVER_IP:3000/api/tasks/{TASK_ID}/activities \
+curl -X POST http://YOUR_SERVER_IP:4000/api/tasks/{TASK_ID}/activities \
   -H "Content-Type: application/json" \
   -d '{"activity_type": "completed", "message": "Task completed successfully"}'
 ```
 
 ### 8. Mark sub-agent session complete
 ```bash
-curl -X PATCH http://YOUR_SERVER_IP:3000/api/openclaw/sessions/{SUBAGENT_SESSION_ID} \
+curl -X PATCH http://YOUR_SERVER_IP:4000/api/openclaw/sessions/{SUBAGENT_SESSION_ID} \
   -H "Content-Type: application/json" \
   -d '{"status": "completed", "ended_at": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}'
 ```
 
 ### 9. Move task to REVIEW
 ```bash
-curl -X PATCH http://YOUR_SERVER_IP:3000/api/tasks/{TASK_ID} \
+curl -X PATCH http://YOUR_SERVER_IP:4000/api/tasks/{TASK_ID} \
   -H "Content-Type: application/json" \
   -d '{"status": "review"}'
 ```
@@ -192,7 +192,7 @@ $PROJECTS_PATH/{project-name}/
 ## API Base URL
 
 ```
-http://YOUR_SERVER_IP:3000
+http://YOUR_SERVER_IP:4000
 ```
 
 ## Checklist Before Saying HEARTBEAT_OK

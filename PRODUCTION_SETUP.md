@@ -49,7 +49,7 @@ WORKSPACE_BASE_PATH=~/Documents/Shared
 PROJECTS_PATH=~/Documents/Shared/projects
 
 # API URL (auto-detected if not set)
-MISSION_CONTROL_URL=http://localhost:3000
+MISSION_CONTROL_URL=http://localhost:4000
 ```
 
 ### 4. Initialize Database
@@ -69,7 +69,7 @@ This creates the database and seeds it with:
 npm run dev
 ```
 
-Visit [http://localhost:3000](http://localhost:3000)
+Visit [http://localhost:4000](http://localhost:4000)
 
 ## ⚙️ Configuration Management
 
@@ -86,7 +86,7 @@ Variables in `.env.local`:
 ```bash
 WORKSPACE_BASE_PATH=~/Documents/Shared
 PROJECTS_PATH=~/Documents/Shared/projects
-MISSION_CONTROL_URL=http://your-server-ip:3000
+MISSION_CONTROL_URL=http://your-server-ip:4000
 OPENCLAW_GATEWAY_URL=ws://127.0.0.1:18789
 ```
 
@@ -219,7 +219,7 @@ ls -la mission-control.db
 ### 2. Test OpenClaw Connection
 
 1. Start OpenClaw Gateway: `openclaw gateway`
-2. Open Mission Control: `http://localhost:3000`
+2. Open Mission Control: `http://localhost:4000`
 3. Check status indicator (top-right): Should show **ONLINE** (green)
 
 ### 3. Test Real-Time Updates
