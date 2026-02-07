@@ -4,9 +4,17 @@ import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
 import { extractJSON, getMessagesFromOpenClaw } from '@/lib/planning-utils';
 
-// Planning timeout and poll interval configuration
+// Planning timeout and poll interval configuration with validation
 const PLANNING_TIMEOUT_MS = parseInt(process.env.PLANNING_TIMEOUT_MS || '30000', 10);
 const PLANNING_POLL_INTERVAL_MS = parseInt(process.env.PLANNING_POLL_INTERVAL_MS || '2000', 10);
+
+// Validate environment variables
+if (isNaN(PLANNING_TIMEOUT_MS) || PLANNING_TIMEOUT_MS < 1000) {
+  throw new Error('PLANNING_TIMEOUT_MS must be a valid number >= 1000ms');
+}
+if (isNaN(PLANNING_POLL_INTERVAL_MS) || PLANNING_POLL_INTERVAL_MS < 100) {
+  throw new Error('PLANNING_POLL_INTERVAL_MS must be a valid number >= 100ms');
+}
 
 // Helper to handle planning completion with proper error handling and rollback
 async function handlePlanningCompletion(taskId: string, parsed: any, messages: any[]) {
@@ -81,6 +89,19 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
         console.warn(`[Planning Poll] ${dispatchError}:`, otherOrchestrators.map(o => o.name).join(', '));
         firstAgentId = null; // Don't dispatch
       }
+    }
+  }
+
+  // Check if task is already assigned (idempotency - prevents duplicate dispatches from multiple polls)
+  if (firstAgentId) {
+    const currentTask = queryOne<{ assigned_agent_id?: string }>(
+      'SELECT assigned_agent_id FROM tasks WHERE id = ?',
+      [taskId]
+    );
+    if (currentTask?.assigned_agent_id) {
+      console.log('[Planning Poll] Task already assigned to', currentTask.assigned_agent_id, ', skipping dispatch');
+      firstAgentId = currentTask.assigned_agent_id;
+      dispatchError = null;
     }
   }
 

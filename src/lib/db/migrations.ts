@@ -166,6 +166,21 @@ const migrations: Migration[] = [
         console.log('[Migration 005] Added model to agents');
       }
     }
+  },
+  {
+    id: '006',
+    name: 'add_planning_dispatch_error_column',
+    up: (db) => {
+      console.log('[Migration 006] Adding planning_dispatch_error column to tasks...');
+
+      const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
+
+      // Add planning_dispatch_error column
+      if (!tasksInfo.some(col => col.name === 'planning_dispatch_error')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN planning_dispatch_error TEXT`);
+        console.log('[Migration 006] Added planning_dispatch_error to tasks');
+      }
+    }
   }
 ];
 

@@ -1,5 +1,8 @@
 import { getOpenClawClient } from './openclaw/client';
 
+// Maximum input length for extractJSON to prevent ReDoS attacks
+const MAX_EXTRACT_JSON_LENGTH = 1_000_000; // 1MB
+
 /**
  * Extract JSON from a response that might have markdown code blocks or surrounding text.
  * Handles various formats:
@@ -8,6 +11,12 @@ import { getOpenClawClient } from './openclaw/client';
  * - JSON embedded in text (first { to last })
  */
 export function extractJSON(text: string): object | null {
+  // Security: Prevent ReDoS on massive inputs
+  if (text.length > MAX_EXTRACT_JSON_LENGTH) {
+    console.warn('[Planning Utils] Input exceeds maximum length for JSON extraction:', text.length);
+    return null;
+  }
+
   // First, try direct parse
   try {
     return JSON.parse(text.trim());

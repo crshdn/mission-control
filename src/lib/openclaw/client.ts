@@ -11,17 +11,12 @@ const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || '';
 // Use globalThis to ensure it's shared across all instances
 // Using Map for LRU (access time tracking) instead of Set
 const GLOBAL_EVENT_CACHE_KEY = '__openclaw_processed_events__';
-const GLOBAL_EVENT_ACCESS_KEY = '__openclaw_event_access_times__';
 
 if (!(GLOBAL_EVENT_CACHE_KEY in globalThis)) {
   (globalThis as Record<string, unknown>)[GLOBAL_EVENT_CACHE_KEY] = new Map<string, number>();
 }
-if (!(GLOBAL_EVENT_ACCESS_KEY in globalThis)) {
-  (globalThis as unknown as Record<string, Map<string, number>>)[GLOBAL_EVENT_ACCESS_KEY] = new Map<string, number>();
-}
 
 const globalProcessedEvents = (globalThis as unknown as Record<string, Map<string, number>>)[GLOBAL_EVENT_CACHE_KEY];
-const globalEventAccessTimes = (globalThis as unknown as Record<string, Map<string, number>>)[GLOBAL_EVENT_ACCESS_KEY];
 
 export class OpenClawClient extends EventEmitter {
   private ws: WebSocket | null = null;
@@ -78,7 +73,6 @@ export class OpenClawClient extends EventEmitter {
     for (const [eventId] of sortedEntries) {
       if (removed >= entriesToRemove) break;
       globalProcessedEvents.delete(eventId);
-      globalEventAccessTimes.delete(eventId);
       removed++;
     }
 
@@ -187,7 +181,6 @@ export class OpenClawClient extends EventEmitter {
             // Mark this event as processed in the global cache with current timestamp for LRU
             const now = Date.now();
             globalProcessedEvents.set(eventId, now);
-            globalEventAccessTimes.set(eventId, now);
 
             // Perform LRU cleanup if cache size exceeds limit
             this.performCacheCleanup();
@@ -378,7 +371,7 @@ export class OpenClawClient extends EventEmitter {
     this.authenticated = false;
     this.connecting = null;
     this.messageHandlers.clear(); // Clear all tracked handlers
-    // Note: globalProcessedEvents and globalEventAccessTimes are NOT cleared as they're shared across all instances
+    // Note: globalProcessedEvents is NOT cleared as it's shared across all instances
   }
 
   isConnected(): boolean {
