@@ -43,8 +43,8 @@ export interface Task {
   description?: string;
   status: TaskStatus;
   priority: TaskPriority;
-  assigned_agent_id?: string;
-  created_by_agent_id?: string;
+  assigned_agent_id: string | null;
+  created_by_agent_id: string | null;
   workspace_id: string;
   business_id: string;
   due_date?: string;

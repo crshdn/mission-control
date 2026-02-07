@@ -3,6 +3,7 @@ import { queryOne, run, getDb, queryAll } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
 import { extractJSON, getMessagesFromOpenClaw } from '@/lib/planning-utils';
+import { Task } from '@/lib/types';
 
 // Planning timeout and poll interval configuration with validation
 const PLANNING_TIMEOUT_MS = parseInt(process.env.PLANNING_TIMEOUT_MS || '30000', 10);
