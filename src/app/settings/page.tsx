@@ -194,7 +194,7 @@ export default function SettingsPage() {
                 type="text"
                 value={config.missionControlUrl}
                 onChange={(e) => handleChange('missionControlUrl', e.target.value)}
-                placeholder="http://localhost:3000"
+                placeholder="http://localhost:4000"
                 className="w-full px-4 py-2 bg-mc-bg border border-mc-border rounded text-mc-text focus:border-mc-accent focus:outline-none"
               />
               <p className="text-xs text-mc-text-secondary mt-1">

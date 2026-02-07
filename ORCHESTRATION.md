@@ -9,7 +9,7 @@ This document explains how to orchestrate tasks in Mission Control, including ho
 ## API Base URL
 
 ```
-http://localhost:3000
+http://localhost:4000
 ```
 
 Or use the `MISSION_CONTROL_URL` environment variable.
@@ -40,7 +40,7 @@ When a task is dispatched to you, the message includes:
 ### 1. Register Sub-Agent (when spawning a worker)
 
 ```bash
-curl -X POST http://localhost:3000/api/tasks/{TASK_ID}/subagent \
+curl -X POST http://localhost:4000/api/tasks/{TASK_ID}/subagent \
   -H "Content-Type: application/json" \
   -d '{
     "openclaw_session_id": "unique-session-id",
@@ -53,7 +53,7 @@ This registers the sub-agent and increments the "Active Sub-Agents" counter.
 ### 2. Log Activity (for each significant action)
 
 ```bash
-curl -X POST http://localhost:3000/api/tasks/{TASK_ID}/activities \
+curl -X POST http://localhost:4000/api/tasks/{TASK_ID}/activities \
   -H "Content-Type: application/json" \
   -d '{
     "activity_type": "updated",
@@ -85,7 +85,7 @@ cat > $PROJECTS_PATH/homepage/index.html << 'EOF'
 EOF
 
 # Step 2: Register the deliverable (will warn if file doesn't exist)
-curl -X POST http://localhost:3000/api/tasks/{TASK_ID}/deliverables \
+curl -X POST http://localhost:4000/api/tasks/{TASK_ID}/deliverables \
   -H "Content-Type: application/json" \
   -d '{
     "deliverable_type": "file",
@@ -112,7 +112,7 @@ Deliverable types:
 ### 4. Update Task Status
 
 ```bash
-curl -X PATCH http://localhost:3000/api/tasks/{TASK_ID} \
+curl -X PATCH http://localhost:4000/api/tasks/{TASK_ID} \
   -H "Content-Type: application/json" \
   -d '{
     "status": "review"
@@ -123,7 +123,7 @@ curl -X PATCH http://localhost:3000/api/tasks/{TASK_ID} \
 
 ```bash
 TASK_ID="abc-123"
-BASE_URL="http://localhost:3000"
+BASE_URL="http://localhost:4000"
 
 # 1. Log that you're starting
 curl -X POST $BASE_URL/api/tasks/$TASK_ID/activities \
@@ -259,7 +259,7 @@ JSON response includes: `success`, `path`, `relativePath`, `size`, `contentType`
 When a sub-agent finishes its work, mark it as complete:
 
 ```bash
-curl -X PATCH http://localhost:3000/api/openclaw/sessions/{SESSION_ID} \
+curl -X PATCH http://localhost:4000/api/openclaw/sessions/{SESSION_ID} \
   -H "Content-Type: application/json" \
   -d '{
     "status": "completed",
@@ -274,7 +274,7 @@ This updates the agent status to "idle" and broadcasts an `agent_completed` even
 To delete a stuck or unwanted session:
 
 ```bash
-curl -X DELETE http://localhost:3000/api/openclaw/sessions/{SESSION_ID}
+curl -X DELETE http://localhost:4000/api/openclaw/sessions/{SESSION_ID}
 ```
 
 ## SSE Events
