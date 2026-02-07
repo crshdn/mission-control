@@ -67,6 +67,24 @@ export function MissionQueue({ workspaceId }: MissionQueueProps) {
           message: `Task "${draggedTask.title}" moved to ${targetStatus}`,
           created_at: new Date().toISOString(),
         });
+
+        // If moving to in_progress and task has an assigned agent, auto-dispatch
+        if (targetStatus === 'in_progress' && draggedTask.assigned_agent_id) {
+          try {
+            const dispatchRes = await fetch(`/api/tasks/${draggedTask.id}/dispatch`, {
+              method: 'POST',
+            });
+
+            if (dispatchRes.ok) {
+              console.log('Task auto-dispatched:', draggedTask.title);
+            } else {
+              const errorData = await dispatchRes.json().catch(() => ({ error: 'Unknown error' }));
+              console.error('Auto-dispatch failed:', errorData);
+            }
+          } catch (dispatchError) {
+            console.error('Auto-dispatch error:', dispatchError);
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to update task status:', error);

@@ -200,18 +200,20 @@ If you need help or clarification, ask me (Charlie).`;
         ['working', now, agent.id]
       );
 
-      // Log dispatch event
+      // Log dispatch event to events table
+      const eventId = uuidv4();
       run(
         `INSERT INTO events (id, type, agent_id, task_id, message, created_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
-        [
-          uuidv4(),
-          'task_dispatched',
-          agent.id,
-          task.id,
-          `Task "${task.title}" dispatched to ${agent.name}`,
-          now
-        ]
+        [eventId, 'task_dispatched', agent.id, task.id, `Task "${task.title}" dispatched to ${agent.name}`, now]
+      );
+
+      // Log dispatch activity to task_activities table (for Activity tab)
+      const activityId = crypto.randomUUID();
+      run(
+        `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [activityId, task.id, agent.id, 'status_changed', `Task dispatched to ${agent.name} - Agent is now working on this task`, now]
       );
 
       return NextResponse.json({

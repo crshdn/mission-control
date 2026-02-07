@@ -68,6 +68,28 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
 
         if (task) {
           updateTask(savedTask);
+
+          // If status changed to in_progress and task has an assigned agent, auto-dispatch
+          const wasNotInProgress = task.status !== 'in_progress';
+          const isNowInProgress = savedTask.status === 'in_progress';
+
+          if (wasNotInProgress && isNowInProgress && savedTask.assigned_agent_id) {
+            try {
+              const dispatchRes = await fetch(`/api/tasks/${savedTask.id}/dispatch`, {
+                method: 'POST',
+              });
+
+              if (dispatchRes.ok) {
+                console.log('Task auto-dispatched:', savedTask.title);
+              } else {
+                const errorData = await dispatchRes.json().catch(() => ({ error: 'Unknown error' }));
+                console.error('Auto-dispatch failed:', errorData);
+              }
+            } catch (dispatchError) {
+              console.error('Auto-dispatch error:', dispatchError);
+            }
+          }
+
           onClose();
         } else {
           addTask(savedTask);
