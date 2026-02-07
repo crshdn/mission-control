@@ -100,20 +100,20 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
           if (usePlanningMode) {
             // Trigger question generation in background
             fetch(`/api/tasks/${savedTask.id}/planning`, { method: 'POST' })
-              .then(() => {
-                // Update our local task reference and switch to planning tab
-                updateTask({ ...savedTask, status: 'planning' });
+              .then((res) => {
+                if (res.ok) {
+                  // Update our local task reference and switch to planning tab
+                  updateTask({ ...savedTask, status: 'planning' });
+                  setActiveTab('planning');
+                } else {
+                  return res.json().then((data) => {
+                    console.error('Failed to start planning:', data.error);
+                  });
+                }
               })
-              .catch(console.error);
-            
-            // Log the planning start
-            addEvent({
-              id: crypto.randomUUID(),
-              type: 'task_status_changed',
-              task_id: savedTask.id,
-              message: `📋 Planning started for: ${savedTask.title}`,
-              created_at: new Date().toISOString(),
-            });
+              .catch((error) => {
+                console.error('Failed to start planning:', error);
+              });
           }
           onClose();
         }

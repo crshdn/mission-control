@@ -1,9 +1,9 @@
-import { v4 as uuidv4 } from 'uuid';
+
 
 interface AutoDispatchOptions {
   taskId: string;
   taskTitle: string;
-  agentId: string | undefined;
+  agentId: string | undefined | null;
   agentName: string;
   workspaceId?: string;
 }
@@ -46,7 +46,7 @@ export async function triggerAutoDispatch(options: AutoDispatchOptions): Promise
 export function shouldTriggerAutoDispatch(
   previousStatus: string | undefined,
   newStatus: string,
-  assignedAgentId: string | undefined | null
+  assignedAgentId: string | undefined
 ): boolean {
   const wasNotInProgress = previousStatus !== 'in_progress';
   const isNowInProgress = newStatus === 'in_progress';

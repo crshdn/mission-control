@@ -71,13 +71,18 @@ export function MissionQueue({ workspaceId }: MissionQueueProps) {
 
         // Check if auto-dispatch should be triggered and execute it
         if (shouldTriggerAutoDispatch(draggedTask.status, targetStatus, draggedTask.assigned_agent_id)) {
-          await triggerAutoDispatch({
+          const result = await triggerAutoDispatch({
             taskId: draggedTask.id,
             taskTitle: draggedTask.title,
-            agentId: draggedTask.assigned_agent_id || null!,
+            agentId: draggedTask.assigned_agent_id,
             agentName: draggedTask.assigned_agent?.name || 'Unknown Agent',
             workspaceId: draggedTask.workspace_id
           });
+
+          if (!result.success) {
+            console.error('Auto-dispatch failed:', result.error);
+            // Optionally show error to user here if needed
+          }
         }
       }
     } catch (error) {

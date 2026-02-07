@@ -67,6 +67,8 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
   const isPollingRef = useRef(false);
   const lastSubmissionRef = useRef<{ answer: string; otherText?: string } | null>(null);
   const currentQuestionRef = useRef<string | undefined>(undefined);
+  
+
 
   // Load planning state (initial load only)
   const loadState = useCallback(async () => {
@@ -153,7 +155,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
     } finally {
       isPollingRef.current = false;
     }
-  }, [taskId, onSpecLocked, stopPolling, setState, setError, setIsSubmittingAnswer, setSelectedOption, setOtherText, currentQuestionRef]);
+  }, [taskId, onSpecLocked, stopPolling, setState, setError, setIsSubmittingAnswer, setSelectedOption, setOtherText]);
 
   // Start polling when waiting for response
   const startPolling = useCallback(() => {
@@ -284,11 +286,17 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
         startPolling();
       } else {
         setError(data.error || 'Failed to submit answer');
-        setIsSubmittingAnswer(false); // Clear on error
+        // Clear submission state and selection on error so user can retry
+        setIsSubmittingAnswer(false);
+        setSelectedOption(null);
+        setOtherText('');
       }
     } catch (err) {
       setError('Failed to submit answer');
-      setIsSubmittingAnswer(false); // Clear on error
+      // Clear submission state and selection on error so user can retry
+      setIsSubmittingAnswer(false);
+      setSelectedOption(null);
+      setOtherText('');
     } finally {
       setSubmitting(false);
     }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryOne, run } from '@/lib/db';
+import { queryOne, run, getDb } from '@/lib/db';
 import { triggerAutoDispatch } from '@/lib/auto-dispatch';
 
 /**
@@ -44,15 +44,6 @@ export async function POST(
       }, { status: 400 });
     }
 
-    // Clear any previous dispatch error
-    run(`
-      UPDATE tasks 
-      SET planning_dispatch_error = NULL,
-          status = 'pending_dispatch',
-          updated_at = datetime('now')
-      WHERE id = ?
-    `, [taskId]);
-
     // Get agent name for logging
     const agent = queryOne<{ name: string }>('SELECT name FROM agents WHERE id = ?', [task.assigned_agent_id]);
 
@@ -65,29 +56,38 @@ export async function POST(
       workspaceId: task.workspace_id
     });
 
-    if (result.success) {
-      // Update task status on success
-      run(`
-        UPDATE tasks 
-        SET status = 'inbox',
-            planning_dispatch_error = NULL,
-            updated_at = datetime('now')
-        WHERE id = ?
-      `, [taskId]);
+    // Use transaction to ensure atomic updates
+    const db = getDb();
+    const transaction = db.transaction(() => {
+      if (result.success) {
+        // Update task status on success
+        run(`
+          UPDATE tasks 
+          SET status = 'inbox',
+              planning_dispatch_error = NULL,
+              updated_at = datetime('now')
+          WHERE id = ?
+        `, [taskId]);
+      } else {
+        // Store the error for display, keep as 'pending_dispatch'
+        run(`
+          UPDATE tasks 
+          SET planning_dispatch_error = ?,
+              status = 'pending_dispatch',
+              updated_at = datetime('now')
+          WHERE id = ?
+        `, [result.error, taskId]);
+      }
+    });
 
+    transaction();
+
+    if (result.success) {
       return NextResponse.json({ 
         success: true, 
         message: 'Dispatch retry successful' 
       });
     } else {
-      // Store the error for display
-      run(`
-        UPDATE tasks 
-        SET planning_dispatch_error = ?,
-            updated_at = datetime('now')
-        WHERE id = ?
-      `, [result.error, taskId]);
-
       return NextResponse.json({ 
         error: 'Dispatch retry failed', 
         details: result.error 

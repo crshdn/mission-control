@@ -57,7 +57,7 @@ export function ActivityLog({ taskId }: ActivityLogProps) {
     } catch (error) {
       console.error('Polling error:', error);
     }
-  }, [taskId, setActivities]);
+  }, [taskId]); // setActivities is stable from React, no need to include
 
   // Poll for new activities every 5 seconds when task is in progress
   useEffect(() => {
