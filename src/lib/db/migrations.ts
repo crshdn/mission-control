@@ -118,37 +118,52 @@ const migrations: Migration[] = [
     name: 'add_planning_session_columns',
     up: (db) => {
       console.log('[Migration 004] Adding planning session columns to tasks...');
-      
+
       const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
-      
+
       // Add planning_session_key column
       if (!tasksInfo.some(col => col.name === 'planning_session_key')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN planning_session_key TEXT`);
         console.log('[Migration 004] Added planning_session_key');
       }
-      
+
       // Add planning_messages column (stores JSON array of messages)
       if (!tasksInfo.some(col => col.name === 'planning_messages')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN planning_messages TEXT`);
         console.log('[Migration 004] Added planning_messages');
       }
-      
+
       // Add planning_complete column
       if (!tasksInfo.some(col => col.name === 'planning_complete')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN planning_complete INTEGER DEFAULT 0`);
         console.log('[Migration 004] Added planning_complete');
       }
-      
+
       // Add planning_spec column (stores final spec JSON)
       if (!tasksInfo.some(col => col.name === 'planning_spec')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN planning_spec TEXT`);
         console.log('[Migration 004] Added planning_spec');
       }
-      
+
       // Add planning_agents column (stores generated agents JSON)
       if (!tasksInfo.some(col => col.name === 'planning_agents')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN planning_agents TEXT`);
         console.log('[Migration 004] Added planning_agents');
+      }
+    }
+  },
+  {
+    id: '005',
+    name: 'add_agent_model_field',
+    up: (db) => {
+      console.log('[Migration 005] Adding model field to agents...');
+
+      const agentsInfo = db.prepare("PRAGMA table_info(agents)").all() as { name: string }[];
+
+      // Add model column
+      if (!agentsInfo.some(col => col.name === 'model')) {
+        db.exec(`ALTER TABLE agents ADD COLUMN model TEXT`);
+        console.log('[Migration 005] Added model to agents');
       }
     }
   }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { queryOne, run } from '@/lib/db';
+import { queryOne, queryAll, run } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
 import { getProjectsPath, getMissionControlUrl } from '@/lib/config';
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
 
     // Get task with agent info
-    const task = queryOne<Task & { assigned_agent_name?: string }>(
+    const task = queryOne<Task & { assigned_agent_name?: string; workspace_id: string }>(
       `SELECT t.*, a.name as assigned_agent_name, a.is_master
        FROM tasks t
        LEFT JOIN agents a ON t.assigned_agent_id = a.id
@@ -48,6 +48,33 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (!agent) {
       return NextResponse.json({ error: 'Assigned agent not found' }, { status: 404 });
+    }
+
+    // Check if dispatching to Charlie (master agent) while there are other orchestrators available
+    if (agent.is_master && agent.name === 'Charlie') {
+      // Check for other master agents in the same workspace (excluding Charlie)
+      const otherOrchestrators = queryAll<{
+        id: string;
+        name: string;
+        role: string;
+      }>(
+        `SELECT id, name, role
+         FROM agents
+         WHERE is_master = 1
+         AND name != 'Charlie'
+         AND workspace_id = ?
+         AND status != 'offline'`,
+        [task.workspace_id]
+      );
+
+      if (otherOrchestrators.length > 0) {
+        return NextResponse.json({
+          success: false,
+          warning: 'Other orchestrators available',
+          message: `There ${otherOrchestrators.length === 1 ? 'is' : 'are'} ${otherOrchestrators.length} other orchestrator${otherOrchestrators.length === 1 ? '' : 's'} available in this workspace: ${otherOrchestrators.map(o => o.name).join(', ')}. Consider assigning this task to them instead of Charlie.`,
+          otherOrchestrators,
+        }, { status: 409 }); // 409 Conflict - indicating there's an alternative
+      }
     }
 
     // Connect to OpenClaw Gateway

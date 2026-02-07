@@ -32,6 +32,7 @@ export interface Agent {
   soul_md?: string;
   user_md?: string;
   agents_md?: string;
+  model?: string;
   created_at: string;
   updated_at: string;
 }
@@ -226,6 +227,7 @@ export interface CreateAgentRequest {
   soul_md?: string;
   user_md?: string;
   agents_md?: string;
+  model?: string;
 }
 
 export interface UpdateAgentRequest extends Partial<CreateAgentRequest> {

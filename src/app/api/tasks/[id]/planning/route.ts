@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getDb, queryAll } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
+import { broadcast } from '@/lib/events';
 // File system imports removed - using OpenClaw API instead
 
 // Planning session prefix for OpenClaw (must match agent:main: format)
@@ -162,6 +163,7 @@ export async function POST(
       title: string;
       description: string;
       status: string;
+      workspace_id: string;
       planning_session_key?: string;
       planning_messages?: string;
     } | undefined;
@@ -173,6 +175,29 @@ export async function POST(
     // Check if planning already started
     if (task.planning_session_key) {
       return NextResponse.json({ error: 'Planning already started', sessionKey: task.planning_session_key }, { status: 400 });
+    }
+
+    // Check if there are other orchestrators available before starting planning with Charlie
+    const otherOrchestrators = queryAll<{
+      id: string;
+      name: string;
+      role: string;
+    }>(
+      `SELECT id, name, role
+       FROM agents
+       WHERE is_master = 1
+       AND name != 'Charlie'
+       AND workspace_id = ?
+       AND status != 'offline'`,
+      [task.workspace_id]
+    );
+
+    if (otherOrchestrators.length > 0) {
+      return NextResponse.json({
+        error: 'Other orchestrators available',
+        message: `There ${otherOrchestrators.length === 1 ? 'is' : 'are'} ${otherOrchestrators.length} other orchestrator${otherOrchestrators.length === 1 ? '' : 's'} available in this workspace: ${otherOrchestrators.map(o => o.name).join(', ')}. Please assign this task to them directly or use their planning instead of Charlie.`,
+        otherOrchestrators,
+      }, { status: 409 }); // 409 Conflict
     }
 
     // Create session key for this planning task
@@ -281,5 +306,55 @@ Respond with ONLY valid JSON in this format:
   } catch (error) {
     console.error('Failed to start planning:', error);
     return NextResponse.json({ error: 'Failed to start planning: ' + (error as Error).message }, { status: 500 });
+  }
+}
+
+// DELETE /api/tasks/[id]/planning - Cancel planning session
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: taskId } = await params;
+
+  try {
+    const db = getDb();
+
+    // Get task to check session key
+    const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId) as {
+      id: string;
+      planning_session_key?: string;
+      status: string;
+    } | undefined;
+
+    if (!task) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
+
+    // Clear planning-related fields
+    db.prepare(`
+      UPDATE tasks
+      SET planning_session_key = NULL,
+          planning_messages = NULL,
+          planning_complete = 0,
+          planning_spec = NULL,
+          planning_agents = NULL,
+          status = 'inbox',
+          updated_at = datetime('now')
+      WHERE id = ?
+    `).run(taskId);
+
+    // Broadcast task update
+    const updatedTask = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId);
+    if (updatedTask) {
+      broadcast({
+        type: 'task_updated',
+        payload: updatedTask,
+      });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Failed to cancel planning:', error);
+    return NextResponse.json({ error: 'Failed to cancel planning: ' + (error as Error).message }, { status: 500 });
   }
 }

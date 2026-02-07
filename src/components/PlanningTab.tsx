@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { CheckCircle, Circle, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, Circle, Lock, AlertCircle, Loader2, X } from 'lucide-react';
 
 interface PlanningOption {
   id: string;
@@ -52,6 +52,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [canceling, setCanceling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [otherText, setOtherText] = useState('');
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -110,10 +111,10 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
   // Submit answer
   const submitAnswer = async () => {
     if (!selectedOption) return;
-    
+
     setSubmitting(true);
     setError(null);
-    
+
     try {
       const res = await fetch(`/api/tasks/${taskId}/planning/answer`, {
         method: 'POST',
@@ -123,13 +124,13 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
           otherText: selectedOption === 'other' ? otherText : undefined,
         }),
       });
-      
+
       const data = await res.json();
-      
+
       if (res.ok) {
         setSelectedOption(null);
         setOtherText('');
-        
+
         if (data.complete) {
           setState(prev => ({
             ...prev!,
@@ -139,7 +140,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
             messages: data.messages,
             currentQuestion: undefined,
           }));
-          
+
           if (onSpecLocked) {
             onSpecLocked();
           }
@@ -157,6 +158,39 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
       setError('Failed to submit answer');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Cancel planning
+  const cancelPlanning = async () => {
+    if (!confirm('Are you sure you want to cancel planning? This will reset the planning state.')) {
+      return;
+    }
+
+    setCanceling(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/planning`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        // Reset state
+        setState({
+          taskId,
+          isStarted: false,
+          messages: [],
+          isComplete: false,
+        });
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to cancel planning');
+      }
+    } catch (err) {
+      setError('Failed to cancel planning');
+    } finally {
+      setCanceling(false);
     }
   };
 
@@ -267,12 +301,29 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
   // Show current question
   return (
     <div className="flex flex-col h-full">
-      {/* Progress indicator */}
-      <div className="p-4 border-b border-mc-border">
+      {/* Progress indicator with cancel button */}
+      <div className="p-4 border-b border-mc-border flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-mc-text-secondary">
           <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
           <span>Planning in progress...</span>
         </div>
+        <button
+          onClick={cancelPlanning}
+          disabled={canceling}
+          className="flex items-center gap-1 px-3 py-1 text-sm text-mc-accent-red hover:bg-mc-accent-red/10 rounded disabled:opacity-50"
+        >
+          {canceling ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Canceling...
+            </>
+          ) : (
+            <>
+              <X className="w-4 h-4" />
+              Cancel
+            </>
+          )}
+        </button>
       </div>
 
       {/* Question area */}
