@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, ChevronRight, ChevronLeft, Zap, ZapOff, Loader2 } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import type { Agent, AgentStatus, OpenClawSession } from '@/lib/types';
@@ -24,26 +24,27 @@ export function AgentsSidebar({ workspaceId }: AgentsSidebarProps) {
   const toggleMinimize = () => setIsMinimized(!isMinimized);
 
   // Load OpenClaw session status for all agents on mount
-  useEffect(() => {
-    const loadOpenClawSessions = async () => {
-      for (const agent of agents) {
-        try {
-          const res = await fetch(`/api/agents/${agent.id}/openclaw`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.linked && data.session) {
-              setAgentOpenClawSession(agent.id, data.session as OpenClawSession);
-            }
+  const loadOpenClawSessions = useCallback(async () => {
+    for (const agent of agents) {
+      try {
+        const res = await fetch(`/api/agents/${agent.id}/openclaw`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.linked && data.session) {
+            setAgentOpenClawSession(agent.id, data.session as OpenClawSession);
           }
-        } catch (error) {
-          console.error(`Failed to load OpenClaw session for ${agent.name}:`, error);
         }
+      } catch (error) {
+        console.error(`Failed to load OpenClaw session for ${agent.name}:`, error);
       }
-    };
+    }
+  }, [agents, setAgentOpenClawSession]);
+
+  useEffect(() => {
     if (agents.length > 0) {
       loadOpenClawSessions();
     }
-  }, [agents.length]);
+  }, [loadOpenClawSessions, agents.length]);
 
   // Load active sub-agent count
   useEffect(() => {

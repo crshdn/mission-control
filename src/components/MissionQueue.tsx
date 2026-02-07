@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Plus, ChevronRight, GripVertical } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
+import { triggerAutoDispatch, shouldTriggerAutoDispatch } from '@/lib/auto-dispatch';
 import type { Task, TaskStatus } from '@/lib/types';
 import { TaskModal } from './TaskModal';
 import { formatDistanceToNow } from 'date-fns';
@@ -68,22 +69,15 @@ export function MissionQueue({ workspaceId }: MissionQueueProps) {
           created_at: new Date().toISOString(),
         });
 
-        // If moving to in_progress and task has an assigned agent, auto-dispatch
-        if (targetStatus === 'in_progress' && draggedTask.assigned_agent_id) {
-          try {
-            const dispatchRes = await fetch(`/api/tasks/${draggedTask.id}/dispatch`, {
-              method: 'POST',
-            });
-
-            if (dispatchRes.ok) {
-              console.log('Task auto-dispatched:', draggedTask.title);
-            } else {
-              const errorData = await dispatchRes.json().catch(() => ({ error: 'Unknown error' }));
-              console.error('Auto-dispatch failed:', errorData);
-            }
-          } catch (dispatchError) {
-            console.error('Auto-dispatch error:', dispatchError);
-          }
+        // Check if auto-dispatch should be triggered and execute it
+        if (shouldTriggerAutoDispatch(draggedTask.status, targetStatus, draggedTask.assigned_agent_id)) {
+          await triggerAutoDispatch({
+            taskId: draggedTask.id,
+            taskTitle: draggedTask.title,
+            agentId: draggedTask.assigned_agent_id || null!,
+            agentName: draggedTask.assigned_agent?.name || 'Unknown Agent',
+            workspaceId: draggedTask.workspace_id
+          });
         }
       }
     } catch (error) {

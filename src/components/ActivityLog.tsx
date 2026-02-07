@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import type { TaskActivity } from '@/lib/types';
 
@@ -19,7 +19,7 @@ export function ActivityLog({ taskId }: ActivityLogProps) {
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const lastCountRef = useRef(0);
 
-  const loadActivities = async (showLoading = false) => {
+  const loadActivities = useCallback(async (showLoading = false) => {
     try {
       if (showLoading) setLoading(true);
 
@@ -35,30 +35,33 @@ export function ActivityLog({ taskId }: ActivityLogProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [taskId]);
 
   // Initial load
   useEffect(() => {
     loadActivities(true);
-  }, [taskId]);
+  }, [taskId, loadActivities]);
+
+  // Polling function
+  const pollForActivities = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/activities`);
+      if (res.ok) {
+        const data = await res.json();
+        // Only update if there are new activities
+        if (data.length !== lastCountRef.current) {
+          setActivities(data);
+          lastCountRef.current = data.length;
+        }
+      }
+    } catch (error) {
+      console.error('Polling error:', error);
+    }
+  }, [taskId, setActivities]);
 
   // Poll for new activities every 5 seconds when task is in progress
   useEffect(() => {
-    const pollInterval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/tasks/${taskId}/activities`);
-        if (res.ok) {
-          const data = await res.json();
-          // Only update if there are new activities
-          if (data.length !== lastCountRef.current) {
-            setActivities(data);
-            lastCountRef.current = data.length;
-          }
-        }
-      } catch (error) {
-        console.error('Polling error:', error);
-      }
-    }, 5000);
+    const pollInterval = setInterval(pollForActivities, 5000);
 
     pollingRef.current = pollInterval;
 
@@ -67,7 +70,7 @@ export function ActivityLog({ taskId }: ActivityLogProps) {
         clearInterval(pollingRef.current);
       }
     };
-  }, [taskId]);
+  }, [taskId, pollForActivities]);
 
   const getActivityIcon = (type: string) => {
     switch (type) {

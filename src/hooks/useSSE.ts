@@ -143,7 +143,7 @@ export function useSSE() {
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  // selectedTask and setSelectedTask removed from deps to prevent re-connection loop
+  // selectedTask removed from deps to prevent re-connection loop
   // We use selectedTaskIdRef to check the current selected task ID without triggering re-renders
-  }, [addTask, updateTask, setIsOnline]);
+  }, [addTask, updateTask, setIsOnline, setSelectedTask]);
 }

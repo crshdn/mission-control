@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { FileText, Link as LinkIcon, Package, ExternalLink, Eye } from 'lucide-react';
 import { debug } from '@/lib/debug';
 import type { TaskDeliverable } from '@/lib/types';
@@ -18,11 +18,7 @@ export function DeliverablesList({ taskId }: DeliverablesListProps) {
   const [deliverables, setDeliverables] = useState<TaskDeliverable[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadDeliverables();
-  }, [taskId]);
-
-  const loadDeliverables = async () => {
+  const loadDeliverables = useCallback(async () => {
     try {
       const res = await fetch(`/api/tasks/${taskId}/deliverables`);
       if (res.ok) {
@@ -34,7 +30,11 @@ export function DeliverablesList({ taskId }: DeliverablesListProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [taskId]);
+
+  useEffect(() => {
+    loadDeliverables();
+  }, [loadDeliverables]);
 
   const getDeliverableIcon = (type: string) => {
     switch (type) {

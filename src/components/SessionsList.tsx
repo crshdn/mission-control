@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Bot, CheckCircle, Circle, XCircle, Trash2, Check } from 'lucide-react';
 
 interface SessionWithAgent {
@@ -31,11 +31,7 @@ export function SessionsList({ taskId }: SessionsListProps) {
   const [sessions, setSessions] = useState<SessionWithAgent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadSessions();
-  }, [taskId]);
-
-  const loadSessions = async () => {
+  const loadSessions = useCallback(async () => {
     try {
       const res = await fetch(`/api/tasks/${taskId}/subagent`);
       if (res.ok) {
@@ -47,7 +43,11 @@ export function SessionsList({ taskId }: SessionsListProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [taskId]);
+
+  useEffect(() => {
+    loadSessions();
+  }, [loadSessions]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {

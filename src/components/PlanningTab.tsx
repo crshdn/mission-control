@@ -58,6 +58,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
   const [otherText, setOtherText] = useState('');
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
+  const [retryingDispatch, setRetryingDispatch] = useState(false);
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
 
   // Refs to track polling state without triggering re-renders
@@ -65,6 +66,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
   const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isPollingRef = useRef(false);
   const lastSubmissionRef = useRef<{ answer: string; otherText?: string } | null>(null);
+  const currentQuestionRef = useRef<string | undefined>(undefined);
 
   // Load planning state (initial load only)
   const loadState = useCallback(async () => {
@@ -73,6 +75,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
       if (res.ok) {
         const data = await res.json();
         setState(data);
+        currentQuestionRef.current = data.currentQuestion?.question;
         // Don't call onSpecLocked on initial load - only when planning completes actively
       }
     } catch (err) {
@@ -119,8 +122,12 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
 
           // Only clear selection and other text when the question actually changes
           // This prevents clearing selection when getting updates for the same question
-          const questionChanged = !state?.currentQuestion ||
-            state.currentQuestion.question !== data.currentQuestion?.question;
+          const questionChanged = currentQuestionRef.current !== data.currentQuestion?.question;
+          
+          // Update ref when question changes
+          if (data.currentQuestion) {
+            currentQuestionRef.current = data.currentQuestion.question;
+          }
 
           if (questionChanged) {
             setSelectedOption(null);
@@ -146,7 +153,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
     } finally {
       isPollingRef.current = false;
     }
-  }, [taskId, onSpecLocked, stopPolling]);
+  }, [taskId, onSpecLocked, stopPolling, setState, setError, setIsSubmittingAnswer, setSelectedOption, setOtherText, currentQuestionRef]);
 
   // Start polling when waiting for response
   const startPolling = useCallback(() => {
@@ -166,6 +173,13 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
       setError('Charlie is taking too long to respond. Please try submitting again or refresh the page.');
     }, 30000);
   }, [pollForUpdates, stopPolling]);
+
+  // Update currentQuestion ref when state changes
+  useEffect(() => {
+    if (state?.currentQuestion) {
+      currentQuestionRef.current = state.currentQuestion.question;
+    }
+  }, [state]);
 
   // Initial load
   useEffect(() => {
@@ -280,6 +294,31 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
     }
   };
 
+  // Retry dispatch for failed planning completions
+  const retryDispatch = async () => {
+    setRetryingDispatch(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/planning/retry-dispatch`, {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        console.log('Dispatch retry successful:', data.message);
+        setError(null);
+      } else {
+        setError(`Failed to retry dispatch: ${data.error}`);
+      }
+    } catch (err) {
+      setError('Failed to retry dispatch');
+    } finally {
+      setRetryingDispatch(false);
+    }
+  };
+
   // Cancel planning
   const cancelPlanning = async () => {
     if (!confirm('Are you sure you want to cancel planning? This will reset the planning state.')) {
@@ -328,10 +367,52 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
   if (state?.isComplete && state?.spec) {
     return (
       <div className="p-4 space-y-6">
-        <div className="flex items-center gap-2 text-green-400">
-          <Lock className="w-5 h-5" />
-          <span className="font-medium">Planning Complete</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-green-400">
+            <Lock className="w-5 h-5" />
+            <span className="font-medium">Planning Complete</span>
+          </div>
+          {state.dispatchError && (
+            <div className="text-right">
+              <span className="text-sm text-amber-400">⚠️ Dispatch Failed</span>
+            </div>
+          )}
         </div>
+        
+        {/* Dispatch Error with Retry */}
+        {state.dispatchError && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-amber-400 text-sm font-medium mb-2">Task dispatch failed</p>
+                <p className="text-amber-300 text-xs mb-3">{state.dispatchError}</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={retryDispatch}
+                    disabled={retryingDispatch}
+                    className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs rounded disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {retryingDispatch ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Retrying...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-3 h-3" />
+                        Retry Dispatch
+                      </>
+                    )}
+                  </button>
+                  <span className="text-amber-400 text-xs">
+                    This will attempt to assign the task to an agent
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Spec Summary */}
         <div className="bg-mc-bg border border-mc-border rounded-lg p-4">

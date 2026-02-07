@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
+import { triggerAutoDispatch, shouldTriggerAutoDispatch } from '@/lib/auto-dispatch';
 import { ActivityLog } from './ActivityLog';
 import { DeliverablesList } from './DeliverablesList';
 import { SessionsList } from './SessionsList';
@@ -69,24 +70,18 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
         if (task) {
           updateTask(savedTask);
 
-          // If status changed to in_progress and task has an assigned agent, auto-dispatch
-          const wasNotInProgress = task.status !== 'in_progress';
-          const isNowInProgress = savedTask.status === 'in_progress';
+          // Check if auto-dispatch should be triggered and execute it
+          if (shouldTriggerAutoDispatch(task.status, savedTask.status, savedTask.assigned_agent_id)) {
+            const result = await triggerAutoDispatch({
+              taskId: savedTask.id,
+              taskTitle: savedTask.title,
+              agentId: savedTask.assigned_agent_id,
+              agentName: savedTask.assigned_agent?.name || 'Unknown Agent',
+              workspaceId: savedTask.workspace_id
+            });
 
-          if (wasNotInProgress && isNowInProgress && savedTask.assigned_agent_id) {
-            try {
-              const dispatchRes = await fetch(`/api/tasks/${savedTask.id}/dispatch`, {
-                method: 'POST',
-              });
-
-              if (dispatchRes.ok) {
-                console.log('Task auto-dispatched:', savedTask.title);
-              } else {
-                const errorData = await dispatchRes.json().catch(() => ({ error: 'Unknown error' }));
-                console.error('Auto-dispatch failed:', errorData);
-              }
-            } catch (dispatchError) {
-              console.error('Auto-dispatch error:', dispatchError);
+            if (!result.success) {
+              console.error('Auto-dispatch failed:', result.error);
             }
           }
 
