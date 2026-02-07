@@ -25,6 +25,7 @@ interface PlanningState {
   messages: PlanningMessage[];
   currentQuestion?: PlanningQuestion;
   isComplete: boolean;
+  dispatchError?: string;
   spec?: {
     title: string;
     summary: string;
@@ -113,6 +114,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
             spec: data.spec,
             agents: data.agents,
             currentQuestion: data.currentQuestion,
+            dispatchError: data.dispatchError,
           }));
 
           // Only clear selection and other text when the question actually changes
@@ -124,6 +126,11 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
             setSelectedOption(null);
             setOtherText('');
             setIsSubmittingAnswer(false); // Clear submitting state when new question arrives
+          }
+
+          // Show dispatch error if present
+          if (data.dispatchError) {
+            setError(`Planning completed but dispatch failed: ${data.dispatchError}`);
           }
 
           if (data.complete && onSpecLocked) {

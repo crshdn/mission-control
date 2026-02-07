@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, statSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
+
+// Maximum allowed config file size (1MB) to prevent DoS
+const MAX_CONFIG_SIZE_BYTES = 1024 * 1024;
 
 interface OpenClawConfig {
   agents?: {
@@ -37,6 +40,8 @@ interface OpenClawModelsResponse {
  * Reads ~/.openclaw/openclaw.json to get:
  * - defaultModel
  * - available models from providers
+ *
+ * Security: Validates file size before reading to prevent DoS attacks.
  */
 export async function GET() {
   const configPath = join(homedir(), '.openclaw', 'openclaw.json');
@@ -50,7 +55,19 @@ export async function GET() {
       }, { status: 404 });
     }
 
+    // Security: Check file size before reading to prevent DoS
+    const stats = statSync(configPath);
+    if (stats.size > MAX_CONFIG_SIZE_BYTES) {
+      return NextResponse.json<OpenClawModelsResponse>({
+        defaultModel: undefined,
+        availableModels: [],
+        error: `Config file too large (${(stats.size / 1024).toFixed(0)}KB). Maximum allowed size is ${MAX_CONFIG_SIZE_BYTES / 1024}KB.`,
+      }, { status: 400 });
+    }
+
     const configContent = readFileSync(configPath, 'utf-8');
+
+    // Validate JSON is parseable (throws if invalid)
     const config: OpenClawConfig = JSON.parse(configContent);
 
     // Extract default model from agents.defaults.model.primary

@@ -2,80 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb, queryAll, queryOne, run } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
+import { extractJSON } from '@/lib/planning-utils';
 // File system imports removed - using OpenClaw API instead
 
 // Planning session prefix for OpenClaw (must match agent:main: format)
 const PLANNING_SESSION_PREFIX = 'agent:main:planning:';
-
-// Helper to extract JSON from a response that might have markdown code blocks or surrounding text
-function extractJSON(text: string): object | null {
-  // First, try direct parse
-  try {
-    return JSON.parse(text.trim());
-  } catch {
-    // Continue to other methods
-  }
-
-  // Try to extract from markdown code block (```json ... ``` or ``` ... ```)
-  const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (codeBlockMatch) {
-    try {
-      return JSON.parse(codeBlockMatch[1].trim());
-    } catch {
-      // Continue
-    }
-  }
-
-  // Try to find JSON object in the text (first { to last })
-  const firstBrace = text.indexOf('{');
-  const lastBrace = text.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace > firstBrace) {
-    try {
-      return JSON.parse(text.slice(firstBrace, lastBrace + 1));
-    } catch {
-      // Continue
-    }
-  }
-
-  return null;
-}
-
-// Helper to get messages from OpenClaw API
-async function getMessagesFromOpenClaw(sessionKey: string): Promise<Array<{ role: string; content: string }>> {
-  try {
-    const client = getOpenClawClient();
-    if (!client.isConnected()) {
-      await client.connect();
-    }
-    
-    // Use chat.history API to get session messages
-    const result = await client.call<{ messages: Array<{ role: string; content: Array<{ type: string; text?: string }> }> }>('chat.history', {
-      sessionKey,
-      limit: 20,
-    });
-    
-    const messages: Array<{ role: string; content: string }> = [];
-    
-    for (const msg of result.messages || []) {
-      if (msg.role === 'assistant') {
-        // Extract text content from assistant messages
-        const textContent = msg.content?.find((c) => c.type === 'text');
-        if (textContent?.text) {
-          messages.push({
-            role: 'assistant',
-            content: textContent.text
-          });
-        }
-      }
-    }
-    
-    console.log('[Planning] Found', messages.length, 'assistant messages via API');
-    return messages;
-  } catch (err) {
-    console.error('[Planning] Failed to get messages from OpenClaw:', err);
-    return [];
-  }
-}
 
 // GET /api/tasks/[id]/planning - Get planning state
 export async function GET(
@@ -287,7 +218,7 @@ export async function DELETE(
     if (updatedTask) {
       broadcast({
         type: 'task_updated',
-        payload: updatedTask,
+        payload: updatedTask as any, // Cast to any to satisfy SSEEvent payload union type
       });
     }
 

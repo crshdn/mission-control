@@ -1,94 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryOne, run, getDb } from '@/lib/db';
+import { queryOne, run, getDb, queryAll } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
+import { extractJSON, getMessagesFromOpenClaw } from '@/lib/planning-utils';
 
-// Helper to extract JSON from a response that might have markdown code blocks or surrounding text
-function extractJSON(text: string): object | null {
-  // First, try direct parse
-  try {
-    return JSON.parse(text.trim());
-  } catch {
-    // Continue to other methods
-  }
+// Planning timeout and poll interval configuration
+const PLANNING_TIMEOUT_MS = parseInt(process.env.PLANNING_TIMEOUT_MS || '30000', 10);
+const PLANNING_POLL_INTERVAL_MS = parseInt(process.env.PLANNING_POLL_INTERVAL_MS || '2000', 10);
 
-  // Try to extract from markdown code block (```json ... ``` or ``` ... ```)
-  const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (codeBlockMatch) {
-    try {
-      return JSON.parse(codeBlockMatch[1].trim());
-    } catch {
-      // Continue
-    }
-  }
-
-  // Try to find JSON object in the text (first { to last })
-  const firstBrace = text.indexOf('{');
-  const lastBrace = text.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace > firstBrace) {
-    try {
-      return JSON.parse(text.slice(firstBrace, lastBrace + 1));
-    } catch {
-      // Continue
-    }
-  }
-
-  return null;
-}
-
-// Helper to get messages from OpenClaw API
-async function getMessagesFromOpenClaw(sessionKey: string): Promise<Array<{ role: string; content: string }>> {
-  try {
-    const client = getOpenClawClient();
-    if (!client.isConnected()) {
-      await client.connect();
-    }
-
-    // Use chat.history API to get session messages
-    const result = await client.call<{ messages: Array<{ role: string; content: Array<{ type: string; text?: string }> }> }>('chat.history', {
-      sessionKey,
-      limit: 50,
-    });
-
-    console.log('[Planning Poll] OpenClaw returned', result.messages?.length || 0, 'total messages');
-
-    const messages: Array<{ role: string; content: string }> = [];
-
-    for (const msg of result.messages || []) {
-      if (msg.role === 'assistant') {
-        const textContent = msg.content?.find((c) => c.type === 'text');
-        if (textContent?.text) {
-          console.log('[Planning Poll] Found assistant message, length:', textContent.text.length);
-          messages.push({
-            role: 'assistant',
-            content: textContent.text
-          });
-        }
-      }
-    }
-
-    console.log('[Planning Poll] Extracted', messages.length, 'assistant messages');
-    return messages;
-  } catch (err) {
-    console.error('[Planning Poll] Failed to get messages from OpenClaw:', err);
-    return [];
-  }
-}
-
-// Helper to handle planning completion
+// Helper to handle planning completion with proper error handling and rollback
 async function handlePlanningCompletion(taskId: string, parsed: any, messages: any[]) {
   const db = getDb();
+  let dispatchError: string | null = null;
+  let firstAgentId: string | null = null;
 
   // Wrap all database operations in a transaction for atomicity
+  // Set status to 'pending_dispatch' first - don't mark as complete until dispatch succeeds
   const transaction = db.transaction(() => {
-    // Update task with completion data
+    // Update task with completion data but keep planning_complete = 0 until dispatch succeeds
     db.prepare(`
       UPDATE tasks
       SET planning_messages = ?,
-          planning_complete = 1,
           planning_spec = ?,
           planning_agents = ?,
-          status = 'inbox'
+          status = 'pending_dispatch',
+          planning_dispatch_error = NULL
       WHERE id = ?
     `).run(
       JSON.stringify(messages),
@@ -98,8 +34,6 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
     );
 
     // Create the agents in the workspace and track first agent for auto-assign
-    let firstAgentId: string | null = null;
-
     if (parsed.agents && parsed.agents.length > 0) {
       const insertAgent = db.prepare(`
         INSERT INTO agents (id, workspace_id, name, role, description, avatar_emoji, status, soul_md, created_at, updated_at)
@@ -122,23 +56,35 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
       }
     }
 
-    // AUTO-DISPATCH: Assign to first agent
-    if (firstAgentId) {
-      db.prepare(`
-        UPDATE tasks SET assigned_agent_id = ? WHERE id = ?
-      `).run(firstAgentId, taskId);
-
-      console.log(`[Planning Poll] Auto-assigned task ${taskId} to agent ${firstAgentId}`);
-    }
-
     return firstAgentId;
   });
 
-  // Execute the transaction
-  const firstAgentId = transaction();
+  // Execute the transaction to create agents and set pending_dispatch status
+  firstAgentId = transaction();
+
+  // Re-check for other orchestrators before dispatching (prevents race condition)
+  if (firstAgentId) {
+    const task = queryOne<{ workspace_id: string }>('SELECT workspace_id FROM tasks WHERE id = ?', [taskId]);
+    if (task) {
+      const otherOrchestrators = queryAll<{ id: string; name: string }>(
+        `SELECT id, name
+         FROM agents
+         WHERE is_master = 1
+         AND name != 'Charlie'
+         AND workspace_id = ?
+         AND status != 'offline'`,
+        [task.workspace_id]
+      );
+
+      if (otherOrchestrators.length > 0) {
+        dispatchError = `Cannot auto-dispatch: ${otherOrchestrators.length} other orchestrator(s) available in workspace`;
+        console.warn(`[Planning Poll] ${dispatchError}:`, otherOrchestrators.map(o => o.name).join(', '));
+        firstAgentId = null; // Don't dispatch
+      }
+    }
+  }
 
   // Trigger dispatch - use localhost since we're in the same process
-  // (Outside transaction since it's an HTTP call)
   if (firstAgentId) {
     const dispatchUrl = `http://localhost:${process.env.PORT || 3000}/api/tasks/${taskId}/dispatch`;
     console.log(`[Planning Poll] Triggering dispatch: ${dispatchUrl}`);
@@ -154,23 +100,60 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
         console.log(`[Planning Poll] Dispatch successful:`, dispatchData);
       } else {
         const errorText = await dispatchRes.text();
-        console.error(`[Planning Poll] Dispatch failed (${dispatchRes.status}):`, errorText);
+        dispatchError = `Dispatch failed (${dispatchRes.status}): ${errorText}`;
+        console.error(`[Planning Poll] ${dispatchError}`);
       }
     } catch (err) {
-      console.error('[Planning Poll] Auto-dispatch error:', err);
+      dispatchError = `Dispatch error: ${(err as Error).message}`;
+      console.error(`[Planning Poll] ${dispatchError}`);
     }
   }
+
+  // Final transaction: mark as complete or store error for retry
+  db.transaction(() => {
+    if (dispatchError) {
+      // Store the error but don't mark as complete - user can retry
+      db.prepare(`
+        UPDATE tasks
+        SET planning_dispatch_error = ?,
+            updated_at = datetime('now')
+        WHERE id = ?
+      `).run(dispatchError, taskId);
+    } else if (firstAgentId) {
+      // Success - mark complete and assign
+      db.prepare(`
+        UPDATE tasks
+        SET planning_complete = 1,
+            assigned_agent_id = ?,
+            status = 'inbox',
+            planning_dispatch_error = NULL,
+            updated_at = datetime('now')
+        WHERE id = ?
+      `).run(firstAgentId, taskId);
+      console.log(`[Planning Poll] Planning complete and dispatched to agent ${firstAgentId}`);
+    } else {
+      // No agent to dispatch to, but planning is complete
+      db.prepare(`
+        UPDATE tasks
+        SET planning_complete = 1,
+            status = 'inbox',
+            planning_dispatch_error = NULL,
+            updated_at = datetime('now')
+        WHERE id = ?
+      `).run(taskId);
+    }
+  })();
 
   // Broadcast task update
   const updatedTask = queryOne('SELECT * FROM tasks WHERE id = ?', [taskId]);
   if (updatedTask) {
     broadcast({
       type: 'task_updated',
-      payload: updatedTask,
+      payload: updatedTask as any, // Cast to any to satisfy SSEEvent payload union type
     });
   }
 
-  return { firstAgentId, parsed };
+  return { firstAgentId, parsed, dispatchError };
 }
 
 // GET /api/tasks/[id]/planning/poll - Check for new messages from OpenClaw
@@ -186,6 +169,7 @@ export async function GET(
       planning_session_key?: string;
       planning_messages?: string;
       planning_complete?: number;
+      planning_dispatch_error?: string;
     }>('SELECT * FROM tasks WHERE id = ?', [taskId]);
 
     if (!task || !task.planning_session_key) {
@@ -194,6 +178,14 @@ export async function GET(
 
     if (task.planning_complete) {
       return NextResponse.json({ hasUpdates: false, isComplete: true });
+    }
+
+    // Return dispatch error if present (allows user to see/ retry failed dispatch)
+    if (task.planning_dispatch_error) {
+      return NextResponse.json({
+        hasUpdates: true,
+        dispatchError: task.planning_dispatch_error,
+      });
     }
 
     const messages = task.planning_messages ? JSON.parse(task.planning_messages) : [];
@@ -248,7 +240,7 @@ export async function GET(
           if (parsed && parsed.status === 'complete') {
             // Handle completion
             console.log('[Planning Poll] Planning complete, handling...');
-            const { firstAgentId, parsed: fullParsed } = await handlePlanningCompletion(taskId, parsed, messages);
+            const { firstAgentId, parsed: fullParsed, dispatchError } = await handlePlanningCompletion(taskId, parsed, messages);
 
             return NextResponse.json({
               hasUpdates: true,
@@ -258,6 +250,7 @@ export async function GET(
               executionPlan: fullParsed.execution_plan,
               messages,
               autoDispatched: !!firstAgentId,
+              dispatchError,
             });
           }
 
