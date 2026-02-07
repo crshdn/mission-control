@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Save, Trash2 } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import type { Agent, AgentStatus } from '@/lib/types';
@@ -18,6 +18,9 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
   const { addAgent, updateAgent, agents } = useMissionControl();
   const [activeTab, setActiveTab] = useState<'info' | 'soul' | 'user' | 'agents'>('info');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [defaultModel, setDefaultModel] = useState<string>('');
+  const [modelsLoading, setModelsLoading] = useState(true);
 
   const [form, setForm] = useState({
     name: agent?.name || '',
@@ -29,7 +32,31 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
     soul_md: agent?.soul_md || '',
     user_md: agent?.user_md || '',
     agents_md: agent?.agents_md || '',
+    model: agent?.model || '',
   });
+
+  // Load available models from OpenClaw config
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const res = await fetch('/api/openclaw/models');
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableModels(data.availableModels || []);
+          setDefaultModel(data.defaultModel || '');
+          // If agent has no model set, use default
+          if (!agent?.model && data.defaultModel) {
+            setForm(prev => ({ ...prev, model: data.defaultModel }));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load models:', error);
+      } finally {
+        setModelsLoading(false);
+      }
+    };
+    loadModels();
+  }, [agent]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -215,6 +242,35 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
                 <label htmlFor="is_master" className="text-sm">
                   Master Orchestrator (can coordinate other agents)
                 </label>
+              </div>
+
+              {/* Model Selection */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Model
+                  {defaultModel && form.model === defaultModel && (
+                    <span className="ml-2 text-xs text-mc-text-secondary">(Default)</span>
+                  )}
+                </label>
+                {modelsLoading ? (
+                  <div className="text-sm text-mc-text-secondary">Loading available models...</div>
+                ) : (
+                  <select
+                    value={form.model}
+                    onChange={(e) => setForm({ ...form, model: e.target.value })}
+                    className="w-full bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
+                  >
+                    <option value="">-- Use Default Model --</option>
+                    {availableModels.map((model) => (
+                      <option key={model} value={model}>
+                        {model}{defaultModel === model ? ' (Default)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-xs text-mc-text-secondary mt-1">
+                  AI model used by this agent. Leave empty to use OpenClaw default.
+                </p>
               </div>
             </div>
           )}

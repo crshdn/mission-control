@@ -109,7 +109,10 @@ export default function WorkspacePage() {
     loadData();
     checkOpenClaw();
 
-    // Poll for events every 5 seconds
+    // SSE is the primary real-time mechanism - these are fallback polls with longer intervals
+    // to reduce server load while providing redundancy
+
+    // Poll for events every 30 seconds (SSE fallback - increased from 5s)
     const eventPoll = setInterval(async () => {
       try {
         const res = await fetch('/api/events?limit=20');
@@ -119,9 +122,9 @@ export default function WorkspacePage() {
       } catch (error) {
         console.error('Failed to poll events:', error);
       }
-    }, 5000);
+    }, 30000); // Increased from 5000 to 30000
 
-    // Poll tasks as SSE fallback (every 10 seconds)
+    // Poll tasks as SSE fallback every 60 seconds (increased from 10s)
     const taskPoll = setInterval(async () => {
       try {
         const res = await fetch(`/api/tasks?workspace_id=${workspaceId}`);
@@ -136,16 +139,16 @@ export default function WorkspacePage() {
             });
 
           if (hasChanges) {
-            debug.api('[FALLBACK] Task changes detected, updating store');
+            debug.api('[FALLBACK] Task changes detected via polling, updating store');
             setTasks(newTasks);
           }
         }
       } catch (error) {
         console.error('Failed to poll tasks:', error);
       }
-    }, 10000);
+    }, 60000); // Increased from 10000 to 60000
 
-    // Check OpenClaw connection every 30 seconds
+    // Check OpenClaw connection every 30 seconds (kept as-is for monitoring)
     const connectionCheck = setInterval(async () => {
       try {
         const res = await fetch('/api/openclaw/status');

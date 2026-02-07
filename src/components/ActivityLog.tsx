@@ -5,7 +5,8 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 import type { TaskActivity } from '@/lib/types';
 
 interface ActivityLogProps {
@@ -15,24 +16,61 @@ interface ActivityLogProps {
 export function ActivityLog({ taskId }: ActivityLogProps) {
   const [activities, setActivities] = useState<TaskActivity[]>([]);
   const [loading, setLoading] = useState(true);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const lastCountRef = useRef(0);
 
-  useEffect(() => {
-    loadActivities();
-  }, [taskId]);
-
-  const loadActivities = async () => {
+  const loadActivities = useCallback(async (showLoading = false) => {
     try {
+      if (showLoading) setLoading(true);
+
       const res = await fetch(`/api/tasks/${taskId}/activities`);
+      const data = await res.json();
+
       if (res.ok) {
-        const data = await res.json();
         setActivities(data);
+        lastCountRef.current = data.length;
       }
     } catch (error) {
       console.error('Failed to load activities:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [taskId]);
+
+  // Initial load
+  useEffect(() => {
+    loadActivities(true);
+  }, [taskId, loadActivities]);
+
+  // Polling function
+  const pollForActivities = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/activities`);
+      if (res.ok) {
+        const data = await res.json();
+        // Only update if there are new activities
+        if (data.length !== lastCountRef.current) {
+          setActivities(data);
+          lastCountRef.current = data.length;
+        }
+      }
+    } catch (error) {
+      console.error('Polling error:', error);
+    }
+  }, [taskId]); // setActivities is stable from React, no need to include
+
+  // Poll for new activities every 5 seconds when task is in progress
+  useEffect(() => {
+    const pollInterval = setInterval(pollForActivities, 5000);
+
+    pollingRef.current = pollInterval;
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, [taskId, pollForActivities]);
 
   const getActivityIcon = (type: string) => {
     switch (type) {
@@ -49,37 +87,6 @@ export function ActivityLog({ taskId }: ActivityLogProps) {
       default:
         return '📝';
     }
-  };
-
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    
-    // Less than 1 minute
-    if (diff < 60000) {
-      return 'just now';
-    }
-    
-    // Less than 1 hour
-    if (diff < 3600000) {
-      const mins = Math.floor(diff / 60000);
-      return `${mins} min${mins > 1 ? 's' : ''} ago`;
-    }
-    
-    // Less than 24 hours
-    if (diff < 86400000) {
-      const hours = Math.floor(diff / 3600000);
-      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    }
-    
-    // More than 24 hours
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
   };
 
   if (loading) {
@@ -139,7 +146,7 @@ export function ActivityLog({ taskId }: ActivityLogProps) {
 
             {/* Timestamp */}
             <div className="text-xs text-mc-text-secondary mt-2">
-              {formatTimestamp(activity.created_at)}
+              {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
             </div>
           </div>
         </div>

@@ -32,6 +32,7 @@ export interface Agent {
   soul_md?: string;
   user_md?: string;
   agents_md?: string;
+  model?: string;
   created_at: string;
   updated_at: string;
 }
@@ -42,8 +43,8 @@ export interface Task {
   description?: string;
   status: TaskStatus;
   priority: TaskPriority;
-  assigned_agent_id?: string;
-  created_by_agent_id?: string;
+  assigned_agent_id: string | null;
+  created_by_agent_id: string | null;
   workspace_id: string;
   business_id: string;
   due_date?: string;
@@ -226,6 +227,7 @@ export interface CreateAgentRequest {
   soul_md?: string;
   user_md?: string;
   agents_md?: string;
+  model?: string;
 }
 
 export interface UpdateAgentRequest extends Partial<CreateAgentRequest> {

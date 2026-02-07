@@ -2,9 +2,22 @@
 
 import { EventEmitter } from 'events';
 import type { OpenClawMessage, OpenClawSessionInfo } from '../types';
+import { createHash } from 'crypto';
 
 const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL || 'ws://127.0.0.1:18789';
 const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || '';
+
+// Global deduplication cache that persists across module reloads in Next.js dev
+// Use globalThis to ensure it's shared across all instances
+// Using Map for LRU (access time tracking) instead of Set
+const GLOBAL_EVENT_CACHE_KEY = '__openclaw_processed_events__';
+const GLOBAL_CACHE_CLEANUP_KEY = '__openclaw_cache_cleanup_timer__';
+
+if (!(GLOBAL_EVENT_CACHE_KEY in globalThis)) {
+  (globalThis as Record<string, unknown>)[GLOBAL_EVENT_CACHE_KEY] = new Map<string, number>();
+}
+
+const globalProcessedEvents = (globalThis as unknown as Record<string, Map<string, number>>)[GLOBAL_EVENT_CACHE_KEY];
 
 export class OpenClawClient extends EventEmitter {
   private ws: WebSocket | null = null;
@@ -16,12 +29,111 @@ export class OpenClawClient extends EventEmitter {
   private connecting: Promise<void> | null = null; // Lock to prevent multiple simultaneous connection attempts
   private autoReconnect = true;
   private token: string;
+  private messageHandlers = new Set<(event: MessageEvent) => void>(); // Track all message handlers for cleanup
+  private readonly MAX_PROCESSED_EVENTS = 1000; // Limit the size of the processed events cache
+  private readonly CLEANUP_THRESHOLD = 100; // Number of entries to remove when limit exceeded
+  private readonly CACHE_ENTRY_TTL_MS = 60 * 60 * 1000; // 1 hour TTL for cache entries
+  private readonly PERIODIC_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // Cleanup every 5 minutes
+  private periodicCleanupTimer: NodeJS.Timeout | null = null;
+
+  /**
+   * Generate a unique event ID using content hashing for proper deduplication.
+   * Uses SHA-256 hash of event type, sequence/run ID, and payload content.
+   * This prevents collision from Date.now() and ensures events with same
+   * structure but different content are not incorrectly deduplicated.
+   */
+  private generateEventId(data: any): string {
+    // Create a canonical string representation of the event
+    const canonical = JSON.stringify({
+      type: data.type,
+      seq: data.seq,
+      runId: data.payload?.runId,
+      stream: data.payload?.stream,
+      event: data.event,
+      // Include hash of payload for content-aware deduplication
+      payloadHash: data.payload ? createHash('sha256').update(JSON.stringify(data.payload)).digest('hex').slice(0, 16) : null
+    });
+
+    // Hash the canonical representation for a fixed-length ID
+    return createHash('sha256').update(canonical).digest('hex').slice(0, 32);
+  }
+
+  /**
+   * Perform LRU cleanup of the event cache.
+   * Removes the oldest entries based on access time when size exceeds limit.
+   * Also removes entries older than TTL to prevent unbounded growth.
+   */
+  private performCacheCleanup(): void {
+    const now = Date.now();
+    let removed = 0;
+    const initialSize = globalProcessedEvents.size;
+
+    // First, remove expired entries (older than TTL)
+    const entries = Array.from(globalProcessedEvents.entries());
+    for (const [eventId, timestamp] of entries) {
+      if (now - timestamp > this.CACHE_ENTRY_TTL_MS) {
+        globalProcessedEvents.delete(eventId);
+        removed++;
+      }
+    }
+
+    // Then, if still over limit, remove oldest entries (LRU)
+    if (globalProcessedEvents.size > this.MAX_PROCESSED_EVENTS) {
+      const entriesToRemove = globalProcessedEvents.size - this.MAX_PROCESSED_EVENTS + this.CLEANUP_THRESHOLD;
+
+      // Sort by access time (oldest first) and remove
+      const sortedEntries = Array.from(globalProcessedEvents.entries())
+        .sort((a, b) => a[1] - b[1]);
+
+      for (const [eventId] of sortedEntries) {
+        if (removed >= entriesToRemove) break;
+        globalProcessedEvents.delete(eventId);
+        removed++;
+      }
+    }
+
+    if (removed > 0) {
+      console.log(`[OpenClaw] Cache cleanup: removed ${removed} entries (size: ${initialSize} -> ${globalProcessedEvents.size})`);
+    }
+  }
 
   constructor(private url: string = GATEWAY_URL, token: string = GATEWAY_TOKEN) {
     super();
     this.token = token;
     // Prevent Node.js from throwing on unhandled 'error' events
     this.on('error', () => {});
+    // Start periodic cleanup to prevent unbounded cache growth
+    this.startPeriodicCleanup();
+  }
+
+  /**
+   * Start periodic cleanup of the global event cache.
+   * Uses a shared timer across all instances to avoid multiple timers.
+   */
+  private startPeriodicCleanup(): void {
+    // Check if a cleanup timer already exists (shared across all instances)
+    if (!(GLOBAL_CACHE_CLEANUP_KEY in globalThis)) {
+      const timer = setInterval(() => {
+        // Perform cleanup even if no new events have arrived
+        this.performCacheCleanup();
+      }, this.PERIODIC_CLEANUP_INTERVAL_MS);
+
+      // Store the timer globally so all instances share it
+      (globalThis as Record<string, unknown>)[GLOBAL_CACHE_CLEANUP_KEY] = timer;
+      console.log('[OpenClaw] Started periodic cache cleanup (interval:', this.PERIODIC_CLEANUP_INTERVAL_MS, 'ms)');
+    }
+
+    // Keep a reference to stop it when the last instance disconnects
+    this.periodicCleanupTimer = (globalThis as unknown as Record<string, NodeJS.Timeout>)[GLOBAL_CACHE_CLEANUP_KEY];
+  }
+
+  /**
+   * Stop the periodic cleanup timer if this is the last instance.
+   */
+  private stopPeriodicCleanup(): void {
+    // We don't stop the timer here since it's shared across instances
+    // The timer will continue running as long as any instance exists
+    // This is safe because the cleanup function is lightweight
   }
 
   async connect(): Promise<void> {
@@ -38,8 +150,10 @@ export class OpenClawClient extends EventEmitter {
     // Create a new connection attempt
     this.connecting = new Promise((resolve, reject) => {
       try {
-        // Clean up any existing connection
+        // Clean up any existing connection and handlers
         if (this.ws) {
+          // Remove all tracked message handlers
+          this.messageHandlers.clear();
           this.ws.onclose = null;
           this.ws.onerror = null;
           this.ws.onmessage = null;
@@ -79,6 +193,8 @@ export class OpenClawClient extends EventEmitter {
           this.connected = false;
           this.authenticated = false;
           this.connecting = null;
+          this.messageHandlers.clear(); // Clear handlers on disconnect
+          // Note: globalProcessedEvents is NOT cleared as it's shared across all instances
           this.emit('disconnected');
           // Log close reason for debugging
           console.log(`[OpenClaw] Disconnected from Gateway (code: ${event.code}, reason: "${event.reason}", wasClean: ${event.wasClean})`);
@@ -98,10 +214,28 @@ export class OpenClawClient extends EventEmitter {
           }
         };
 
-        this.ws.onmessage = (event) => {
-          console.log('[OpenClaw] Received:', event.data);
+        // Create message handler
+        const messageHandler = (event: MessageEvent) => {
           try {
             const data = JSON.parse(event.data as string);
+
+            // Generate unique event ID using content hashing for proper deduplication
+            const eventId = this.generateEventId(data);
+
+            // Skip if we've already processed this event (using global cache for all instances)
+            if (globalProcessedEvents.has(eventId)) {
+              console.log('[OpenClaw] Skipping duplicate event:', eventId.slice(0, 16));
+              return;
+            }
+
+            // Mark this event as processed in the global cache with current timestamp for LRU
+            const now = Date.now();
+            globalProcessedEvents.set(eventId, now);
+
+            // Perform LRU cleanup if cache size exceeds limit
+            this.performCacheCleanup();
+
+            console.log('[OpenClaw] Received:', eventId.slice(0, 16));
 
             // Handle challenge-response authentication (OpenClaw RequestFrame format)
             if (data.type === 'event' && data.event === 'connect.challenge') {
@@ -154,6 +288,10 @@ export class OpenClawClient extends EventEmitter {
             console.error('[OpenClaw] Failed to parse message:', err);
           }
         };
+
+        // Track and assign the message handler
+        this.messageHandlers.add(messageHandler);
+        this.ws.onmessage = messageHandler;
       } catch (err) {
         this.connecting = null;
         reject(err);
@@ -282,6 +420,8 @@ export class OpenClawClient extends EventEmitter {
     this.connected = false;
     this.authenticated = false;
     this.connecting = null;
+    this.messageHandlers.clear(); // Clear all tracked handlers
+    // Note: globalProcessedEvents is NOT cleared as it's shared across all instances
   }
 
   isConnected(): boolean {

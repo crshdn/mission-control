@@ -28,7 +28,7 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  font-family: var(--font-jetbrains-mono), 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
 }
 
 body {

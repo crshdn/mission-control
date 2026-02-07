@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
+import { triggerAutoDispatch, shouldTriggerAutoDispatch } from '@/lib/auto-dispatch';
 import { ActivityLog } from './ActivityLog';
 import { DeliverablesList } from './DeliverablesList';
 import { SessionsList } from './SessionsList';
@@ -25,6 +26,11 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
   const [usePlanningMode, setUsePlanningMode] = useState(false);
   // Auto-switch to planning tab if task is in planning status
   const [activeTab, setActiveTab] = useState<TabType>(task?.status === 'planning' ? 'planning' : 'overview');
+
+  // Stable callback for when spec is locked - use window.location.reload() to refresh data
+  const handleSpecLocked = useCallback(() => {
+    window.location.reload();
+  }, []);
 
   const [form, setForm] = useState({
     title: task?.title || '',
@@ -63,6 +69,22 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
 
         if (task) {
           updateTask(savedTask);
+
+          // Check if auto-dispatch should be triggered and execute it
+          if (shouldTriggerAutoDispatch(task.status, savedTask.status, savedTask.assigned_agent_id)) {
+            const result = await triggerAutoDispatch({
+              taskId: savedTask.id,
+              taskTitle: savedTask.title,
+              agentId: savedTask.assigned_agent_id,
+              agentName: savedTask.assigned_agent?.name || 'Unknown Agent',
+              workspaceId: savedTask.workspace_id
+            });
+
+            if (!result.success) {
+              console.error('Auto-dispatch failed:', result.error);
+            }
+          }
+
           onClose();
         } else {
           addTask(savedTask);
@@ -78,20 +100,20 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
           if (usePlanningMode) {
             // Trigger question generation in background
             fetch(`/api/tasks/${savedTask.id}/planning`, { method: 'POST' })
-              .then(() => {
-                // Update our local task reference and switch to planning tab
-                updateTask({ ...savedTask, status: 'planning' });
+              .then((res) => {
+                if (res.ok) {
+                  // Update our local task reference and switch to planning tab
+                  updateTask({ ...savedTask, status: 'planning' });
+                  setActiveTab('planning');
+                } else {
+                  return res.json().then((data) => {
+                    console.error('Failed to start planning:', data.error);
+                  });
+                }
               })
-              .catch(console.error);
-            
-            // Log the planning start
-            addEvent({
-              id: crypto.randomUUID(),
-              type: 'task_status_changed',
-              task_id: savedTask.id,
-              message: `📋 Planning started for: ${savedTask.title}`,
-              created_at: new Date().toISOString(),
-            });
+              .catch((error) => {
+                console.error('Failed to start planning:', error);
+              });
           }
           onClose();
         }
@@ -296,12 +318,9 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
 
           {/* Planning Tab */}
           {activeTab === 'planning' && task && (
-            <PlanningTab 
-              taskId={task.id} 
-              onSpecLocked={() => {
-                // Refresh task data when spec is locked
-                window.location.reload();
-              }}
+            <PlanningTab
+              taskId={task.id}
+              onSpecLocked={handleSpecLocked}
             />
           )}
 
