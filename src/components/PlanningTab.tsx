@@ -57,6 +57,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
   const [otherText, setOtherText] = useState('');
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
+  const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
 
   // Refs to track polling state without triggering re-renders
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -122,6 +123,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
           if (questionChanged) {
             setSelectedOption(null);
             setOtherText('');
+            setIsSubmittingAnswer(false); // Clear submitting state when new question arrives
           }
 
           if (data.complete && onSpecLocked) {
@@ -198,6 +200,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
     if (!selectedOption) return;
 
     setSubmitting(true);
+    setIsSubmittingAnswer(true); // Show submitting state in UI
     setError(null);
 
     // Store submission for retry
@@ -222,12 +225,14 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
         startPolling();
       } else {
         setError(data.error || 'Failed to submit answer');
+        setIsSubmittingAnswer(false); // Clear submitting state on error
         // Clear selection on error so user can try again
         setSelectedOption(null);
         setOtherText('');
       }
     } catch (err) {
       setError('Failed to submit answer');
+      setIsSubmittingAnswer(false); // Clear submitting state on error
       // Clear selection on error so user can try again
       setSelectedOption(null);
       setOtherText('');
@@ -242,6 +247,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
     if (!submission) return;
 
     setSubmitting(true);
+    setIsSubmittingAnswer(true); // Show submitting state
     setError(null);
 
     try {
@@ -257,9 +263,11 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
         startPolling();
       } else {
         setError(data.error || 'Failed to submit answer');
+        setIsSubmittingAnswer(false); // Clear on error
       }
     } catch (err) {
       setError('Failed to submit answer');
+      setIsSubmittingAnswer(false); // Clear on error
     } finally {
       setSubmitting(false);
     }
@@ -273,6 +281,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
 
     setCanceling(true);
     setError(null);
+    setIsSubmittingAnswer(false); // Clear submitting state when canceling
     stopPolling(); // Stop polling when canceling
 
     try {
@@ -443,6 +452,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
               {state.currentQuestion.options.map((option) => {
                 const isSelected = selectedOption === option.label;
                 const isOther = option.id === 'other' || option.label.toLowerCase() === 'other';
+                const isThisOptionSubmitting = isSubmittingAnswer && isSelected;
 
                 return (
                   <div key={option.id}>
@@ -450,7 +460,9 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
                       onClick={() => setSelectedOption(option.label)}
                       disabled={submitting}
                       className={`w-full flex items-center gap-3 p-4 rounded-lg border transition-all text-left ${
-                        isSelected
+                        isThisOptionSubmitting
+                          ? 'border-mc-accent bg-mc-accent/20'
+                          : isSelected
                           ? 'border-mc-accent bg-mc-accent/10'
                           : 'border-mc-border hover:border-mc-accent/50'
                       } disabled:opacity-50`}
@@ -461,7 +473,11 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
                         {option.id.toUpperCase()}
                       </span>
                       <span className="flex-1">{option.label}</span>
-                      {isSelected && <CheckCircle className="w-5 h-5 text-mc-accent" />}
+                      {isThisOptionSubmitting ? (
+                        <Loader2 className="w-5 h-5 text-mc-accent animate-spin" />
+                      ) : isSelected && !submitting ? (
+                        <CheckCircle className="w-5 h-5 text-mc-accent" />
+                      ) : null}
                     </button>
 
                     {/* Other text input */}
@@ -512,12 +528,20 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
                 {submitting ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Processing...
+                    Sending...
                   </>
                 ) : (
                   'Continue →'
                 )}
               </button>
+
+              {/* Waiting indicator after submit */}
+              {isSubmittingAnswer && !submitting && (
+                <div className="mt-4 flex items-center justify-center gap-2 text-sm text-mc-text-secondary">
+                  <Loader2 className="w-4 h-4 animate-spin text-mc-accent" />
+                  <span>Waiting for Charlie to respond...</span>
+                </div>
+              )}
             </div>
           </div>
         ) : (
