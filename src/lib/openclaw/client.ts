@@ -11,6 +11,7 @@ const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || '';
 // Use globalThis to ensure it's shared across all instances
 // Using Map for LRU (access time tracking) instead of Set
 const GLOBAL_EVENT_CACHE_KEY = '__openclaw_processed_events__';
+const GLOBAL_CACHE_CLEANUP_KEY = '__openclaw_cache_cleanup_timer__';
 
 if (!(GLOBAL_EVENT_CACHE_KEY in globalThis)) {
   (globalThis as Record<string, unknown>)[GLOBAL_EVENT_CACHE_KEY] = new Map<string, number>();
@@ -31,6 +32,9 @@ export class OpenClawClient extends EventEmitter {
   private messageHandlers = new Set<(event: MessageEvent) => void>(); // Track all message handlers for cleanup
   private readonly MAX_PROCESSED_EVENTS = 1000; // Limit the size of the processed events cache
   private readonly CLEANUP_THRESHOLD = 100; // Number of entries to remove when limit exceeded
+  private readonly CACHE_ENTRY_TTL_MS = 60 * 60 * 1000; // 1 hour TTL for cache entries
+  private readonly PERIODIC_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // Cleanup every 5 minutes
+  private periodicCleanupTimer: NodeJS.Timeout | null = null;
 
   /**
    * Generate a unique event ID using content hashing for proper deduplication.
@@ -57,26 +61,40 @@ export class OpenClawClient extends EventEmitter {
   /**
    * Perform LRU cleanup of the event cache.
    * Removes the oldest entries based on access time when size exceeds limit.
+   * Also removes entries older than TTL to prevent unbounded growth.
    */
   private performCacheCleanup(): void {
-    if (globalProcessedEvents.size <= this.MAX_PROCESSED_EVENTS) {
-      return;
-    }
-
-    const entriesToRemove = globalProcessedEvents.size - this.MAX_PROCESSED_EVENTS + this.CLEANUP_THRESHOLD;
-
-    // Sort by access time (oldest first) and remove
-    const sortedEntries = Array.from(globalProcessedEvents.entries())
-      .sort((a, b) => a[1] - b[1]);
-
+    const now = Date.now();
     let removed = 0;
-    for (const [eventId] of sortedEntries) {
-      if (removed >= entriesToRemove) break;
-      globalProcessedEvents.delete(eventId);
-      removed++;
+    const initialSize = globalProcessedEvents.size;
+
+    // First, remove expired entries (older than TTL)
+    const entries = Array.from(globalProcessedEvents.entries());
+    for (const [eventId, timestamp] of entries) {
+      if (now - timestamp > this.CACHE_ENTRY_TTL_MS) {
+        globalProcessedEvents.delete(eventId);
+        removed++;
+      }
     }
 
-    console.log(`[OpenClaw] Cache cleanup: removed ${removed} entries, size now ${globalProcessedEvents.size}`);
+    // Then, if still over limit, remove oldest entries (LRU)
+    if (globalProcessedEvents.size > this.MAX_PROCESSED_EVENTS) {
+      const entriesToRemove = globalProcessedEvents.size - this.MAX_PROCESSED_EVENTS + this.CLEANUP_THRESHOLD;
+
+      // Sort by access time (oldest first) and remove
+      const sortedEntries = Array.from(globalProcessedEvents.entries())
+        .sort((a, b) => a[1] - b[1]);
+
+      for (const [eventId] of sortedEntries) {
+        if (removed >= entriesToRemove) break;
+        globalProcessedEvents.delete(eventId);
+        removed++;
+      }
+    }
+
+    if (removed > 0) {
+      console.log(`[OpenClaw] Cache cleanup: removed ${removed} entries (size: ${initialSize} -> ${globalProcessedEvents.size})`);
+    }
   }
 
   constructor(private url: string = GATEWAY_URL, token: string = GATEWAY_TOKEN) {
@@ -84,6 +102,38 @@ export class OpenClawClient extends EventEmitter {
     this.token = token;
     // Prevent Node.js from throwing on unhandled 'error' events
     this.on('error', () => {});
+    // Start periodic cleanup to prevent unbounded cache growth
+    this.startPeriodicCleanup();
+  }
+
+  /**
+   * Start periodic cleanup of the global event cache.
+   * Uses a shared timer across all instances to avoid multiple timers.
+   */
+  private startPeriodicCleanup(): void {
+    // Check if a cleanup timer already exists (shared across all instances)
+    if (!(GLOBAL_CACHE_CLEANUP_KEY in globalThis)) {
+      const timer = setInterval(() => {
+        // Perform cleanup even if no new events have arrived
+        this.performCacheCleanup();
+      }, this.PERIODIC_CLEANUP_INTERVAL_MS);
+
+      // Store the timer globally so all instances share it
+      (globalThis as Record<string, unknown>)[GLOBAL_CACHE_CLEANUP_KEY] = timer;
+      console.log('[OpenClaw] Started periodic cache cleanup (interval:', this.PERIODIC_CLEANUP_INTERVAL_MS, 'ms)');
+    }
+
+    // Keep a reference to stop it when the last instance disconnects
+    this.periodicCleanupTimer = (globalThis as unknown as Record<string, NodeJS.Timeout>)[GLOBAL_CACHE_CLEANUP_KEY];
+  }
+
+  /**
+   * Stop the periodic cleanup timer if this is the last instance.
+   */
+  private stopPeriodicCleanup(): void {
+    // We don't stop the timer here since it's shared across instances
+    // The timer will continue running as long as any instance exists
+    // This is safe because the cleanup function is lightweight
   }
 
   async connect(): Promise<void> {

@@ -93,6 +93,7 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
   }
 
   // Check if task is already assigned (idempotency - prevents duplicate dispatches from multiple polls)
+  let skipDispatch = false;
   if (firstAgentId) {
     const currentTask = queryOne<{ assigned_agent_id?: string }>(
       'SELECT assigned_agent_id FROM tasks WHERE id = ?',
@@ -102,11 +103,12 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
       console.log('[Planning Poll] Task already assigned to', currentTask.assigned_agent_id, ', skipping dispatch');
       firstAgentId = currentTask.assigned_agent_id;
       dispatchError = null;
+      skipDispatch = true; // Skip the HTTP dispatch call, but still mark as complete
     }
   }
 
   // Trigger dispatch - use localhost since we're in the same process
-  if (firstAgentId) {
+  if (firstAgentId && !skipDispatch) {
     const dispatchUrl = `http://localhost:${process.env.PORT || 3000}/api/tasks/${taskId}/dispatch`;
     console.log(`[Planning Poll] Triggering dispatch: ${dispatchUrl}`);
 
