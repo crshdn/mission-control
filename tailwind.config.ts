@@ -1,5 +1,9 @@
 import type { Config } from 'tailwindcss';
 
+function mcColor(name: string) {
+  return `rgb(var(--mc-${name}) / <alpha-value>)`;
+}
+
 const config: Config = {
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
@@ -9,20 +13,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Dark theme colors matching the screenshot
-        'mc-bg': '#0d1117',
-        'mc-bg-secondary': '#161b22',
-        'mc-bg-tertiary': '#21262d',
-        'mc-border': '#30363d',
-        'mc-text': '#c9d1d9',
-        'mc-text-secondary': '#8b949e',
-        'mc-accent': '#58a6ff',
-        'mc-accent-green': '#3fb950',
-        'mc-accent-yellow': '#d29922',
-        'mc-accent-red': '#f85149',
-        'mc-accent-purple': '#a371f7',
-        'mc-accent-pink': '#db61a2',
-        'mc-accent-cyan': '#39d353',
+        'mc-bg': mcColor('bg'),
+        'mc-bg-secondary': mcColor('bg-secondary'),
+        'mc-bg-tertiary': mcColor('bg-tertiary'),
+        'mc-border': mcColor('border'),
+        'mc-text': mcColor('text'),
+        'mc-text-secondary': mcColor('text-secondary'),
+        'mc-accent': mcColor('accent'),
+        'mc-accent-green': mcColor('accent-green'),
+        'mc-accent-yellow': mcColor('accent-yellow'),
+        'mc-accent-red': mcColor('accent-red'),
+        'mc-accent-purple': mcColor('accent-purple'),
+        'mc-accent-pink': mcColor('accent-pink'),
+        'mc-accent-cyan': mcColor('accent-cyan'),
       },
       fontFamily: {
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],

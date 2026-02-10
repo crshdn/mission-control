@@ -1,7 +1,5 @@
-'use client';
-
-import { WorkspaceDashboard } from '@/components/WorkspaceDashboard';
+import { redirect } from 'next/navigation';
 
 export default function HomePage() {
-  return <WorkspaceDashboard />;
+  redirect('/chat');
 }
