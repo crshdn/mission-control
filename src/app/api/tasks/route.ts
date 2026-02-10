@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryAll, queryOne, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
+import { autoSubscribeCreator, autoSubscribeAssigned } from '@/lib/subscriptions';
 import type { Task, CreateTaskRequest, Agent } from '@/lib/types';
 
 // GET /api/tasks - List all tasks with optional filters
@@ -137,6 +138,23 @@ export async function POST(request: NextRequest) {
        WHERE t.id = ?`,
       [id]
     );
+    
+    // Auto-subscribe creator and assigned agent
+    if (body.created_by_agent_id) {
+      try {
+        autoSubscribeCreator(id, body.created_by_agent_id);
+      } catch (e) {
+        console.error('[Subscriptions] Auto-subscribe creator failed:', e);
+      }
+    }
+    
+    if (body.assigned_agent_id) {
+      try {
+        autoSubscribeAssigned(id, body.assigned_agent_id);
+      } catch (e) {
+        console.error('[Subscriptions] Auto-subscribe assigned failed:', e);
+      }
+    }
     
     // Broadcast task creation via SSE
     if (task) {
