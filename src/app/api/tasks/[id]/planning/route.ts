@@ -102,7 +102,7 @@ export async function GET(
     }
 
     // Parse planning messages from JSON
-    let messages = task.planning_messages ? JSON.parse(task.planning_messages) : [];
+    const messages = task.planning_messages ? JSON.parse(task.planning_messages) : [];
     
     // Find the latest question (last assistant message with question structure)
     let lastAssistantMessage = [...messages].reverse().find((m: { role: string }) => m.role === 'assistant');
