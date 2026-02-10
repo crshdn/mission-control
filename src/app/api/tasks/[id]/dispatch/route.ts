@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, run } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
+import { getOpenClawSessionId, canDispatchAgent } from '@/lib/openclaw/agent-mapping';
 import { broadcast } from '@/lib/events';
 import { getProjectsPath, getMissionControlUrl } from '@/lib/config';
-import type { Task, Agent, OpenClawSession } from '@/lib/types';
+import type { Task, Agent } from '@/lib/types';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -14,9 +15,11 @@ interface RouteParams {
  * POST /api/tasks/[id]/dispatch
  * 
  * Dispatches a task to its assigned agent's OpenClaw session.
- * Creates session if needed, sends task details to agent.
+ * Sends task details directly to the agent via Gateway WebSocket.
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
+  const now = new Date().toISOString();
+  
   try {
     const { id } = await params;
 
@@ -50,57 +53,58 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Assigned agent not found' }, { status: 404 });
     }
 
+    // Check if agent can be dispatched to OpenClaw
+    if (!canDispatchAgent(agent.name)) {
+      const errorMsg = `Agent "${agent.name}" has no OpenClaw session mapping`;
+      console.error('[Dispatch]', errorMsg);
+      
+      // Log as task activity
+      run(
+        `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [uuidv4(), task.id, agent.id, 'comment', `⚠️ Cannot dispatch: ${errorMsg}`, now]
+      );
+      
+      return NextResponse.json(
+        { error: errorMsg },
+        { status: 400 }
+      );
+    }
+
+    // Get OpenClaw session ID for this agent
+    const openclawSessionId = getOpenClawSessionId(agent.name);
+    if (!openclawSessionId) {
+      return NextResponse.json(
+        { error: 'Failed to resolve OpenClaw session ID' },
+        { status: 500 }
+      );
+    }
+
+    console.log(`[Dispatch] Dispatching task "${task.title}" to ${agent.name} (${openclawSessionId})`);
+
     // Connect to OpenClaw Gateway
     const client = getOpenClawClient();
     if (!client.isConnected()) {
       try {
+        console.log('[Dispatch] Connecting to OpenClaw Gateway...');
         await client.connect();
+        console.log('[Dispatch] Connected to OpenClaw Gateway');
       } catch (err) {
-        console.error('Failed to connect to OpenClaw Gateway:', err);
+        const errorMsg = `Failed to connect to OpenClaw Gateway: ${err instanceof Error ? err.message : 'Unknown error'}`;
+        console.error('[Dispatch]', errorMsg);
+        
+        // Log as task activity
+        run(
+          `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [uuidv4(), task.id, agent.id, 'comment', `⚠️ ${errorMsg}`, now]
+        );
+        
         return NextResponse.json(
-          { error: 'Failed to connect to OpenClaw Gateway' },
+          { error: errorMsg },
           { status: 503 }
         );
       }
-    }
-
-    // Get or create OpenClaw session for this agent
-    let session = queryOne<OpenClawSession>(
-      'SELECT * FROM openclaw_sessions WHERE agent_id = ? AND status = ?',
-      [agent.id, 'active']
-    );
-
-    const now = new Date().toISOString();
-
-    if (!session) {
-      // Create session record
-      const sessionId = uuidv4();
-      const openclawSessionId = `mission-control-${agent.name.toLowerCase().replace(/\s+/g, '-')}`;
-      
-      run(
-        `INSERT INTO openclaw_sessions (id, agent_id, openclaw_session_id, channel, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [sessionId, agent.id, openclawSessionId, 'mission-control', 'active', now, now]
-      );
-
-      session = queryOne<OpenClawSession>(
-        'SELECT * FROM openclaw_sessions WHERE id = ?',
-        [sessionId]
-      );
-
-      // Log session creation
-      run(
-        `INSERT INTO events (id, type, agent_id, message, created_at)
-         VALUES (?, ?, ?, ?, ?)`,
-        [uuidv4(), 'agent_status_changed', agent.id, `${agent.name} session created`, now]
-      );
-    }
-
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Failed to create agent session' },
-        { status: 500 }
-      );
     }
 
     // Build task message for agent
@@ -141,16 +145,16 @@ When complete, reply with:
 
 If you need help or clarification, ask me (Charlie).`;
 
-    // Send message to agent's session using chat.send
+    // Send message to agent's session using sessions.send
     try {
-      // Use sessionKey for routing to the agent's session
-      // Format: agent:main:{openclaw_session_id}
-      const sessionKey = `agent:main:${session.openclaw_session_id}`;
-      await client.call('chat.send', {
-        sessionKey,
-        message: taskMessage,
-        idempotencyKey: `dispatch-${task.id}-${Date.now()}`
+      console.log(`[Dispatch] Sending message to session: ${openclawSessionId}`);
+      
+      await client.call('sessions.send', {
+        session_id: openclawSessionId,
+        content: taskMessage
       });
+
+      console.log('[Dispatch] ✓ Message sent successfully');
 
       // Update task status to in_progress
       run(
@@ -187,22 +191,45 @@ If you need help or clarification, ask me (Charlie).`;
         ]
       );
 
+      // Log as task activity
+      run(
+        `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          uuidv4(),
+          task.id,
+          agent.id,
+          'status_changed',
+          `🚀 Task dispatched to ${agent.name} via OpenClaw`,
+          now
+        ]
+      );
+
       return NextResponse.json({
         success: true,
         task_id: task.id,
         agent_id: agent.id,
-        session_id: session.openclaw_session_id,
+        session_id: openclawSessionId,
         message: 'Task dispatched to agent'
       });
     } catch (err) {
-      console.error('Failed to send message to agent:', err);
+      const errorMsg = `Failed to send task to agent: ${err instanceof Error ? err.message : 'Unknown error'}`;
+      console.error('[Dispatch]', errorMsg);
+      
+      // Log as task activity
+      run(
+        `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [uuidv4(), task.id, agent.id, 'comment', `⚠️ ${errorMsg}`, now]
+      );
+      
       return NextResponse.json(
-        { error: `Failed to send task to agent: ${err instanceof Error ? err.message : 'Unknown error'}` },
+        { error: errorMsg },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error('Failed to dispatch task:', error);
+    console.error('[Dispatch] Failed to dispatch task:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to dispatch task' },
       { status: 500 }

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.2] - 2026-02-04
+
+### Fixed
+
+- Removed broken `db:migrate` script from package.json (referenced non-existent file)
+- Migrations run automatically on app startup — no manual step needed
+
+---
+
 ## [1.0.1] - 2026-02-04
 
 ### Changed
