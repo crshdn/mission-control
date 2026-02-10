@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus } from 'lucide-react';
+import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus, Send } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { ActivityLog } from './ActivityLog';
 import { DeliverablesList } from './DeliverablesList';
@@ -9,6 +9,7 @@ import { SessionsList } from './SessionsList';
 import { PlanningTab } from './PlanningTab';
 import { AgentModal } from './AgentModal';
 import type { Task, TaskPriority, TaskStatus } from '@/lib/types';
+import { TagEditor } from './TagEditor';
 
 type TabType = 'overview' | 'planning' | 'activity' | 'deliverables' | 'sessions';
 
@@ -21,6 +22,7 @@ interface TaskModalProps {
 export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
   const { agents, addTask, updateTask, addEvent } = useMissionControl();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDispatching, setIsDispatching] = useState(false);
   const [showAgentModal, setShowAgentModal] = useState(false);
   const [usePlanningMode, setUsePlanningMode] = useState(false);
   // Auto-switch to planning tab if task is in planning status
@@ -119,7 +121,39 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
     }
   };
 
-  const statuses: TaskStatus[] = ['planning', 'inbox', 'assigned', 'in_progress', 'testing', 'review', 'done'];
+  const handleDispatch = async () => {
+    if (!task || !task.assigned_agent_id) return;
+    
+    setIsDispatching(true);
+    try {
+      const res = await fetch(`/api/tasks/${task.id}/dispatch`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        addEvent({
+          id: crypto.randomUUID(),
+          type: 'task_dispatched',
+          task_id: task.id,
+          message: `Task dispatched to ${task.assigned_agent_name}`,
+          created_at: new Date().toISOString(),
+        });
+        alert(`✅ Task dispatched to ${task.assigned_agent_name}!`);
+      } else {
+        const error = await res.json();
+        alert(`❌ Dispatch failed: ${error.error}\n${error.details || ''}`);
+      }
+    } catch (error) {
+      console.error('Failed to dispatch task:', error);
+      alert(`❌ Dispatch failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsDispatching(false);
+    }
+  };
+
+  const statuses: TaskStatus[] = ['planning', 'inbox', 'assigned', 'in_progress', 'testing', 'review', 'monitoring', 'done'];
   const priorities: TaskPriority[] = ['low', 'normal', 'high', 'urgent'];
 
   const tabs = [
@@ -291,6 +325,17 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
               className="w-full bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
             />
           </div>
+
+          {/* Tags - only for existing tasks */}
+          {task && (
+            <TagEditor
+              taskId={task.id}
+              initialTags={task.tags || []}
+              onChange={(tags) => {
+                updateTask({ ...task, tags });
+              }}
+            />
+          )}
             </form>
           )}
 
@@ -327,6 +372,18 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
             <div className="flex gap-2">
               {task && (
                 <>
+                  {task.assigned_agent_id && (
+                    <button
+                      type="button"
+                      onClick={handleDispatch}
+                      disabled={isDispatching}
+                      className="flex items-center gap-2 px-3 py-2 text-mc-accent hover:bg-mc-accent/10 rounded text-sm disabled:opacity-50"
+                      title="Manually dispatch this task to the assigned agent"
+                    >
+                      <Send className="w-4 h-4" />
+                      {isDispatching ? 'Dispatching...' : 'Dispatch'}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={handleDelete}

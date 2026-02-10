@@ -3,11 +3,17 @@
 import { EventEmitter } from 'events';
 import type { OpenClawMessage, OpenClawSessionInfo } from '../types';
 
+// Use Node.js 'ws' package in server environment, browser WebSocket in client
+// @ts-expect-error - ws is only available in Node.js
+const WS = typeof window === 'undefined' ? require('ws') : WebSocket;
+
 const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL || 'ws://127.0.0.1:18789';
 const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || '';
 
+type WebSocketLike = WebSocket | import('ws').WebSocket;
+
 export class OpenClawClient extends EventEmitter {
-  private ws: WebSocket | null = null;
+  private ws: WebSocketLike | null = null;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private messageId = 0;
   private pendingRequests = new Map<string | number, { resolve: (value: unknown) => void; reject: (error: Error) => void }>();
@@ -26,7 +32,8 @@ export class OpenClawClient extends EventEmitter {
 
   async connect(): Promise<void> {
     // If already connected, return immediately
-    if (this.connected && this.ws?.readyState === WebSocket.OPEN) {
+    const OPEN = typeof WebSocket !== 'undefined' ? WebSocket.OPEN : 1;
+    if (this.connected && this.ws?.readyState === OPEN) {
       return;
     }
 
@@ -44,7 +51,9 @@ export class OpenClawClient extends EventEmitter {
           this.ws.onerror = null;
           this.ws.onmessage = null;
           this.ws.onopen = null;
-          if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
+          const OPEN = typeof WebSocket !== 'undefined' ? WebSocket.OPEN : 1;
+          const CONNECTING = typeof WebSocket !== 'undefined' ? WebSocket.CONNECTING : 0;
+          if (this.ws.readyState === OPEN || this.ws.readyState === CONNECTING) {
             this.ws.close();
           }
           this.ws = null;
@@ -57,7 +66,7 @@ export class OpenClawClient extends EventEmitter {
         }
         console.log('[OpenClaw] Connecting to:', wsUrl.toString().replace(/token=[^&]+/, 'token=***'));
         console.log('[OpenClaw] Token in URL:', wsUrl.searchParams.has('token'));
-        this.ws = new WebSocket(wsUrl.toString());
+        this.ws = new WS(wsUrl.toString()) as WebSocketLike;
 
         const connectionTimeout = setTimeout(() => {
           if (!this.connected) {
@@ -66,14 +75,14 @@ export class OpenClawClient extends EventEmitter {
           }
         }, 10000); // 10 second connection timeout
 
-        this.ws.onopen = async () => {
+        const handleOpen = async () => {
           clearTimeout(connectionTimeout);
           console.log('[OpenClaw] WebSocket opened, waiting for challenge...');
           // Don't send anything yet - wait for Gateway challenge
           // Token is in URL query string
         };
 
-        this.ws.onclose = (event) => {
+        const handleClose = (event: { code: number; reason: string; wasClean: boolean }) => {
           clearTimeout(connectionTimeout);
           const wasConnected = this.connected;
           this.connected = false;
@@ -88,7 +97,7 @@ export class OpenClawClient extends EventEmitter {
           }
         };
 
-        this.ws.onerror = (error) => {
+        const handleError = (error: Error) => {
           clearTimeout(connectionTimeout);
           console.error('[OpenClaw] WebSocket error');
           this.emit('error', error);
@@ -98,10 +107,10 @@ export class OpenClawClient extends EventEmitter {
           }
         };
 
-        this.ws.onmessage = (event) => {
+        const handleMessage = (event: { data: string }) => {
           console.log('[OpenClaw] Received:', event.data);
           try {
-            const data = JSON.parse(event.data as string);
+            const data = JSON.parse(typeof event.data === 'string' ? event.data : event.data.toString());
 
             // Handle challenge-response authentication (OpenClaw RequestFrame format)
             if (data.type === 'event' && data.event === 'connect.challenge') {
@@ -154,6 +163,12 @@ export class OpenClawClient extends EventEmitter {
             console.error('[OpenClaw] Failed to parse message:', err);
           }
         };
+
+        // Attach handlers (works for both browser WebSocket and ws library)
+        this.ws.addEventListener ? this.ws.addEventListener('open', handleOpen) : (this.ws.onopen = handleOpen as () => void);
+        this.ws.addEventListener ? this.ws.addEventListener('close', handleClose) : (this.ws.onclose = handleClose as () => void);
+        this.ws.addEventListener ? this.ws.addEventListener('error', handleError) : (this.ws.onerror = handleError as () => void);
+        this.ws.addEventListener ? this.ws.addEventListener('message', handleMessage) : (this.ws.onmessage = handleMessage as () => void);
       } catch (err) {
         this.connecting = null;
         reject(err);
@@ -285,7 +300,8 @@ export class OpenClawClient extends EventEmitter {
   }
 
   isConnected(): boolean {
-    return this.connected && this.authenticated && this.ws?.readyState === WebSocket.OPEN;
+    const OPEN = typeof WebSocket !== 'undefined' ? WebSocket.OPEN : 1;
+    return this.connected && this.authenticated && this.ws?.readyState === OPEN;
   }
 
   setAutoReconnect(enabled: boolean): void {
