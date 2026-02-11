@@ -2,6 +2,7 @@
 
 import { EventEmitter } from 'events';
 import type { OpenClawMessage, OpenClawSessionInfo } from '../types';
+import { loadOrCreateDeviceIdentity, signDevicePayload, buildDeviceAuthPayload, publicKeyRawBase64Url } from './device-identity';
 
 const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL || 'ws://127.0.0.1:18789';
 const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || '';
@@ -16,12 +17,20 @@ export class OpenClawClient extends EventEmitter {
   private connecting: Promise<void> | null = null; // Lock to prevent multiple simultaneous connection attempts
   private autoReconnect = true;
   private token: string;
+  private deviceIdentity: { deviceId: string; publicKeyPem: string; privateKeyPem: string } | null = null;
 
   constructor(private url: string = GATEWAY_URL, token: string = GATEWAY_TOKEN) {
     super();
     this.token = token;
     // Prevent Node.js from throwing on unhandled 'error' events
     this.on('error', () => {});
+    // Load device identity for pairing
+    try {
+      this.deviceIdentity = loadOrCreateDeviceIdentity();
+      console.log('[OpenClaw] Device identity loaded:', this.deviceIdentity.deviceId);
+    } catch (err) {
+      console.warn('[OpenClaw] Failed to load device identity, will connect without:', err);
+    }
   }
 
   async connect(): Promise<void> {
@@ -106,7 +115,41 @@ export class OpenClawClient extends EventEmitter {
             // Handle challenge-response authentication (OpenClaw RequestFrame format)
             if (data.type === 'event' && data.event === 'connect.challenge') {
               console.log('[OpenClaw] Challenge received, responding...');
+              const nonce = data.payload?.nonce;
               const requestId = crypto.randomUUID();
+              const signedAtMs = Date.now();
+              const role = 'operator';
+              const scopes = ['operator.admin'];
+
+              // Build device identity for the connect params
+              const clientId = 'cli';
+              let device: Record<string, unknown> | undefined;
+              if (this.deviceIdentity) {
+                const payload = buildDeviceAuthPayload({
+                  deviceId: this.deviceIdentity.deviceId,
+                  clientId,
+                  clientMode: 'ui',
+                  role,
+                  scopes,
+                  signedAtMs,
+                  token: this.token || null,
+                  nonce,
+                });
+                const signature = signDevicePayload(this.deviceIdentity.privateKeyPem, payload);
+                device = {
+                  id: this.deviceIdentity.deviceId,
+                  publicKey: publicKeyRawBase64Url(this.deviceIdentity.publicKeyPem),
+                  signature,
+                  signedAt: signedAtMs,
+                  nonce,
+                };
+                console.log('[OpenClaw] Device identity prepared:', {
+                  deviceId: this.deviceIdentity.deviceId,
+                  hasSignature: !!signature,
+                  nonce,
+                });
+              }
+
               const response = {
                 type: 'req',
                 id: requestId,
@@ -115,14 +158,15 @@ export class OpenClawClient extends EventEmitter {
                   minProtocol: 3,
                   maxProtocol: 3,
                   client: {
-                    id: 'gateway-client',
-                    version: '1.0.0',
-                    platform: 'web',
-                    mode: 'ui'
+                    id: clientId,
+                    version: '1.0.1',
+                    platform: process.platform || 'web',
+                    mode: 'ui',
                   },
-                  auth: {
-                    token: this.token
-                  }
+                  auth: { token: this.token },
+                  role,
+                  scopes,
+                  device,
                 }
               };
 
