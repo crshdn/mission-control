@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, run } from '@/lib/db';
+import { getOpenClawClient } from '@/lib/openclaw/client';
 import type { Agent, UpdateAgentRequest } from '@/lib/types';
 
 function validateOpenClawAgentName(value: unknown): string | null {
@@ -14,6 +15,15 @@ function validateOpenClawAgentName(value: unknown): string | null {
     return 'openclaw_agent_name must not contain colon or whitespace';
   }
   return null;
+}
+
+async function fetchRuntimeAgentNames(): Promise<string[]> {
+  const client = getOpenClawClient();
+  if (!client.isConnected()) {
+    await client.connect();
+  }
+  const runtime = await client.call('agents.list', {});
+  return (runtime as { agents?: Array<{ name: string }> })?.agents?.map((a) => a.name) ?? [];
 }
 
 // GET /api/agents/[id] - Get a single agent
@@ -56,6 +66,16 @@ export async function PATCH(
     const openclawAgentNameError = validateOpenClawAgentName(body.openclaw_agent_name);
     if (openclawAgentNameError) {
       return NextResponse.json({ error: openclawAgentNameError }, { status: 400 });
+    }
+
+    if (body.openclaw_agent_name) {
+      const validNames = await fetchRuntimeAgentNames();
+      if (!validNames.includes(body.openclaw_agent_name)) {
+        return NextResponse.json(
+          { error: 'Invalid OpenClaw runtime agent' },
+          { status: 400 }
+        );
+      }
     }
 
     if (body.name !== undefined) {

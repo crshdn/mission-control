@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X, Save, Trash2 } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import type { Agent, AgentStatus } from '@/lib/types';
@@ -18,6 +18,8 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
   const { addAgent, updateAgent, agents } = useMissionControl();
   const [activeTab, setActiveTab] = useState<'info' | 'soul' | 'user' | 'agents'>('info');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [runtimeAgents, setRuntimeAgents] = useState<string[]>([]);
+  const [loadingRuntime, setLoadingRuntime] = useState(false);
 
   const [form, setForm] = useState({
     name: agent?.name || '',
@@ -29,7 +31,28 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
     soul_md: agent?.soul_md || '',
     user_md: agent?.user_md || '',
     agents_md: agent?.agents_md || '',
+    openclaw_agent_name: agent?.openclaw_agent_name || 'main',
   });
+
+  useEffect(() => {
+    const loadAgents = async () => {
+      try {
+        setLoadingRuntime(true);
+        const res = await fetch('/api/openclaw/agents');
+        if (!res.ok) {
+          throw new Error('Failed to load runtime agents');
+        }
+        const data = await res.json();
+        setRuntimeAgents(data.map((a: { name: string }) => a.name));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingRuntime(false);
+      }
+    };
+
+    loadAgents();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,6 +210,35 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
                   className="w-full bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent resize-none"
                   placeholder="What does this agent do?"
                 />
+              </div>
+
+              {/* Runtime Agent */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium mb-1">
+                  OpenClaw Runtime Agent
+                </label>
+
+                <select
+                  value={form.openclaw_agent_name || 'main'}
+                  onChange={(e) =>
+                    setForm({ ...form, openclaw_agent_name: e.target.value })
+                  }
+                  className="w-full border rounded p-2 bg-background"
+                >
+                  <option value="main">main</option>
+
+                  {runtimeAgents.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+
+                {loadingRuntime && (
+                  <p className="text-xs text-muted mt-1">
+                    Loading runtime agents...
+                  </p>
+                )}
               </div>
 
               {/* Status */}
