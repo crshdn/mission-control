@@ -223,6 +223,20 @@ const migrations: Migration[] = [
         console.log('[Migration 007] Added openclaw_agent_name');
       }
     }
+  },
+  {
+    id: '008',
+    name: 'normalize_openclaw_agent_name_to_id',
+    up: (db) => {
+      console.log('[Migration 008] Normalizing openclaw_agent_name values to runtime ids...');
+
+      // Safe normalization fallback for common identity names -> main
+      db.exec(`
+        UPDATE agents
+        SET openclaw_agent_name = 'main'
+        WHERE openclaw_agent_name IN ('Bender', 'Charlie', 'Forge');
+      `);
+    }
   }
 ];
 

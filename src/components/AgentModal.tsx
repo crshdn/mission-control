@@ -18,7 +18,7 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
   const { addAgent, updateAgent, agents } = useMissionControl();
   const [activeTab, setActiveTab] = useState<'info' | 'soul' | 'user' | 'agents'>('info');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [runtimeAgents, setRuntimeAgents] = useState<string[]>([]);
+  const [runtimeAgents, setRuntimeAgents] = useState<Array<{ id: string; display_name?: string }>>([]);
   const [loadingRuntime, setLoadingRuntime] = useState(false);
 
   const [form, setForm] = useState({
@@ -43,7 +43,7 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
           throw new Error('Failed to load runtime agents');
         }
         const data = await res.json();
-        setRuntimeAgents(data.map((a: { name: string }) => a.name));
+        setRuntimeAgents(data as Array<{ id: string; display_name?: string }>);
       } catch (err) {
         console.error(err);
       } finally {
@@ -227,9 +227,9 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
                 >
                   <option value="main">main</option>
 
-                  {runtimeAgents.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
+                  {runtimeAgents.map((agentOption) => (
+                    <option key={agentOption.id} value={agentOption.id}>
+                      {(agentOption.display_name || agentOption.id)} ({agentOption.id})
                     </option>
                   ))}
                 </select>

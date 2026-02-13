@@ -17,13 +17,13 @@ function validateOpenClawAgentName(value: unknown): string | null {
   return null;
 }
 
-async function fetchRuntimeAgentNames(): Promise<string[]> {
+async function fetchRuntimeAgentIds(): Promise<string[]> {
   const client = getOpenClawClient();
   if (!client.isConnected()) {
     await client.connect();
   }
   const runtime = await client.call('agents.list', {});
-  return (runtime as { agents?: Array<{ name: string }> })?.agents?.map((a) => a.name) ?? [];
+  return (runtime as { agents?: Array<{ id: string }> })?.agents?.map((a) => a.id) ?? [];
 }
 
 // GET /api/agents - List all agents
@@ -63,8 +63,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.openclaw_agent_name) {
-      const validNames = await fetchRuntimeAgentNames();
-      if (!validNames.includes(body.openclaw_agent_name)) {
+      const validIds = await fetchRuntimeAgentIds();
+      if (!validIds.includes(body.openclaw_agent_name)) {
         return NextResponse.json(
           { error: 'Invalid OpenClaw runtime agent' },
           { status: 400 }

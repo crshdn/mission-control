@@ -11,8 +11,11 @@ export async function GET() {
     const result = await client.call('agents.list', {});
 
     const agents =
-      (result as { agents?: Array<{ name: string }> })?.agents?.map((a) => ({
-        name: a.name,
+      (result as { agents?: Array<{ id: string; identityName?: string; name?: string; model?: string; isDefault?: boolean }> })?.agents?.map((a) => ({
+        id: a.id,
+        display_name: a.identityName ?? a.name,
+        model: a.model,
+        isDefault: a.isDefault ?? false,
       })) ?? [];
 
     return NextResponse.json(agents);
