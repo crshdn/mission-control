@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync, existsSync, statSync } from 'fs';
+import { readFileSync, existsSync, statSync, realpathSync } from 'fs';
 import path from 'path';
 
 // Base directory for all project files - must match upload endpoint
@@ -53,14 +53,7 @@ export async function GET(request: NextRequest) {
 
     if (fullPathParam) {
       // Full path provided - validate it's under PROJECTS_BASE
-      const normalizedPath = path.normalize(fullPathParam);
-      if (!normalizedPath.startsWith(PROJECTS_BASE)) {
-        return NextResponse.json(
-          { error: 'Access denied: path must be within projects directory' },
-          { status: 403 }
-        );
-      }
-      targetPath = normalizedPath;
+      targetPath = path.normalize(fullPathParam);
     } else if (relativePathParam) {
       // Relative path provided
       const normalizedRelative = path.normalize(relativePathParam);
@@ -81,10 +74,35 @@ export async function GET(request: NextRequest) {
     // Check file exists
     if (!existsSync(targetPath)) {
       return NextResponse.json(
-        { error: 'File not found', path: targetPath },
+        { error: 'File not found' },
         { status: 404 }
       );
     }
+
+    // Resolve real path and validate it's under PROJECTS_BASE
+    // This protects against symlink attacks and path traversal
+    let resolvedPath: string;
+    try {
+      resolvedPath = realpathSync(targetPath);
+      const resolvedBase = realpathSync(PROJECTS_BASE);
+      
+      if (!resolvedPath.startsWith(resolvedBase + path.sep) && resolvedPath !== resolvedBase) {
+        console.warn(`[SECURITY] Path traversal attempt blocked: ${targetPath} -> ${resolvedPath}`);
+        return NextResponse.json(
+          { error: 'Access denied' },
+          { status: 403 }
+        );
+      }
+    } catch (error) {
+      console.error('[FILE DOWNLOAD] Error resolving path:', error);
+      return NextResponse.json(
+        { error: 'Access denied' },
+        { status: 403 }
+      );
+    }
+
+    // Use resolved path for all subsequent operations
+    targetPath = resolvedPath;
 
     // Check it's a file, not a directory
     const stats = statSync(targetPath);
