@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error downloading file:', error);
     return NextResponse.json(
-      { error: 'Failed to download file', details: String(error) },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

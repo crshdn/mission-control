@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Agent completion webhook error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to process completion' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

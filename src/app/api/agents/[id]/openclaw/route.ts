@@ -112,7 +112,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   } catch (error) {
     console.error('Failed to link agent to OpenClaw:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to link agent to OpenClaw' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

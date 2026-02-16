@@ -39,7 +39,7 @@ export async function GET(request: Request, { params }: RouteParams) {
   } catch (error) {
     console.error('Failed to get OpenClaw session:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -80,7 +80,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   } catch (error) {
     console.error('Failed to send message to OpenClaw session:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -151,7 +151,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   } catch (error) {
     console.error('Failed to update OpenClaw session:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -208,7 +208,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   } catch (error) {
     console.error('Failed to delete OpenClaw session:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

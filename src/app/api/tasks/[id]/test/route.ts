@@ -219,7 +219,7 @@ export async function POST(
   } catch (error) {
     console.error('Test execution error:', error);
     return NextResponse.json(
-      { error: 'Test execution failed', details: String(error) },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

@@ -197,14 +197,14 @@ If you need help or clarification, ask me (Charlie).`;
     } catch (err) {
       console.error('Failed to send message to agent:', err);
       return NextResponse.json(
-        { error: `Failed to send task to agent: ${err instanceof Error ? err.message : 'Unknown error'}` },
+        { error: 'Internal server error' },
         { status: 500 }
       );
     }
   } catch (error) {
     console.error('Failed to dispatch task:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to dispatch task' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

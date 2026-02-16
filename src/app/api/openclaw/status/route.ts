@@ -39,7 +39,7 @@ export async function GET() {
     return NextResponse.json(
       {
         connected: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: 'Internal server error',
       },
       { status: 500 }
     );
