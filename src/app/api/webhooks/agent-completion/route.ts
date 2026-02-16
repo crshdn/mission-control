@@ -1,7 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
+import { createHmac } from 'crypto';
 import { queryOne, queryAll, run } from '@/lib/db';
 import type { Task, Agent, OpenClawSession } from '@/lib/types';
+
+/**
+ * Verify HMAC-SHA256 signature of webhook request
+ */
+function verifyWebhookSignature(signature: string, rawBody: string): boolean {
+  const webhookSecret = process.env.WEBHOOK_SECRET;
+  
+  if (!webhookSecret) {
+    // Dev mode - skip validation
+    return true;
+  }
+
+  if (!signature) {
+    return false;
+  }
+
+  const expectedSignature = createHmac('sha256', webhookSecret)
+    .update(rawBody)
+    .digest('hex');
+
+  return signature === expectedSignature;
+}
 
 /**
  * POST /api/webhooks/agent-completion
@@ -21,7 +44,24 @@ import type { Task, Agent, OpenClawSession } from '@/lib/types';
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Read raw body for signature verification
+    const rawBody = await request.text();
+    
+    // Verify webhook signature if WEBHOOK_SECRET is set
+    const webhookSecret = process.env.WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const signature = request.headers.get('x-webhook-signature');
+      
+      if (!signature || !verifyWebhookSignature(signature, rawBody)) {
+        console.warn('[WEBHOOK] Invalid signature attempt');
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
+    }
+
+    const body = JSON.parse(rawBody);
     const now = new Date().toISOString();
 
     // Handle direct task_id completion
