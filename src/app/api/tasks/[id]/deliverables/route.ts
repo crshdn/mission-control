@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { broadcast } from '@/lib/events';
+import { CreateDeliverableSchema } from '@/lib/validation';
 import { existsSync } from 'fs';
 import path from 'path';
 import type { TaskDeliverable } from '@/lib/types';
@@ -51,14 +52,16 @@ export async function POST(
     const taskId = params.id;
     const body = await request.json();
     
-    const { deliverable_type, title, path, description } = body;
-
-    if (!deliverable_type || !title) {
+    // Validate input with Zod
+    const validation = CreateDeliverableSchema.safeParse(body);
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'deliverable_type and title are required' },
+        { error: 'Validation failed', details: validation.error.errors },
         { status: 400 }
       );
     }
+
+    const { deliverable_type, title, path, description } = validation.data;
 
     // Validate file existence for file deliverables
     let fileExists = true;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryAll, queryOne, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
+import { CreateTaskSchema } from '@/lib/validation';
 import type { Task, CreateTaskRequest, Agent } from '@/lib/types';
 
 // GET /api/tasks - List all tasks with optional filters
@@ -79,42 +80,48 @@ export async function POST(request: NextRequest) {
     const body: CreateTaskRequest = await request.json();
     console.log('[POST /api/tasks] Received body:', JSON.stringify(body));
 
-    if (!body.title) {
-      console.log('[POST /api/tasks] Title missing or empty');
-      return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+    // Validate input with Zod
+    const validation = CreateTaskSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validation.error.errors },
+        { status: 400 }
+      );
     }
+
+    const validatedData = validation.data;
 
     const id = uuidv4();
     const now = new Date().toISOString();
 
-    const workspaceId = (body as { workspace_id?: string }).workspace_id || 'default';
-    const status = (body as { status?: string }).status || 'inbox';
+    const workspaceId = validatedData.workspace_id || 'default';
+    const status = validatedData.status || 'inbox';
     
     run(
       `INSERT INTO tasks (id, title, description, status, priority, assigned_agent_id, created_by_agent_id, workspace_id, business_id, due_date, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        body.title,
-        body.description || null,
+        validatedData.title,
+        validatedData.description || null,
         status,
-        body.priority || 'normal',
-        body.assigned_agent_id || null,
-        body.created_by_agent_id || null,
+        validatedData.priority || 'normal',
+        validatedData.assigned_agent_id || null,
+        validatedData.created_by_agent_id || null,
         workspaceId,
-        body.business_id || 'default',
-        body.due_date || null,
+        validatedData.business_id || 'default',
+        validatedData.due_date || null,
         now,
         now,
       ]
     );
 
     // Log event
-    let eventMessage = `New task: ${body.title}`;
-    if (body.created_by_agent_id) {
-      const creator = queryOne<Agent>('SELECT name FROM agents WHERE id = ?', [body.created_by_agent_id]);
+    let eventMessage = `New task: ${validatedData.title}`;
+    if (validatedData.created_by_agent_id) {
+      const creator = queryOne<Agent>('SELECT name FROM agents WHERE id = ?', [validatedData.created_by_agent_id]);
       if (creator) {
-        eventMessage = `${creator.name} created task: ${body.title}`;
+        eventMessage = `${creator.name} created task: ${validatedData.title}`;
       }
     }
 

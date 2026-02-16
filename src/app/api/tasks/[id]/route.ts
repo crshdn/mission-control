@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { queryOne, run, queryAll } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
+import { UpdateTaskSchema } from '@/lib/validation';
 import type { Task, UpdateTaskRequest, Agent, TaskDeliverable } from '@/lib/types';
 
 // GET /api/tasks/[id] - Get a single task
@@ -42,6 +43,17 @@ export async function PATCH(
     const { id } = await params;
     const body: UpdateTaskRequest & { updated_by_agent_id?: string } = await request.json();
 
+    // Validate input with Zod
+    const validation = UpdateTaskSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validation.error.errors },
+        { status: 400 }
+      );
+    }
+
+    const validatedData = validation.data;
+
     const existing = queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [id]);
     if (!existing) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
@@ -54,10 +66,10 @@ export async function PATCH(
     // Workflow enforcement for agent-initiated approvals
     // If an agent is trying to move review→done, they must be a master agent
     // User-initiated moves (no agent ID) are allowed
-    if (body.status === 'done' && existing.status === 'review' && body.updated_by_agent_id) {
+    if (validatedData.status === 'done' && existing.status === 'review' && validatedData.updated_by_agent_id) {
       const updatingAgent = queryOne<Agent>(
         'SELECT is_master FROM agents WHERE id = ?',
-        [body.updated_by_agent_id]
+        [validatedData.updated_by_agent_id]
       );
 
       if (!updatingAgent || !updatingAgent.is_master) {
@@ -68,61 +80,61 @@ export async function PATCH(
       }
     }
 
-    if (body.title !== undefined) {
+    if (validatedData.title !== undefined) {
       updates.push('title = ?');
-      values.push(body.title);
+      values.push(validatedData.title);
     }
-    if (body.description !== undefined) {
+    if (validatedData.description !== undefined) {
       updates.push('description = ?');
-      values.push(body.description);
+      values.push(validatedData.description);
     }
-    if (body.priority !== undefined) {
+    if (validatedData.priority !== undefined) {
       updates.push('priority = ?');
-      values.push(body.priority);
+      values.push(validatedData.priority);
     }
-    if (body.due_date !== undefined) {
+    if (validatedData.due_date !== undefined) {
       updates.push('due_date = ?');
-      values.push(body.due_date);
+      values.push(validatedData.due_date);
     }
 
     // Track if we need to dispatch task
     let shouldDispatch = false;
 
     // Handle status change
-    if (body.status !== undefined && body.status !== existing.status) {
+    if (validatedData.status !== undefined && validatedData.status !== existing.status) {
       updates.push('status = ?');
-      values.push(body.status);
+      values.push(validatedData.status);
 
       // Auto-dispatch when moving to assigned
-      if (body.status === 'assigned' && existing.assigned_agent_id) {
+      if (validatedData.status === 'assigned' && existing.assigned_agent_id) {
         shouldDispatch = true;
       }
 
       // Log status change event
-      const eventType = body.status === 'done' ? 'task_completed' : 'task_status_changed';
+      const eventType = validatedData.status === 'done' ? 'task_completed' : 'task_status_changed';
       run(
         `INSERT INTO events (id, type, task_id, message, created_at)
          VALUES (?, ?, ?, ?, ?)`,
-        [uuidv4(), eventType, id, `Task "${existing.title}" moved to ${body.status}`, now]
+        [uuidv4(), eventType, id, `Task "${existing.title}" moved to ${validatedData.status}`, now]
       );
     }
 
     // Handle assignment change
-    if (body.assigned_agent_id !== undefined && body.assigned_agent_id !== existing.assigned_agent_id) {
+    if (validatedData.assigned_agent_id !== undefined && validatedData.assigned_agent_id !== existing.assigned_agent_id) {
       updates.push('assigned_agent_id = ?');
-      values.push(body.assigned_agent_id);
+      values.push(validatedData.assigned_agent_id);
 
-      if (body.assigned_agent_id) {
-        const agent = queryOne<Agent>('SELECT name FROM agents WHERE id = ?', [body.assigned_agent_id]);
+      if (validatedData.assigned_agent_id) {
+        const agent = queryOne<Agent>('SELECT name FROM agents WHERE id = ?', [validatedData.assigned_agent_id]);
         if (agent) {
           run(
             `INSERT INTO events (id, type, agent_id, task_id, message, created_at)
              VALUES (?, ?, ?, ?, ?, ?)`,
-            [uuidv4(), 'task_assigned', body.assigned_agent_id, id, `"${existing.title}" assigned to ${agent.name}`, now]
+            [uuidv4(), 'task_assigned', validatedData.assigned_agent_id, id, `"${existing.title}" assigned to ${agent.name}`, now]
           );
 
           // Auto-dispatch if already in assigned status or being assigned now
-          if (existing.status === 'assigned' || body.status === 'assigned') {
+          if (existing.status === 'assigned' || validatedData.status === 'assigned') {
             shouldDispatch = true;
           }
         }

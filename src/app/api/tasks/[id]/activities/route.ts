@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { broadcast } from '@/lib/events';
+import { CreateActivitySchema } from '@/lib/validation';
 import type { TaskActivity } from '@/lib/types';
 
 /**
@@ -78,14 +79,16 @@ export async function POST(
     const taskId = params.id;
     const body = await request.json();
     
-    const { activity_type, message, agent_id, metadata } = body;
-
-    if (!activity_type || !message) {
+    // Validate input with Zod
+    const validation = CreateActivitySchema.safeParse(body);
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'activity_type and message are required' },
+        { error: 'Validation failed', details: validation.error.errors },
         { status: 400 }
       );
     }
+
+    const { activity_type, message, agent_id, metadata } = validation.data;
 
     const db = getDb();
     const id = crypto.randomUUID();
