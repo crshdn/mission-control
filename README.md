@@ -20,6 +20,7 @@
 <p align="center">
   <a href="https://missioncontrol.ghray.com"><strong>🎮 Live Demo</strong></a> •
   <a href="#-quick-start">Quick Start</a> •
+  <a href="#-docker">Docker</a> •
   <a href="#-features">Features</a> •
   <a href="#-how-it-works">How It Works</a> •
   <a href="#-configuration">Configuration</a> •
@@ -120,6 +121,63 @@ Open **http://localhost:4000** — you're in! 🎉
 npm run build
 npx next start -p 4000
 ```
+
+---
+
+## 🐳 Docker
+
+You can run Mission Control in a container using the included `Dockerfile` and `docker-compose.yml`.
+
+### Prerequisites
+
+- Docker Desktop (or Docker Engine + Compose plugin)
+- OpenClaw Gateway running locally or remotely
+
+### 1. Configure environment
+
+Create a `.env` file for Compose:
+
+```bash
+cp .env.example .env
+```
+
+Then set at least:
+
+```env
+OPENCLAW_GATEWAY_URL=ws://host.docker.internal:18789
+OPENCLAW_GATEWAY_TOKEN=your-token-here
+```
+
+Notes:
+- Use `host.docker.internal` when OpenClaw runs on your host machine.
+- If OpenClaw is on another machine, set its reachable `ws://` or `wss://` URL instead.
+
+### 2. Build and start
+
+```bash
+docker compose up -d --build
+```
+
+Open **http://localhost:4000**.
+
+### 3. Useful commands
+
+```bash
+# View logs
+docker compose logs -f mission-control
+
+# Stop containers
+docker compose down
+
+# Stop and remove volumes (deletes SQLite/workspace data)
+docker compose down -v
+```
+
+### Data persistence
+
+Compose uses named volumes:
+- `mission-control-data` for SQLite (`/app/data`)
+- `mission-control-workspace` for workspace files (`/app/workspace`)
 
 ---
 

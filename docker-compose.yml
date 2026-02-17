@@ -1,0 +1,27 @@
+services:
+  mission-control:
+    container_name: mission-control
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mission-control:latest
+    ports:
+      - "4000:4000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      DATABASE_PATH: /app/data/mission-control.db
+      WORKSPACE_BASE_PATH: /app/workspace
+      PROJECTS_PATH: /app/workspace/projects
+      # Set this if OpenClaw runs on the host machine:
+      # OPENCLAW_GATEWAY_URL: ws://host.docker.internal:18789
+    volumes:
+      - mission-control-data:/app/data
+      - mission-control-workspace:/app/workspace
+    restart: unless-stopped
+
+volumes:
+  mission-control-data:
+  mission-control-workspace:
