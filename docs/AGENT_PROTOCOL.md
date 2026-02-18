@@ -50,6 +50,34 @@ This document describes how OpenClaw agents interact with Mission Control.
 TASK_COMPLETE: [concise summary of what you accomplished]
 ```
 
+Include receipts when possible:
+
+```
+TASK_COMPLETE: <summary> | deliverables: <paths/links> | verification: <how you verified>
+```
+
+## Progress Updates (to prevent work from stalling)
+
+Agents should post periodic progress so the orchestrator can unblock quickly.
+
+Format:
+
+```
+PROGRESS_UPDATE: <what changed> | next: <next step> | eta: <time>
+```
+
+## Blockers (explicit + parallel fallback)
+
+If you are blocked, don’t wait silently.
+
+Format:
+
+```
+BLOCKED: <what is blocked> | need: <specific input> | meanwhile: <fallback work>
+```
+
+Rule: ask the question **and** start the best available next step.
+
 **Examples:**
 
 ✅ Good:
