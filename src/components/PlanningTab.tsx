@@ -246,7 +246,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
 
     // Store submission for retry
     const submission = {
-      answer: selectedOption === 'other' ? 'Other' : selectedOption,
+      answer: selectedOption === 'other' ? 'other' : selectedOption,
       otherText: selectedOption === 'other' ? otherText : undefined,
     };
     lastSubmissionRef.current = submission;
