@@ -77,7 +77,7 @@ export async function getMessagesFromOpenClaw(
     for (const msg of result.messages || []) {
       if (msg.role === 'assistant') {
         const textContent = msg.content?.find((c) => c.type === 'text');
-        if (textContent?.text) {
+        if (textContent?.text && textContent.text.trim().length > 0) {
           messages.push({
             role: 'assistant',
             content: textContent.text,

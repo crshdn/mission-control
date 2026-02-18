@@ -112,29 +112,36 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
         const data = await res.json();
 
         if (data.hasUpdates) {
-          setState(prev => ({
-            ...prev!,
-            messages: data.messages,
-            isComplete: data.complete,
-            spec: data.spec,
-            agents: data.agents,
-            currentQuestion: data.currentQuestion,
-            dispatchError: data.dispatchError,
-          }));
+          const newQuestion = data.currentQuestion?.question;
+          const questionChanged = newQuestion && currentQuestionRef.current !== newQuestion;
 
-          // Only clear selection and other text when the question actually changes
-          // This prevents clearing selection when getting updates for the same question
-          const questionChanged = currentQuestionRef.current !== data.currentQuestion?.question;
-          
-          // Update ref when question changes
-          if (data.currentQuestion) {
-            currentQuestionRef.current = data.currentQuestion.question;
+          // Force a full state reload from server to avoid stale state issues
+          const freshRes = await fetch(`/api/tasks/${taskId}/planning`);
+          if (freshRes.ok) {
+            const freshData = await freshRes.json();
+            setState(freshData);
+          } else {
+            setState(prev => ({
+              ...prev!,
+              messages: data.messages,
+              isComplete: data.complete,
+              spec: data.spec,
+              agents: data.agents,
+              currentQuestion: data.currentQuestion,
+              dispatchError: data.dispatchError,
+            }));
           }
 
           if (questionChanged) {
+            currentQuestionRef.current = newQuestion;
             setSelectedOption(null);
             setOtherText('');
-            setIsSubmittingAnswer(false); // Clear submitting state when new question arrives
+            setIsSubmittingAnswer(false);
+          }
+          // Always clear submitting state when we have a question
+          if (data.currentQuestion) {
+            setIsSubmittingAnswer(false);
+            setSubmitting(false);
           }
 
           // Show dispatch error if present
@@ -146,8 +153,11 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
             onSpecLocked();
           }
 
-          setIsWaitingForResponse(false);
-          stopPolling(); // Stop polling when we get a response
+          // Only stop polling when we actually have a question or completion
+          if (data.currentQuestion || data.complete || data.dispatchError) {
+            setIsWaitingForResponse(false);
+            stopPolling();
+          }
         }
       }
     } catch (err) {
@@ -168,12 +178,13 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
       pollForUpdates();
     }, 2000);
 
-    // Set a 30-second timeout - if no response, show error
-    // Don't clear selection - user can retry with same selection
+    // Set a 90-second timeout - Opus can take a while to respond
     pollingTimeoutRef.current = setTimeout(() => {
       stopPolling();
+      setSubmitting(false);
+      setIsSubmittingAnswer(false);
       setError('The orchestrator is taking too long to respond. Please try submitting again or refresh the page.');
-    }, 30000);
+    }, 90000);
   }, [pollForUpdates, stopPolling]);
 
   // Update currentQuestion ref when state changes
@@ -188,6 +199,13 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
     loadState();
     return () => stopPolling();
   }, [loadState, stopPolling]);
+
+  // Auto-start polling if planning is in progress but no question loaded yet
+  useEffect(() => {
+    if (state && state.isStarted && !state.isComplete && !state.currentQuestion && !isWaitingForResponse) {
+      startPolling();
+    }
+  }, [state, isWaitingForResponse, startPolling]);
 
   // Start planning session
   const startPlanning = async () => {
@@ -260,7 +278,8 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
       setSelectedOption(null);
       setOtherText('');
     } finally {
-      setSubmitting(false);
+      // Don't re-enable submit button here — wait until next question arrives
+      // setSubmitting(false) is handled when polling gets the new question
     }
   };
 

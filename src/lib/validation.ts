@@ -33,7 +33,7 @@ export const CreateTaskSchema = z.object({
   created_by_agent_id: z.string().uuid().optional(),
   business_id: z.string().optional(),
   workspace_id: z.string().optional(),
-  due_date: z.string().optional(),
+  due_date: z.string().optional().nullable(),
 });
 
 export const UpdateTaskSchema = z.object({
