@@ -3,6 +3,9 @@ import { queryAll } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import type { Agent, DiscoveredAgent } from '@/lib/types';
 
+// This route must always be dynamic - it queries live Gateway state + DB
+export const dynamic = 'force-dynamic';
+
 // Shape of an agent returned by the OpenClaw Gateway `agents.list` call
 interface GatewayAgent {
   id?: string;

@@ -229,23 +229,31 @@ export class OpenClawClient extends EventEmitter {
           try {
             const data = JSON.parse(event.data as string);
 
-            // Generate unique event ID using content hashing for proper deduplication
-            const eventId = this.generateEventId(data);
+            // RPC responses (type: 'res') and legacy responses (with matching pending id)
+            // must NEVER be deduplicated — they have unique request IDs and must always
+            // be delivered to their pending resolve/reject handlers.
+            const isRpcResponse = data.type === 'res' ||
+              (data.id !== undefined && this.pendingRequests.has(data.id));
 
-            // Skip if we've already processed this event (using global cache for all instances)
-            if (globalProcessedEvents.has(eventId)) {
-              console.log('[OpenClaw] Skipping duplicate event:', eventId.slice(0, 16));
-              return;
+            if (!isRpcResponse) {
+              // Generate unique event ID using content hashing for proper deduplication
+              const eventId = this.generateEventId(data);
+
+              // Skip if we've already processed this event (using global cache for all instances)
+              if (globalProcessedEvents.has(eventId)) {
+                console.log('[OpenClaw] Skipping duplicate event:', eventId.slice(0, 16));
+                return;
+              }
+
+              // Mark this event as processed in the global cache with current timestamp for LRU
+              const now = Date.now();
+              globalProcessedEvents.set(eventId, now);
+
+              // Perform LRU cleanup if cache size exceeds limit
+              this.performCacheCleanup();
             }
 
-            // Mark this event as processed in the global cache with current timestamp for LRU
-            const now = Date.now();
-            globalProcessedEvents.set(eventId, now);
-
-            // Perform LRU cleanup if cache size exceeds limit
-            this.performCacheCleanup();
-
-            console.log('[OpenClaw] Received:', eventId.slice(0, 16));
+            console.log('[OpenClaw] Received:', data.type === 'res' ? `res:${String(data.id).slice(0, 8)}` : this.generateEventId(data).slice(0, 16));
 
             // Handle challenge-response authentication (OpenClaw RequestFrame format)
             if (data.type === 'event' && data.event === 'connect.challenge') {
@@ -444,7 +452,16 @@ export class OpenClawClient extends EventEmitter {
 
   // Agent methods
   async listAgents(): Promise<unknown[]> {
-    return this.call<unknown[]>('agents.list');
+    const result = await this.call<{ agents?: unknown[] }>('agents.list');
+    // Gateway returns { requester, allowAny, agents: [...] }
+    if (result && typeof result === 'object' && Array.isArray((result as Record<string, unknown>).agents)) {
+      return (result as Record<string, unknown>).agents as unknown[];
+    }
+    // Fallback: if the response is already an array
+    if (Array.isArray(result)) {
+      return result;
+    }
+    return [];
   }
 
   // Node methods (device capabilities)
