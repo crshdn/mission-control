@@ -3,6 +3,8 @@ import { existsSync, readFileSync, statSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 
+export const dynamic = 'force-dynamic';
+
 // Maximum allowed config file size (1MB) to prevent DoS
 const MAX_CONFIG_SIZE_BYTES = 1024 * 1024;
 
