@@ -3,16 +3,19 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, LayoutGrid, GitBranch } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { AgentsSidebar } from '@/components/AgentsSidebar';
 import { MissionQueue } from '@/components/MissionQueue';
 import { LiveFeed } from '@/components/LiveFeed';
 import { SSEDebugPanel } from '@/components/SSEDebugPanel';
+import { GraphView } from '@/components/graph/GraphView';
 import { useMissionControl } from '@/lib/store';
 import { useSSE } from '@/hooks/useSSE';
 import { debug } from '@/lib/debug';
 import type { Task, Workspace } from '@/lib/types';
+
+type ViewMode = 'kanban' | 'graph';
 
 export default function WorkspacePage() {
   const params = useParams();
@@ -29,6 +32,7 @@ export default function WorkspacePage() {
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
 
   // Connect to SSE for real-time updates
   useSSE();
@@ -200,16 +204,66 @@ export default function WorkspacePage() {
     );
   }
 
+  const handleGraphSelectTask = (taskId: string) => {
+    const task = useMissionControl.getState().tasks.find(t => t.id === taskId);
+    if (task) {
+      useMissionControl.getState().setSelectedTask(task);
+    }
+  };
+
+  const handleGraphSelectAgent = (agentId: string) => {
+    const agent = useMissionControl.getState().agents.find(a => a.id === agentId);
+    if (agent) {
+      useMissionControl.getState().setSelectedAgent(agent);
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-mc-bg overflow-hidden">
       <Header workspace={workspace} />
+
+      {/* View Mode Toggle Bar */}
+      <div className="flex items-center gap-1 px-4 py-1.5 border-b border-mc-border bg-mc-bg-secondary">
+        <button
+          onClick={() => setViewMode('kanban')}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+            viewMode === 'kanban'
+              ? 'bg-mc-accent/20 text-mc-accent'
+              : 'text-mc-text-secondary hover:text-mc-text hover:bg-mc-bg-tertiary'
+          }`}
+        >
+          <LayoutGrid className="w-3.5 h-3.5" />
+          Kanban
+        </button>
+        <button
+          onClick={() => setViewMode('graph')}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+            viewMode === 'graph'
+              ? 'bg-mc-accent/20 text-mc-accent'
+              : 'text-mc-text-secondary hover:text-mc-text hover:bg-mc-bg-tertiary'
+          }`}
+        >
+          <GitBranch className="w-3.5 h-3.5" />
+          Graph
+        </button>
+      </div>
 
       <div className="flex-1 flex overflow-hidden">
         {/* Agents Sidebar */}
         <AgentsSidebar workspaceId={workspace.id} />
 
         {/* Main Content Area */}
-        <MissionQueue workspaceId={workspace.id} />
+        {viewMode === 'kanban' ? (
+          <MissionQueue workspaceId={workspace.id} />
+        ) : (
+          <div className="flex-1 overflow-hidden">
+            <GraphView
+              workspaceId={workspace.id}
+              onSelectTask={handleGraphSelectTask}
+              onSelectAgent={handleGraphSelectAgent}
+            />
+          </div>
+        )}
 
         {/* Live Feed */}
         <LiveFeed />

@@ -8,7 +8,7 @@
 import { useEffect, useRef } from 'react';
 import { useMissionControl } from '@/lib/store';
 import { debug } from '@/lib/debug';
-import type { SSEEvent, Task } from '@/lib/types';
+import type { SSEEvent, Task, AgentStatus } from '@/lib/types';
 
 export function useSSE() {
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -102,6 +102,40 @@ export function useSSE() {
 
             case 'agent_completed':
               debug.sse('Agent completed', sseEvent.payload);
+              break;
+
+            // Graph-specific events — these are handled reactively via the store
+            // The GraphView re-renders when agents/tasks change in the store
+            case 'agent_status_changed': {
+              const { agentId, status } = sseEvent.payload as { agentId: string; status: AgentStatus };
+              debug.sse('Agent status changed (graph)', { agentId, status });
+              const store = useMissionControl.getState();
+              const agent = store.agents.find(a => a.id === agentId);
+              if (agent) {
+                store.updateAgent({ ...agent, status });
+              }
+              break;
+            }
+
+            case 'task_assigned':
+            case 'task_unassigned':
+              debug.sse('Task assignment changed (graph)', sseEvent.payload);
+              // task_updated already handles this via the task object
+              break;
+
+            case 'subagent_spawned':
+            case 'subagent_completed':
+              debug.sse('Subagent event (graph)', sseEvent.payload);
+              break;
+
+            case 'dependency_created':
+            case 'dependency_removed':
+              debug.sse('Dependency changed (graph)', sseEvent.payload);
+              // GraphView fetches dependencies independently
+              break;
+
+            case 'node_position_updated':
+              debug.sse('Node position updated (graph)', sseEvent.payload);
               break;
 
             default:
