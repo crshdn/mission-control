@@ -105,9 +105,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const openclawSessionId = `mission-control-${agent.name.toLowerCase().replace(/\s+/g, '-')}`;
       
       run(
-        `INSERT INTO openclaw_sessions (id, agent_id, openclaw_session_id, channel, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [sessionId, agent.id, openclawSessionId, 'mission-control', 'active', now, now]
+        `INSERT INTO openclaw_sessions (id, agent_id, openclaw_session_id, channel, status, task_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [sessionId, agent.id, openclawSessionId, 'mission-control', 'active', id, now, now]
       );
 
       session = queryOne<OpenClawSession>(
@@ -155,16 +155,16 @@ ${task.due_date ? `**Due:** ${task.due_date}\n` : ''}
 **OUTPUT DIRECTORY:** ${taskProjectDir}
 Create this directory and save all deliverables there.
 
-**IMPORTANT:** After completing work, you MUST call these APIs:
-1. Log activity: POST ${missionControlUrl}/api/tasks/${task.id}/activities
-   Body: {"activity_type": "completed", "message": "Description of what was done"}
-2. Register deliverable: POST ${missionControlUrl}/api/tasks/${task.id}/deliverables
-   Body: {"deliverable_type": "file", "title": "File name", "path": "${taskProjectDir}/filename.html"}
-3. Update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
-   Body: {"status": "review"}
+**WHEN COMPLETE:**
+1. Wrap your final output/deliverable in a code block:
+\`\`\`deliverable
+Your actual output here (markdown table, code, text, etc.)
+\`\`\`
 
-When complete, reply with:
+2. Then reply with:
 \`TASK_COMPLETE: [brief summary of what you did]\`
+
+The system will automatically capture your deliverable and update the task status.
 
 If you need help or clarification, ask the orchestrator.`;
 

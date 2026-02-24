@@ -26,23 +26,7 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
   // Wrap all database operations in a transaction for atomicity
   // Set status to 'pending_dispatch' first - don't mark as complete until dispatch succeeds
   const transaction = db.transaction(() => {
-    // Update task with completion data but keep planning_complete = 0 until dispatch succeeds
-    db.prepare(`
-      UPDATE tasks
-      SET planning_messages = ?,
-          planning_spec = ?,
-          planning_agents = ?,
-          status = 'pending_dispatch',
-          planning_dispatch_error = NULL
-      WHERE id = ?
-    `).run(
-      JSON.stringify(messages),
-      JSON.stringify(parsed.spec),
-      JSON.stringify(parsed.agents),
-      taskId
-    );
-
-    // Create the agents in the workspace and track first agent for auto-assign
+    // Create the agents in the workspace FIRST and track first agent for auto-assign
     if (parsed.agents && parsed.agents.length > 0) {
       const insertAgent = db.prepare(`
         INSERT INTO agents (id, workspace_id, name, role, description, avatar_emoji, status, soul_md, created_at, updated_at)
@@ -65,10 +49,30 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
       }
     }
 
+    // Update task with completion data AND assign the first agent
+    // CRITICAL: assigned_agent_id must be set BEFORE dispatch is attempted,
+    // because the dispatch endpoint checks for it and fails if null
+    db.prepare(`
+      UPDATE tasks
+      SET planning_messages = ?,
+          planning_spec = ?,
+          planning_agents = ?,
+          assigned_agent_id = ?,
+          status = 'pending_dispatch',
+          planning_dispatch_error = NULL
+      WHERE id = ?
+    `).run(
+      JSON.stringify(messages),
+      JSON.stringify(parsed.spec),
+      JSON.stringify(parsed.agents),
+      firstAgentId,
+      taskId
+    );
+
     return firstAgentId;
   });
 
-  // Execute the transaction to create agents and set pending_dispatch status
+  // Execute the transaction to create agents, assign agent, and set pending_dispatch status
   firstAgentId = transaction();
 
   // Re-check for other orchestrators before dispatching (prevents race condition)
@@ -141,23 +145,24 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
   db.transaction(() => {
     if (dispatchError) {
       // Store the error but don't mark as complete - user can retry
+      // Keep assigned_agent_id set so retry-dispatch can work
       db.prepare(`
         UPDATE tasks
         SET planning_dispatch_error = ?,
+            status = 'assigned',
             updated_at = datetime('now')
         WHERE id = ?
       `).run(dispatchError, taskId);
     } else if (firstAgentId) {
-      // Success - mark complete and assign
+      // Success - mark complete (agent already assigned in initial transaction)
       db.prepare(`
         UPDATE tasks
         SET planning_complete = 1,
-            assigned_agent_id = ?,
-            status = 'inbox',
+            status = 'in_progress',
             planning_dispatch_error = NULL,
             updated_at = datetime('now')
         WHERE id = ?
-      `).run(firstAgentId, taskId);
+      `).run(taskId);
       console.log(`[Planning Poll] Planning complete and dispatched to agent ${firstAgentId}`);
     } else {
       // No agent to dispatch to, but planning is complete
