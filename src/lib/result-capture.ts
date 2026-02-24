@@ -8,7 +8,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as crypto from 'crypto';
 import { queryOne, run } from './db';
+import { broadcast } from './events';
 import type { OpenClawSession } from './types';
 
 interface SessionMessage {
@@ -180,14 +182,52 @@ export async function captureResultFromSession(taskId: string): Promise<string |
       }
     }
 
-    // Store the result if found
+    // Store the result if found and complete the sub-agent workflow
     if (result) {
       const now = new Date().toISOString();
+      
+      // Store result on task
       run(
         `UPDATE tasks SET result = ?, result_captured_at = ?, updated_at = ? WHERE id = ?`,
         [result, now, now, taskId]
       );
       console.log(`[RESULT CAPTURE] Stored result for task ${taskId} from session history`);
+      
+      // Mark session as completed
+      run(
+        `UPDATE openclaw_sessions SET status = 'completed', ended_at = ? WHERE id = ?`,
+        [now, session.id]
+      );
+      
+      // Get agent info for activity logging
+      const agent = queryOne<{ id: string; name: string }>(
+        'SELECT id, name FROM agents WHERE id = ?',
+        [session.agent_id]
+      );
+      
+      // Log completion activity
+      if (agent) {
+        const activityId = crypto.randomUUID();
+        run(
+          `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [activityId, taskId, agent.id, 'completed', `${agent.name} completed: ${result.slice(0, 200)}${result.length > 200 ? '...' : ''}`, now]
+        );
+        
+        // Update agent status back to standby
+        run(
+          `UPDATE agents SET status = 'standby', updated_at = ? WHERE id = ?`,
+          [now, agent.id]
+        );
+        
+        // Broadcast agent completed event for real-time UI updates
+        broadcast({
+          type: 'agent_completed',
+          payload: { taskId, agentId: agent.id, agentName: agent.name, sessionId: session.openclaw_session_id },
+        });
+        
+        console.log(`[RESULT CAPTURE] Marked ${agent.name} session as completed, agent now standby`);
+      }
     }
 
     return result;

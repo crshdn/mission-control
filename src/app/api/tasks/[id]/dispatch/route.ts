@@ -4,6 +4,7 @@ import { queryOne, queryAll, run } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
 import { getProjectsPath, getMissionControlUrl } from '@/lib/config';
+import { onSubAgentSpawned, logActivity } from '@/lib/orchestration';
 import type { Task, Agent, OpenClawSession } from '@/lib/types';
 
 interface RouteParams {
@@ -100,14 +101,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const now = new Date().toISOString();
 
     if (!session) {
-      // Create session record
+      // Create session record with session_type='subagent' for proper tracking
       const sessionId = uuidv4();
       const openclawSessionId = `mission-control-${agent.name.toLowerCase().replace(/\s+/g, '-')}`;
       
       run(
-        `INSERT INTO openclaw_sessions (id, agent_id, openclaw_session_id, channel, status, task_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [sessionId, agent.id, openclawSessionId, 'mission-control', 'active', id, now, now]
+        `INSERT INTO openclaw_sessions (id, agent_id, openclaw_session_id, channel, status, session_type, task_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [sessionId, agent.id, openclawSessionId, 'mission-control', 'active', 'subagent', id, now, now]
       );
 
       session = queryOne<OpenClawSession>(
@@ -115,12 +116,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         [sessionId]
       );
 
-      // Log session creation
+      // Log session creation event
       run(
         `INSERT INTO events (id, type, agent_id, message, created_at)
          VALUES (?, ?, ?, ?, ?)`,
         [uuidv4(), 'agent_status_changed', agent.id, `${agent.name} session created`, now]
       );
+      
+      // Log spawned activity for Activity tab
+      run(
+        `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [uuidv4(), id, agent.id, 'spawned', `Sub-agent spawned: ${agent.name}`, now]
+      );
+      
+      // Broadcast agent spawned event for real-time UI updates
+      broadcast({
+        type: 'agent_spawned',
+        payload: { taskId: id, agentId: agent.id, agentName: agent.name, sessionId: openclawSessionId },
+      });
     }
 
     if (!session) {
