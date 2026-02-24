@@ -2,7 +2,7 @@
  * Enhanced Dispatch System for Multi-Agent Orchestration
  * 
  * Handles dispatching tasks to agents in sequence with accumulated context
- * from previous agent outputs.
+ * from previous agent outputs. Enhanced to support revision re-dispatch.
  */
 
 import { queryOne, run } from './db';
@@ -64,6 +64,66 @@ export async function dispatchToNextAgent(
 
   } catch (error) {
     console.error('[ENHANCED DISPATCH] Error dispatching to next agent:', error);
+  }
+}
+
+/**
+ * Re-dispatch current agent with revision feedback (for REVISION_NEEDED cases)
+ */
+export async function redispatchWithRevisionFeedback(
+  taskId: string,
+  agentId: string,
+  feedback: string,
+  executionState: ExecutionState
+): Promise<void> {
+  try {
+    console.log(`[REVISION DISPATCH] Re-dispatching with feedback for task ${taskId}`);
+
+    // Get agent info
+    const agent = queryOne<{ 
+      id: string; 
+      name: string; 
+      gateway_agent_id?: string;
+    }>('SELECT id, name, gateway_agent_id FROM agents WHERE id = ?', [agentId]);
+
+    if (!agent) {
+      console.error(`[REVISION DISPATCH] Agent ${agentId} not found`);
+      return;
+    }
+
+    // Get current agent output for revision count
+    const currentOutput = executionState.agent_outputs.find(
+      output => output.agent_id === agentId && output.agent_index === executionState.current_agent_index
+    );
+
+    if (!currentOutput) {
+      console.error(`[REVISION DISPATCH] No current output found for agent ${agentId}`);
+      return;
+    }
+
+    // Update task status to in_progress (agent is working on revision)
+    const now = new Date().toISOString();
+    run(
+      'UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?',
+      ['in_progress', now, taskId]
+    );
+
+    // Update agent status to working
+    run(
+      'UPDATE agents SET status = ?, updated_at = ? WHERE id = ?',
+      ['working', now, agent.id]
+    );
+
+    // Build revision-specific task message
+    const revisionMessage = buildRevisionTaskMessage(taskId, agent, executionState, feedback, currentOutput);
+
+    // Send revision message to existing agent session
+    await sendRevisionToAgent(taskId, agent, revisionMessage);
+
+    console.log(`[REVISION DISPATCH] Successfully sent revision request to ${agent.name}`);
+
+  } catch (error) {
+    console.error('[REVISION DISPATCH] Error in revision dispatch:', error);
   }
 }
 
@@ -237,6 +297,131 @@ async function dispatchWithContext(
 }
 
 /**
+ * Send revision message to existing agent session
+ */
+async function sendRevisionToAgent(
+  taskId: string,
+  agent: any, 
+  revisionMessage: string
+): Promise<void> {
+  const client = getOpenClawClient();
+  if (!client.isConnected()) {
+    await client.connect();
+  }
+
+  // Get active session for this agent and task
+  const session = queryOne<{
+    openclaw_session_id: string;
+    gateway_agent_id?: string;
+  }>(
+    `SELECT s.openclaw_session_id, a.gateway_agent_id
+     FROM openclaw_sessions s
+     LEFT JOIN agents a ON s.agent_id = a.id
+     WHERE s.agent_id = ? AND s.task_id = ? AND s.status = 'active'
+     ORDER BY s.created_at DESC LIMIT 1`,
+    [agent.id, taskId]
+  );
+
+  if (!session) {
+    console.error(`[REVISION DISPATCH] No active session found for agent ${agent.name}`);
+    return;
+  }
+
+  try {
+    const gatewayAgentId = session.gateway_agent_id || 'main';
+    const sessionKey = `agent:${gatewayAgentId}:${session.openclaw_session_id}`;
+    
+    await client.call('chat.send', {
+      sessionKey,
+      message: revisionMessage,
+      idempotencyKey: `revision-dispatch-${taskId}-${agent.id}-${Date.now()}`,
+    });
+
+    console.log(`[REVISION DISPATCH] Sent revision message to ${agent.name}`);
+
+  } catch (error) {
+    console.error('[REVISION DISPATCH] Error sending revision message:', error);
+    throw error;
+  }
+}
+
+/**
+ * Build revision-specific task message with feedback injection
+ */
+function buildRevisionTaskMessage(
+  taskId: string,
+  agent: any,
+  executionState: ExecutionState,
+  feedback: string,
+  currentOutput: any
+): string {
+  const currentAgentIndex = executionState.current_agent_index;
+  const currentAgentSpec = executionState.planning_agents[currentAgentIndex];
+  const isLastAgent = currentAgentIndex === executionState.total_agents - 1;
+
+  // Get task details for context
+  const task = queryOne<{
+    title: string;
+    description?: string;
+    priority: string;
+  }>('SELECT title, description, priority FROM tasks WHERE id = ?', [taskId]);
+
+  const priorityMap: Record<string, string> = {
+    low: '🔵',
+    normal: '⚪',
+    high: '🟡',
+    urgent: '🔴'
+  };
+  const priorityEmoji = priorityMap[task?.priority || 'normal'] || '⚪';
+
+  // Build project directory path
+  const projectsPath = getProjectsPath();
+  const projectDir = (task?.title || 'task').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const taskProjectDir = `${projectsPath}/${projectDir}`;
+
+  const revisionMessage = `${priorityEmoji} **REVISION REQUIRED - QUALITY CONTROL FEEDBACK**
+
+**Task:** ${task?.title || 'Multi-Agent Task'}
+**Your Role:** ${currentAgentSpec?.name || currentAgentSpec?.role || 'Agent'} (${currentAgentIndex + 1}/${executionState.total_agents})
+${isLastAgent ? '**FINAL AGENT** - Deliver completed result' : '**INTERMEDIATE AGENT** - Prepare for next handoff'}
+
+## Quality Controller Feedback
+**Previous attempt failed QC:** ${feedback}
+
+## Your Previous Output (for reference)
+${currentOutput.output.slice(0, 1000)}${currentOutput.output.length > 1000 ? '...\n[Previous output truncated]' : ''}
+
+## Revision Instructions
+1. **Address the specific feedback above** - this is critical for approval
+2. Review your previous output and identify the areas that need improvement
+3. Make the necessary changes to meet quality standards
+4. Focus on the requirements that the QC feedback highlighted
+
+## Context from Previous Agents
+${buildPreviousOutputsContext(executionState, currentAgentIndex)}
+
+## Your Revised Output
+**OUTPUT DIRECTORY:** ${taskProjectDir}
+Ensure all deliverables are saved in this directory.
+
+**When your revision is complete:**
+1. Wrap your final output/deliverable in a code block:
+\`\`\`deliverable
+Your revised output here (addressing all QC feedback)
+\`\`\`
+
+2. Then reply with:
+\`TASK_COMPLETE: [brief summary of changes made to address feedback]\`
+
+**Revision Status:** Attempt ${(currentOutput.revision_count || 0) + 1}/3
+${(currentOutput.revision_count || 0) >= 2 ? '⚠️  **FINAL ATTEMPT** - Task will escalate if this revision fails' : ''}
+
+Focus on quality, completeness, and directly addressing the QC feedback. This revision will be re-reviewed before proceeding.`;
+
+  return revisionMessage;
+}
+
+/**
  * Build enhanced task message with context from previous agents
  */
 function buildEnhancedTaskMessage(
@@ -316,6 +501,29 @@ ${isLastAgent ? 'You are completing this multi-agent task. Deliver the final res
 If you need clarification about your role or the previous work, ask the orchestrator.`;
 
   return taskMessage;
+}
+
+/**
+ * Build context from previous agents (helper for both regular and revision messages)
+ */
+function buildPreviousOutputsContext(executionState: ExecutionState, currentAgentIndex: number): string {
+  const previousOutputs = executionState.agent_outputs
+    .filter(output => output.agent_index < currentAgentIndex)
+    .sort((a, b) => a.agent_index - b.agent_index);
+
+  if (previousOutputs.length === 0) {
+    return 'No previous agent work (you are the first agent).';
+  }
+
+  return previousOutputs
+    .map(output => {
+      const truncatedOutput = output.output.length > 800 
+        ? `${output.output.slice(0, 800)}...\n[Output truncated]`
+        : output.output;
+      
+      return `**${output.agent_name}:** ${truncatedOutput}`;
+    })
+    .join('\n\n');
 }
 
 /**
@@ -417,7 +625,6 @@ export async function enhancedDispatch(
     }
 
     // Otherwise, fall back to standard dispatch behavior
-    // (This would call the original dispatch logic)
     return { success: true, message: 'Standard dispatch completed' };
 
   } catch (error) {

@@ -1,8 +1,8 @@
 /**
- * Multi-Agent Orchestration Review System
+ * Enhanced Multi-Agent Orchestration Review System
  * 
  * Handles quality control between agent handoffs using Polly as the reviewer.
- * Polly decides whether to approve, request revision, or escalate to human.
+ * Fixed to properly handle REVISION_NEEDED, ESCALATE, and revision limits.
  */
 
 import { queryOne, run } from './db';
@@ -13,6 +13,11 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+
+// Configuration constants
+const MAX_REVISIONS_PER_AGENT = 3;
+const POLLY_RESPONSE_TIMEOUT_MS = 45000; // 45 seconds
+const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1471789155427160156/7XUAgfGx6FXl8qNvmn9GRpuQ3VM5Ix7LBTrtcPsiKk6h7ql45qFan1Wq932n59yLYJH0';
 
 interface AgentOutput {
   agent_index: number;
@@ -39,6 +44,14 @@ interface PollyReviewResult {
   feedback?: string;
   reasoning: string;
   confidence: number; // 0-1 scale
+}
+
+interface SessionMessage {
+  type: string;
+  message?: {
+    role: string;
+    content: Array<{ type: string; text?: string }> | string;
+  };
 }
 
 /**
@@ -68,7 +81,7 @@ export async function triggerPollyReview(
     const reviewContext = buildReviewContext(task, executionState, currentOutput);
     
     // Send review request to Polly
-    const reviewResult = await sendPollyReviewRequest(reviewContext);
+    const reviewResult = await sendPollyReviewRequest(reviewContext, taskId);
     
     // Process Polly's decision
     await processPollyDecision(taskId, executionState, currentOutput, reviewResult);
@@ -121,19 +134,16 @@ ${previousOutputs || 'No previous outputs (this is the first agent)'}
 ## Current Agent Output to Review
 **Agent:** ${currentOutput.agent_name}
 **Role/Responsibility:** ${currentAgent?.role || 'Not specified'}
+**Revision Count:** ${currentOutput.revision_count}/${MAX_REVISIONS_PER_AGENT}
 **Output:**
 ${currentOutput.output}
-
-## Revision History
-**Current Revision Count:** ${currentOutput.revision_count}
-**Max Revisions Allowed:** ${executionState.max_revisions}
 
 ## Your Task as Quality Controller
 
 Review the current agent's output and decide:
 
 1. **APPROVED** - Output meets quality standards, proceed to next agent
-2. **REVISION_NEEDED** - Output needs improvement, send back with feedback
+2. **REVISION_NEEDED** - Output needs improvement, send back with feedback  
 3. **ESCALATE** - Major issues or max revisions reached, human intervention needed
 
 ## Response Format
@@ -155,6 +165,7 @@ Respond with ONLY valid JSON:
 - **Requirements:** Does it address the task requirements?
 - **Handoff:** ${isLastAgent ? 'Is this a suitable final deliverable?' : 'Does it provide good context for the next agent?'}
 - **Consistency:** Does it align with previous outputs and overall task goals?
+- **Revision History:** ${currentOutput.revision_count > 0 ? `This is revision ${currentOutput.revision_count + 1}. Has the agent addressed previous feedback?` : 'This is the agent\\'s first attempt.'}
 
 Proceed with your review:`;
 
@@ -162,94 +173,72 @@ Proceed with your review:`;
 }
 
 /**
- * Read Polly's response from session JSONL file
+ * Enhanced Polly response reader using JSONL pattern from result-capture.ts
  */
-function readPollyResponse(sessionId: string, waitMs: number = 15000): Promise<string | null> {
-  return new Promise((resolve) => {
-    const sessionsDir = path.join(os.homedir(), '.openclaw', 'agents', 'dispatcher', 'sessions');
-    const startTime = Date.now();
+function readSessionHistory(taskId: string): Array<{ role: string; content: string }> {
+  const openclawDir = path.join(os.homedir(), '.openclaw');
+  const sessionsDir = path.join(openclawDir, 'agents', 'dispatcher', 'sessions');
+  
+  if (!fs.existsSync(sessionsDir)) {
+    console.log(`[POLLY REVIEW] Sessions directory not found: ${sessionsDir}`);
+    return [];
+  }
+  
+  // Find recent session files that might contain our QC review
+  const files = fs.readdirSync(sessionsDir)
+    .filter(f => f.endsWith('.jsonl'))
+    .map(f => ({ name: f, mtime: fs.statSync(path.join(sessionsDir, f)).mtime }))
+    .sort((a, b) => b.mtime.getTime() - a.mtime.getTime()); // newest first
+  
+  const messages: Array<{ role: string; content: string }> = [];
+  
+  // Search recent files for QC review content
+  for (const { name: file } of files.slice(0, 5)) { // Check last 5 files
+    const filePath = path.join(sessionsDir, file);
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const lines = content.split('\n').filter(l => l.trim());
     
-    const checkForResponse = () => {
-      if (!fs.existsSync(sessionsDir)) {
-        console.log(`[POLLY REVIEW] Sessions directory not found: ${sessionsDir}`);
-        resolve(null);
-        return;
-      }
-
-      // Get files modified in the last 5 minutes, sorted by most recent
-      const cutoffTime = Date.now() - 300000; // 5 minutes
-      const allFiles = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.jsonl'));
-      const files = allFiles
-        .map(f => ({ name: f, mtime: fs.statSync(path.join(sessionsDir, f)).mtime }))
-        .filter(f => f.mtime.getTime() > cutoffTime)
-        .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
-
-      console.log(`[POLLY REVIEW] Found ${allFiles.length} total session files, ${files.length} modified in last 5 min`);
-
-      // Search most recent files for QC review
-      for (const { name: file } of files.slice(0, 10)) {
-        const filePath = path.join(sessionsDir, file);
-        const content = fs.readFileSync(filePath, 'utf-8');
-        
-        // Look for QC review content
-        const hasQC = content.includes('QUALITY CONTROL REVIEW');
-        const hasDecision = content.includes('"decision"');
-        console.log(`[POLLY REVIEW] File ${file}: hasQC=${hasQC}, hasDecision=${hasDecision}`);
-        
-        if (!hasQC) continue;
-        
-        console.log(`[POLLY REVIEW] Found QC review in ${file}`);
-        
-        // Parse lines backwards to find the most recent assistant response after a QC request
-        const lines = content.split('\n').filter(l => l.trim());
-        
-        for (let i = lines.length - 1; i >= 0; i--) {
-          try {
-            const parsed = JSON.parse(lines[i]);
-            if (parsed.type === 'message' && parsed.message?.role === 'assistant') {
-              const msgContent = parsed.message.content;
-              let textContent = '';
-              
-              if (typeof msgContent === 'string') {
-                textContent = msgContent;
-              } else if (Array.isArray(msgContent)) {
-                textContent = msgContent
-                  .filter((c: any) => c.type === 'text' && c.text)
-                  .map((c: any) => c.text)
-                  .join('\n');
-              }
-              
-              // Check if this response contains a QC decision
-              if (textContent && (textContent.includes('"decision"') || textContent.includes('APPROVED') || textContent.includes('REVISION'))) {
-                console.log(`[POLLY REVIEW] Found QC decision in response`);
-                resolve(textContent);
-                return;
-              }
-            }
-          } catch {
-            // Skip invalid JSON
+    // Check if this file contains our QC review
+    const hasQcReview = content.includes('QUALITY CONTROL REVIEW');
+    const hasTaskId = content.includes(taskId);
+    
+    if (!hasQcReview) continue;
+    
+    console.log(`[POLLY REVIEW] Found QC review in ${file}, hasTaskId=${hasTaskId}`);
+    
+    for (const line of lines) {
+      try {
+        const parsed = JSON.parse(line) as SessionMessage;
+        if (parsed.type === 'message' && parsed.message?.role === 'assistant') {
+          const msgContent = parsed.message.content;
+          let textContent = '';
+          
+          if (typeof msgContent === 'string') {
+            textContent = msgContent;
+          } else if (Array.isArray(msgContent)) {
+            textContent = msgContent
+              .filter(c => c.type === 'text' && c.text)
+              .map(c => c.text!)
+              .join('\n');
+          }
+          
+          if (textContent) {
+            messages.push({ role: 'assistant', content: textContent });
           }
         }
+      } catch {
+        // Skip invalid JSON lines
       }
-
-      // Check if we should keep waiting
-      if (Date.now() - startTime < waitMs) {
-        setTimeout(checkForResponse, 2000); // Check every 2 seconds
-      } else {
-        console.log('[POLLY REVIEW] Timeout waiting for Polly response');
-        resolve(null);
-      }
-    };
-
-    // Start checking after a brief delay
-    setTimeout(checkForResponse, 3000);
-  });
+    }
+  }
+  
+  return messages;
 }
 
 /**
- * Send review request to Polly via OpenClaw
+ * Send review request to Polly and read response
  */
-async function sendPollyReviewRequest(reviewContext: string): Promise<PollyReviewResult> {
+async function sendPollyReviewRequest(reviewContext: string, taskId: string): Promise<PollyReviewResult> {
   const client = getOpenClawClient();
   if (!client.isConnected()) {
     await client.connect();
@@ -269,47 +258,79 @@ async function sendPollyReviewRequest(reviewContext: string): Promise<PollyRevie
       idempotencyKey: `review-${Date.now()}`,
     });
 
-    // Wait for Polly to process before checking
-    console.log('[POLLY REVIEW] Waiting for Polly to process (15s)...');
-    await new Promise(resolve => setTimeout(resolve, 15000)); // Give Polly more time to respond
+    // Wait for Polly to process and respond
+    console.log('[POLLY REVIEW] Waiting for Polly to process request...');
+    await new Promise(resolve => setTimeout(resolve, 10000)); // Initial wait
     
-    // Read Polly's response from session file - wait up to 45s total
-    const pollyResponse = await readPollyResponse(reviewSessionId, 45000);
+    // Read Polly's response from session history
+    const startTime = Date.now();
+    let pollyResponse: string | null = null;
+    
+    while (Date.now() - startTime < POLLY_RESPONSE_TIMEOUT_MS) {
+      const history = readSessionHistory(taskId);
+      
+      // Find the most recent response that looks like a QC decision
+      for (let i = history.length - 1; i >= 0; i--) {
+        const msg = history[i];
+        const content = msg.content;
+        
+        if (content.includes('"decision"') || 
+            content.includes('APPROVED') || 
+            content.includes('REVISION_NEEDED') || 
+            content.includes('ESCALATE')) {
+          pollyResponse = content;
+          break;
+        }
+      }
+      
+      if (pollyResponse) break;
+      
+      // Wait before trying again
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
     
     if (!pollyResponse) {
-      throw new Error('No response from Polly within timeout');
+      throw new Error('No response from Polly within timeout period');
     }
+
+    console.log(`[POLLY REVIEW] Found Polly response: ${pollyResponse.slice(0, 200)}...`);
 
     // Extract JSON from Polly's response
     const jsonMatch = pollyResponse.match(/```json\n([\s\S]*?)```/);
     if (!jsonMatch) {
-      // If no JSON block, try to infer decision from response
-      console.log('[POLLY REVIEW] No JSON block in response, inferring decision');
+      // If no JSON block, try to infer decision from response text
+      console.log('[POLLY REVIEW] No JSON block found, inferring decision from text');
       
       const lowerResponse = pollyResponse.toLowerCase();
       if (lowerResponse.includes('approved') || lowerResponse.includes('looks good') || lowerResponse.includes('proceed')) {
         return {
           decision: 'APPROVED',
-          reasoning: pollyResponse.slice(0, 500),
+          reasoning: 'Polly indicated approval (inferred from text)',
           confidence: 0.7,
         };
-      } else if (lowerResponse.includes('revision') || lowerResponse.includes('needs work') || lowerResponse.includes('missing')) {
+      } else if (lowerResponse.includes('revision') || lowerResponse.includes('needs work') || lowerResponse.includes('improve')) {
         return {
           decision: 'REVISION_NEEDED',
           feedback: pollyResponse.slice(0, 500),
-          reasoning: 'Polly indicated revisions needed',
+          reasoning: 'Polly indicated revisions needed (inferred from text)',
           confidence: 0.7,
+        };
+      } else if (lowerResponse.includes('escalate') || lowerResponse.includes('human') || lowerResponse.includes('serious')) {
+        return {
+          decision: 'ESCALATE',
+          reasoning: 'Polly indicated escalation needed (inferred from text)',
+          confidence: 0.8,
         };
       }
       
-      throw new Error('Could not parse Polly response');
+      throw new Error('Could not parse or infer decision from Polly response');
     }
 
     const reviewResult: PollyReviewResult = JSON.parse(jsonMatch[1]);
     
     // Validate required fields
     if (!reviewResult.decision || !reviewResult.reasoning) {
-      throw new Error('Polly response missing required fields');
+      throw new Error('Polly response missing required fields (decision, reasoning)');
     }
 
     // Validate decision value
@@ -317,18 +338,17 @@ async function sendPollyReviewRequest(reviewContext: string): Promise<PollyRevie
       throw new Error(`Invalid decision value: ${reviewResult.decision}`);
     }
 
-    console.log(`[POLLY REVIEW] Decision: ${reviewResult.decision}, Confidence: ${reviewResult.confidence}`);
+    console.log(`[POLLY REVIEW] Parsed decision: ${reviewResult.decision}, Confidence: ${reviewResult.confidence}`);
     return reviewResult;
 
   } catch (error) {
     console.error('[POLLY REVIEW] Error getting response from Polly:', error);
     
-    // Fallback decision - approve to not block progress, but log warning
-    console.warn('[POLLY REVIEW] Falling back to auto-approve due to error');
+    // Remove auto-approve fallback - escalate instead
     return {
-      decision: 'APPROVED',
-      reasoning: `Auto-approved (QC error): ${error instanceof Error ? error.message : String(error)}`,
-      confidence: 0.5,
+      decision: 'ESCALATE',
+      reasoning: `QC system error: ${error instanceof Error ? error.message : String(error)}`,
+      confidence: 0.0,
     };
   }
 }
@@ -354,7 +374,7 @@ async function processPollyDecision(
       taskId, 
       null, // No specific agent (this is Polly's review)
       'updated', 
-      `🔍 QC Review: ${reviewResult.decision} - ${reviewResult.reasoning.slice(0, 200)}`,
+      `🔍 QC Review: ${reviewResult.decision} - ${reviewResult.reasoning.slice(0, 150)}${reviewResult.reasoning.length > 150 ? '...' : ''}`,
       now
     ]
   );
@@ -374,7 +394,7 @@ async function processPollyDecision(
       
     default:
       console.error(`[POLLY REVIEW] Unknown decision: ${reviewResult.decision}`);
-      await escalateToHuman(taskId, 'Unknown review decision', executionState);
+      await escalateToHuman(taskId, `Unknown review decision: ${reviewResult.decision}`, executionState);
   }
 }
 
@@ -404,13 +424,15 @@ async function handleApproval(
       [JSON.stringify(executionState), now, taskId]
     );
     
+    console.log(`[POLLY REVIEW] Approved - moving to next agent (${nextAgentIndex + 1}/${executionState.total_agents})`);
+    
     // Dispatch to next agent with accumulated context
     await dispatchToNextAgent(taskId, executionState);
   }
 }
 
 /**
- * Handle revision request - send back to same agent with feedback
+ * Enhanced revision handling with proper tracking and limits
  */
 async function handleRevisionRequest(
   taskId: string, 
@@ -420,31 +442,58 @@ async function handleRevisionRequest(
 ): Promise<void> {
   const now = new Date().toISOString();
   
-  // Check if we've exceeded max revisions
-  if (currentOutput.revision_count >= executionState.max_revisions) {
+  // Check if we've exceeded max revisions for this specific agent
+  if (currentOutput.revision_count >= MAX_REVISIONS_PER_AGENT) {
+    console.log(`[POLLY REVIEW] Max revisions (${MAX_REVISIONS_PER_AGENT}) exceeded for ${currentOutput.agent_name}`);
     await escalateToHuman(
       taskId, 
-      `Max revisions (${executionState.max_revisions}) exceeded for ${currentOutput.agent_name}`,
+      `Agent ${currentOutput.agent_name} failed after ${MAX_REVISIONS_PER_AGENT} revision attempts`,
       executionState
     );
     return;
   }
 
-  // Increment revision count in execution state
-  executionState.revision_count += 1;
+  // Increment revision count for this agent
+  const updatedOutput = { ...currentOutput, revision_count: currentOutput.revision_count + 1 };
   
-  // Update the agent output with revision count (will be updated in result-capture on next attempt)
+  // Update the agent output in execution state
+  const outputIndex = executionState.agent_outputs.findIndex(
+    output => output.agent_index === currentOutput.agent_index
+  );
+  
+  if (outputIndex >= 0) {
+    executionState.agent_outputs[outputIndex] = updatedOutput;
+  }
+  
+  // Update execution state in database
   run(
     'UPDATE tasks SET execution_state = ?, updated_at = ? WHERE id = ?',
     [JSON.stringify(executionState), now, taskId]
   );
 
+  // Log revision request activity
+  const activityId = crypto.randomUUID();
+  run(
+    `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      activityId,
+      taskId,
+      currentOutput.agent_id,
+      'revision_requested',
+      `🔄 Revision ${updatedOutput.revision_count}/${MAX_REVISIONS_PER_AGENT} requested for ${currentOutput.agent_name}: ${(reviewResult.feedback || '').slice(0, 200)}`,
+      now
+    ]
+  );
+
+  console.log(`[POLLY REVIEW] Sending revision request to ${currentOutput.agent_name} (attempt ${updatedOutput.revision_count}/${MAX_REVISIONS_PER_AGENT})`);
+  
   // Send revision request back to the same agent
-  await sendRevisionRequest(taskId, currentOutput, reviewResult.feedback!);
+  await sendRevisionRequest(taskId, updatedOutput, reviewResult.feedback || 'Please improve your output based on the quality review.');
 }
 
 /**
- * Send revision request to agent with specific feedback
+ * Send revision request to agent with specific feedback and context injection
  */
 async function sendRevisionRequest(
   taskId: string,
@@ -474,24 +523,26 @@ async function sendRevisionRequest(
     return;
   }
 
-  const revisionMessage = `🔄 **REVISION REQUEST**
+  const revisionMessage = `🔄 **REVISION REQUEST - QUALITY CONTROL FEEDBACK**
 
-Your previous output has been reviewed and needs improvement.
+Your previous output has been reviewed by the quality controller and needs improvement.
 
-**Quality Control Feedback:**
-${feedback}
+**Previous attempt failed QC:** ${feedback}
 
 **Your Previous Output:**
-${agentOutput.output.slice(0, 500)}${agentOutput.output.length > 500 ? '...\n\n[truncated - see above for full output]' : ''}
+${agentOutput.output.slice(0, 800)}${agentOutput.output.length > 800 ? '...\n\n[Previous output truncated - see above for context]' : ''}
 
-**Instructions:**
-1. Address the feedback above
-2. Improve your output based on the specific points raised
-3. When ready, submit your revised deliverable using the same format
-4. Use \`\`\`deliverable\` block for your final output
-5. End with \`TASK_COMPLETE: [summary of changes made]\`
+**What you need to do:**
+1. **Address the specific feedback above** - this is critical for approval
+2. Revise and improve your output based on the quality controller's guidance
+3. When ready, submit your revised deliverable using the same format:
+   - Use \`\`\`deliverable\` block for your final output
+   - End with \`TASK_COMPLETE: [summary of changes made]\`
 
-This is revision ${agentOutput.revision_count + 1}. Please focus on quality and completeness.`;
+**Revision Status:** This is revision attempt ${agentOutput.revision_count}/${MAX_REVISIONS_PER_AGENT}
+${agentOutput.revision_count === MAX_REVISIONS_PER_AGENT ? '⚠️  **FINAL ATTEMPT** - Task will escalate to human if this revision fails' : ''}
+
+Focus on quality, completeness, and directly addressing the feedback provided. Revise accordingly.`;
 
   try {
     const gatewayAgentId = session.gateway_agent_id || 'main';
@@ -500,17 +551,24 @@ This is revision ${agentOutput.revision_count + 1}. Please focus on quality and 
     await client.call('chat.send', {
       sessionKey,
       message: revisionMessage,
-      idempotencyKey: `revision-${taskId}-${Date.now()}`,
+      idempotencyKey: `revision-${taskId}-${agentOutput.revision_count}-${Date.now()}`,
     });
 
-    console.log(`[REVISION] Sent revision request to ${agentOutput.agent_name}`);
+    console.log(`[REVISION] Sent revision request to ${agentOutput.agent_name} (attempt ${agentOutput.revision_count}/${MAX_REVISIONS_PER_AGENT})`);
   } catch (error) {
     console.error('[REVISION] Error sending revision request:', error);
+    
+    // If we can't send revision request, escalate
+    await escalateToHuman(
+      taskId,
+      `Failed to send revision request to ${agentOutput.agent_name}: ${error}`,
+      JSON.parse('{}') // Empty execution state as fallback
+    );
   }
 }
 
 /**
- * Escalate to human review when automatic resolution isn't possible
+ * Enhanced escalation with Discord notification and proper task handling
  */
 async function escalateToHuman(
   taskId: string, 
@@ -519,9 +577,21 @@ async function escalateToHuman(
 ): Promise<void> {
   const now = new Date().toISOString();
 
-  // Update task status to require human review
+  // Get task details for Discord notification
+  const task = queryOne<{ 
+    title: string; 
+    description?: string;
+    workspace_id: string;
+  }>('SELECT title, description, workspace_id FROM tasks WHERE id = ?', [taskId]);
+
+  if (!task) {
+    console.error(`[ESCALATION] Task ${taskId} not found for escalation`);
+    return;
+  }
+
+  // Update task status to blocked (not just review)
   run(
-    `UPDATE tasks SET status = 'review', updated_at = ? WHERE id = ?`,
+    `UPDATE tasks SET status = 'blocked', updated_at = ? WHERE id = ?`,
     [now, taskId]
   );
 
@@ -534,10 +604,30 @@ async function escalateToHuman(
       activityId,
       taskId,
       null,
-      'status_changed',
-      `🚨 Escalated to human review: ${reason}`,
+      'escalated',
+      `🚨 Escalated to human: ${reason}`,
       now
     ]
+  );
+
+  // Post to Discord #operations webhook
+  await postToDiscord(taskId, task.title, reason);
+
+  // Mark any active agents as standby to free them up
+  run(
+    `UPDATE agents SET status = 'standby', updated_at = ? 
+     WHERE id IN (
+       SELECT agent_id FROM openclaw_sessions 
+       WHERE task_id = ? AND status = 'active'
+     )`,
+    [now, taskId]
+  );
+
+  // Close any active sessions for this task
+  run(
+    `UPDATE openclaw_sessions SET status = 'completed', ended_at = ? 
+     WHERE task_id = ? AND status = 'active'`,
+    [now, taskId]
   );
 
   // Broadcast update
@@ -550,6 +640,62 @@ async function escalateToHuman(
   }
 
   console.log(`[ESCALATION] Task ${taskId} escalated to human: ${reason}`);
+  console.log(`[ESCALATION] Agents freed up to work on other tasks - no blocking`);
+}
+
+/**
+ * Post escalation notification to Discord #operations channel
+ */
+async function postToDiscord(taskId: string, taskTitle: string, reason: string): Promise<void> {
+  try {
+    const missionControlUrl = 'http://localhost:4000'; // Default, could be configurable
+    const taskUrl = `${missionControlUrl}/tasks/${taskId}`;
+    
+    const discordPayload = {
+      content: `🚨 **Task Escalation Required**`,
+      embeds: [
+        {
+          title: taskTitle,
+          description: reason,
+          color: 0xFF6B6B, // Red color for escalations
+          fields: [
+            {
+              name: 'Task ID',
+              value: taskId,
+              inline: true
+            },
+            {
+              name: 'Status',
+              value: 'Blocked - Human intervention required',
+              inline: true
+            }
+          ],
+          footer: {
+            text: 'Multi-Agent Orchestration QC'
+          },
+          timestamp: new Date().toISOString(),
+          url: taskUrl
+        }
+      ]
+    };
+
+    const response = await fetch(DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(discordPayload)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Discord webhook failed: ${response.status} ${response.statusText}`);
+    }
+
+    console.log(`[ESCALATION] Posted to Discord #operations: ${taskTitle}`);
+  } catch (error) {
+    console.error('[ESCALATION] Failed to post to Discord:', error);
+    // Don't fail the escalation process if Discord posting fails
+  }
 }
 
 /**
@@ -590,6 +736,23 @@ async function completeMultiAgentTask(
       '✅ Multi-agent task completed successfully - all agents approved by QC',
       now
     ]
+  );
+
+  // Free up any agents that were working on this task
+  run(
+    `UPDATE agents SET status = 'standby', updated_at = ? 
+     WHERE id IN (
+       SELECT agent_id FROM openclaw_sessions 
+       WHERE task_id = ? AND status = 'active'
+     )`,
+    [now, taskId]
+  );
+
+  // Close sessions
+  run(
+    `UPDATE openclaw_sessions SET status = 'completed', ended_at = ? 
+     WHERE task_id = ? AND status = 'active'`,
+    [now, taskId]
   );
 
   // Broadcast completion
