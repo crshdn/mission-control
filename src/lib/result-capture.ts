@@ -208,6 +208,17 @@ async function handleMultiAgentCompletion(taskId: string, agentOutputText: strin
 
   console.log(`[MULTI-AGENT] Stored output for agent ${agentInfo.name} (index ${executionState.current_agent_index})`);
   
+  // Add planning_agents to executionState for Polly review context
+  if (task.planning_agents) {
+    try {
+      executionState.planning_agents = JSON.parse(task.planning_agents);
+    } catch {
+      executionState.planning_agents = [];
+    }
+  } else {
+    executionState.planning_agents = [];
+  }
+  
   // Trigger Polly review instead of auto-progression
   await triggerPollyReview(taskId, executionState, agentOutput);
 }

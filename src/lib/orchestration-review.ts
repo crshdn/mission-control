@@ -89,7 +89,8 @@ function buildReviewContext(
   executionState: ExecutionState, 
   currentOutput: AgentOutput
 ): string {
-  const currentAgent = executionState.planning_agents[currentOutput.agent_index];
+  const planningAgents = executionState.planning_agents || [];
+  const currentAgent = planningAgents[currentOutput.agent_index] || { role: 'Unknown' };
   const isLastAgent = executionState.current_agent_index === executionState.total_agents - 1;
   
   // Build accumulated context from previous agents
