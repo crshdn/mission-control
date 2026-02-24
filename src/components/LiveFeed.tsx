@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronRight, ChevronLeft, Clock } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Clock, ClipboardList, User, RefreshCw, CheckCircle, MessageSquare, PartyPopper, Bell, Settings, Pin } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import type { Event } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
@@ -27,25 +27,26 @@ export function LiveFeed() {
   });
 
   const getEventIcon = (type: string) => {
+    const iconClass = "w-4 h-4";
     switch (type) {
       case 'task_created':
-        return '📋';
+        return <ClipboardList className={iconClass} />;
       case 'task_assigned':
-        return '👤';
+        return <User className={iconClass} />;
       case 'task_status_changed':
-        return '🔄';
+        return <RefreshCw className={iconClass} />;
       case 'task_completed':
-        return '✅';
+        return <CheckCircle className={iconClass} />;
       case 'message_sent':
-        return '💬';
+        return <MessageSquare className={iconClass} />;
       case 'agent_joined':
-        return '🎉';
+        return <PartyPopper className={iconClass} />;
       case 'agent_status_changed':
-        return '🔔';
+        return <Bell className={iconClass} />;
       case 'system':
-        return '⚙️';
+        return <Settings className={iconClass} />;
       default:
-        return '📌';
+        return <Pin className={iconClass} />;
     }
   };
 
@@ -131,25 +132,26 @@ export function LiveFeed() {
 
 function EventItem({ event }: { event: Event }) {
   const getEventIcon = (type: string) => {
+    const iconClass = "w-4 h-4";
     switch (type) {
       case 'task_created':
-        return '📋';
+        return <ClipboardList className={iconClass} />;
       case 'task_assigned':
-        return '👤';
+        return <User className={iconClass} />;
       case 'task_status_changed':
-        return '🔄';
+        return <RefreshCw className={iconClass} />;
       case 'task_completed':
-        return '✅';
+        return <CheckCircle className={iconClass} />;
       case 'message_sent':
-        return '💬';
+        return <MessageSquare className={iconClass} />;
       case 'agent_joined':
-        return '🎉';
+        return <PartyPopper className={iconClass} />;
       case 'agent_status_changed':
-        return '🔔';
+        return <Bell className={iconClass} />;
       case 'system':
-        return '⚙️';
+        return <Settings className={iconClass} />;
       default:
-        return '📌';
+        return <Pin className={iconClass} />;
     }
   };
 
@@ -165,7 +167,7 @@ function EventItem({ event }: { event: Event }) {
       }`}
     >
       <div className="flex items-start gap-2">
-        <span className="text-sm">{getEventIcon(event.type)}</span>
+        <span className="text-apple-text-secondary mt-0.5">{getEventIcon(event.type)}</span>
         <div className="flex-1 min-w-0">
           <p className={`text-sm ${isTaskEvent ? 'text-mc-accent-pink' : 'text-mc-text'}`}>
             {event.message}

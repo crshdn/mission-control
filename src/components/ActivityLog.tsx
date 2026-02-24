@@ -7,6 +7,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { Rocket, Pencil, CheckCircle, FileText, RefreshCw, StickyNote } from 'lucide-react';
 import type { TaskActivity } from '@/lib/types';
 
 interface ActivityLogProps {
@@ -73,19 +74,20 @@ export function ActivityLog({ taskId }: ActivityLogProps) {
   }, [taskId, pollForActivities]);
 
   const getActivityIcon = (type: string) => {
+    const iconClass = "w-4 h-4";
     switch (type) {
       case 'spawned':
-        return '🚀';
+        return <Rocket className={iconClass} />;
       case 'updated':
-        return '✏️';
+        return <Pencil className={iconClass} />;
       case 'completed':
-        return '✅';
+        return <CheckCircle className={iconClass} />;
       case 'file_created':
-        return '📄';
+        return <FileText className={iconClass} />;
       case 'status_changed':
-        return '🔄';
+        return <RefreshCw className={iconClass} />;
       default:
-        return '📝';
+        return <StickyNote className={iconClass} />;
     }
   };
 
@@ -114,7 +116,7 @@ export function ActivityLog({ taskId }: ActivityLogProps) {
           className="flex gap-3 p-3 bg-mc-bg rounded-lg border border-mc-border"
         >
           {/* Icon */}
-          <div className="text-2xl flex-shrink-0">
+          <div className="flex-shrink-0 text-apple-text-secondary mt-0.5">
             {getActivityIcon(activity.activity_type)}
           </div>
 
