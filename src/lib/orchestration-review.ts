@@ -173,23 +173,27 @@ function readPollyResponse(sessionId: string, waitMs: number = 15000): Promise<s
         return;
       }
 
-      // Get files modified in the last 2 minutes, sorted by most recent
-      const cutoffTime = Date.now() - 120000;
-      const files = fs.readdirSync(sessionsDir)
-        .filter(f => f.endsWith('.jsonl'))
+      // Get files modified in the last 5 minutes, sorted by most recent
+      const cutoffTime = Date.now() - 300000; // 5 minutes
+      const allFiles = fs.readdirSync(sessionsDir).filter(f => f.endsWith('.jsonl'));
+      const files = allFiles
         .map(f => ({ name: f, mtime: fs.statSync(path.join(sessionsDir, f)).mtime }))
         .filter(f => f.mtime.getTime() > cutoffTime)
         .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
 
-      console.log(`[POLLY REVIEW] Checking ${files.length} recent session files`);
+      console.log(`[POLLY REVIEW] Found ${allFiles.length} total session files, ${files.length} modified in last 5 min`);
 
       // Search most recent files for QC review
-      for (const { name: file } of files.slice(0, 5)) {
+      for (const { name: file } of files.slice(0, 10)) {
         const filePath = path.join(sessionsDir, file);
         const content = fs.readFileSync(filePath, 'utf-8');
         
         // Look for QC review content
-        if (!content.includes('QUALITY CONTROL REVIEW')) continue;
+        const hasQC = content.includes('QUALITY CONTROL REVIEW');
+        const hasDecision = content.includes('"decision"');
+        console.log(`[POLLY REVIEW] File ${file}: hasQC=${hasQC}, hasDecision=${hasDecision}`);
+        
+        if (!hasQC) continue;
         
         console.log(`[POLLY REVIEW] Found QC review in ${file}`);
         
@@ -263,11 +267,11 @@ async function sendPollyReviewRequest(reviewContext: string): Promise<PollyRevie
     });
 
     // Wait for Polly to process before checking
-    console.log('[POLLY REVIEW] Waiting for Polly to process...');
-    await new Promise(resolve => setTimeout(resolve, 8000)); // Give Polly time to respond
+    console.log('[POLLY REVIEW] Waiting for Polly to process (15s)...');
+    await new Promise(resolve => setTimeout(resolve, 15000)); // Give Polly more time to respond
     
-    // Read Polly's response from session file
-    const pollyResponse = await readPollyResponse(reviewSessionId, 30000);
+    // Read Polly's response from session file - wait up to 45s total
+    const pollyResponse = await readPollyResponse(reviewSessionId, 45000);
     
     if (!pollyResponse) {
       throw new Error('No response from Polly within timeout');
