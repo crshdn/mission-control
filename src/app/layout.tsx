@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { JetBrains_Mono } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import DemoBanner from '@/components/DemoBanner';
 
-const jetbrainsMono = JetBrains_Mono({
+// Inter is the closest web font to SF Pro
+const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-jetbrains-mono',
+  variable: '--font-inter',
   weight: ['400', '500', '600', '700'],
   display: 'swap',
 });
@@ -24,8 +25,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={jetbrainsMono.variable}>
-      <body className={`${jetbrainsMono.className} bg-mc-bg text-mc-text min-h-screen`}>
+    <html lang="en" className={`${inter.variable} apple-text-rendering`}>
+      <body className={`${inter.className} font-apple bg-apple-bg text-apple-text min-h-screen transition-colors duration-200`}>
         <DemoBanner />
         {children}
       </body>

@@ -2,124 +2,168 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Apple Design System CSS Variables */
 :root {
-  --mc-bg: #0d1117;
-  --mc-bg-secondary: #161b22;
-  --mc-bg-tertiary: #21262d;
-  --mc-border: #30363d;
-  --mc-text: #c9d1d9;
-  --mc-text-secondary: #8b949e;
-  --mc-accent: #58a6ff;
-  --mc-accent-green: #3fb950;
-  --mc-accent-yellow: #d29922;
-  --mc-accent-red: #f85149;
-  --mc-accent-purple: #a371f7;
-  --mc-accent-pink: #db61a2;
-  --mc-accent-cyan: #39d353;
+  /* Light mode colors */
+  --apple-bg: #ffffff;
+  --apple-bg-secondary: #f9f9f9;
+  --apple-bg-tertiary: #f4f4f5;
+  --apple-bg-overlay: rgba(255, 255, 255, 0.8);
+  
+  --apple-border: #e5e5e7;
+  --apple-border-secondary: #d2d2d7;
+  
+  --apple-text: #1d1d1f;
+  --apple-text-secondary: #86868b;
+  --apple-text-tertiary: #a1a1a6;
+  
+  --apple-accent: #0071e3;
+  --apple-accent-hover: #0077ed;
+  --apple-accent-pressed: #004db3;
+  
+  /* Status colors */
+  --apple-green: #30d158;
+  --apple-yellow: #ffcc02;
+  --apple-red: #ff3b30;
+  --apple-orange: #ff9500;
+  --apple-blue: #007aff;
+  --apple-purple: #af52de;
+  --apple-pink: #ff2d92;
+  --apple-cyan: #64d2ff;
+  
+  /* Glassmorphism */
+  --apple-glass-bg: rgba(255, 255, 255, 0.72);
+  --apple-glass-border: rgba(255, 255, 255, 0.18);
 }
 
+/* Dark mode colors */
+.dark {
+  --apple-bg: #000000;
+  --apple-bg-secondary: #1c1c1e;
+  --apple-bg-tertiary: #2c2c2e;
+  --apple-bg-overlay: rgba(28, 28, 30, 0.8);
+  
+  --apple-border: #38383a;
+  --apple-border-secondary: #48484a;
+  
+  --apple-text: #ffffff;
+  --apple-text-secondary: #98989d;
+  --apple-text-tertiary: #636366;
+  
+  --apple-accent: #0984ff;
+  --apple-accent-hover: #409cff;
+  --apple-accent-pressed: #0056b3;
+  
+  --apple-glass-bg: rgba(28, 28, 30, 0.72);
+  --apple-glass-border: rgba(255, 255, 255, 0.08);
+}
+
+/* Base styles */
 * {
   box-sizing: border-box;
   padding: 0;
   margin: 0;
 }
 
-html,
+html {
+  /* Smooth scrolling with reduced motion support */
+  scroll-behavior: smooth;
+  text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 body {
-  max-width: 100vw;
+  font-family: 
+    ui-sans-serif,
+    -apple-system,
+    BlinkMacSystemFont,
+    'SF Pro Display',
+    'SF Pro Text',
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  background-color: var(--apple-bg);
+  color: var(--apple-text);
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
   overflow-x: hidden;
-  font-family: var(--font-jetbrains-mono), 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
 }
 
-body {
-  background-color: var(--mc-bg);
-  color: var(--mc-text);
-}
-
-/* Custom scrollbar */
+/* Apple-style scrollbars */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--mc-bg-secondary);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--mc-border);
-  border-radius: 4px;
+  background: var(--apple-text-tertiary);
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--mc-text-secondary);
+  background: var(--apple-text-secondary);
+  background-clip: content-box;
 }
 
-/* Status badge styles */
-.status-standby {
-  @apply bg-mc-bg-tertiary text-mc-text-secondary border border-mc-border;
+.dark ::-webkit-scrollbar-thumb {
+  background: #636366;
+  background-clip: content-box;
 }
 
-.status-working {
-  @apply bg-mc-accent-green/20 text-mc-accent-green border border-mc-accent-green/50;
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #98989d;
+  background-clip: content-box;
 }
 
-.status-offline {
-  @apply bg-mc-accent-red/20 text-mc-accent-red border border-mc-accent-red/50;
+/* Apple-style focus states */
+:focus-visible {
+  outline: 2px solid var(--apple-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
-/* Priority badge styles */
-.priority-low {
-  @apply bg-mc-text-secondary/20 text-mc-text-secondary;
+/* Apple button focus for better accessibility */
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--apple-accent);
+  outline-offset: 2px;
 }
 
-.priority-normal {
-  @apply bg-mc-accent/20 text-mc-accent;
-}
-
-.priority-high {
-  @apply bg-mc-accent-yellow/20 text-mc-accent-yellow;
-}
-
-.priority-urgent {
-  @apply bg-mc-accent-red/20 text-mc-accent-red;
-}
-
-/* Task status column colors */
-.column-inbox {
-  @apply border-t-mc-accent-pink;
-}
-
-.column-assigned {
-  @apply border-t-mc-accent-yellow;
-}
-
-.column-in_progress {
-  @apply border-t-mc-accent;
-}
-
-.column-review {
-  @apply border-t-mc-accent-purple;
-}
-
-.column-done {
-  @apply border-t-mc-accent-green;
-}
-
-/* Animations */
-@keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.animate-pulse-soft {
-  animation: pulse-soft 2s ease-in-out infinite;
-}
-
-@keyframes slide-in {
+/* Apple-style animations */
+@keyframes apple-fade-in {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes apple-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -127,11 +171,219 @@ body {
   }
 }
 
-.animate-slide-in {
-  animation: slide-in 0.2s ease-out;
+@keyframes apple-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-/* Glow effect for online status */
-.online-glow {
-  box-shadow: 0 0 10px var(--mc-accent-green), 0 0 20px var(--mc-accent-green);
+@keyframes apple-bounce {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes apple-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Component-specific styles */
+.status-standby {
+  @apply bg-apple-bg-tertiary text-apple-text-secondary border border-apple-border-secondary;
+}
+
+.dark .status-standby {
+  @apply bg-zinc-800 text-zinc-400 border-zinc-700;
+}
+
+.status-working {
+  @apply bg-green-50 text-green-700 border border-green-200;
+}
+
+.dark .status-working {
+  @apply bg-green-500/10 text-green-400 border-green-500/20;
+}
+
+.status-offline {
+  @apply bg-red-50 text-red-700 border border-red-200;
+}
+
+.dark .status-offline {
+  @apply bg-red-500/10 text-red-400 border-red-500/20;
+}
+
+/* Priority badge styles */
+.priority-low {
+  @apply bg-gray-100 text-gray-600;
+}
+
+.dark .priority-low {
+  @apply bg-gray-800 text-gray-400;
+}
+
+.priority-normal {
+  @apply bg-blue-50 text-blue-700;
+}
+
+.dark .priority-normal {
+  @apply bg-blue-500/10 text-blue-400;
+}
+
+.priority-high {
+  @apply bg-amber-50 text-amber-700;
+}
+
+.dark .priority-high {
+  @apply bg-amber-500/10 text-amber-400;
+}
+
+.priority-urgent {
+  @apply bg-red-50 text-red-700;
+}
+
+.dark .priority-urgent {
+  @apply bg-red-500/10 text-red-400;
+}
+
+/* Apple-style card component */
+.apple-card {
+  @apply bg-apple-bg-secondary border border-apple-border rounded-apple-lg shadow-apple-card;
+  @apply transition-all duration-200 ease-out;
+}
+
+.apple-card:hover {
+  @apply shadow-apple-hover border-apple-border-secondary;
+  transform: translateY(-1px);
+}
+
+.dark .apple-card {
+  @apply bg-zinc-800/80 border-zinc-700 shadow-apple-dark-card;
+}
+
+.dark .apple-card:hover {
+  @apply border-zinc-600;
+}
+
+/* Apple-style button */
+.apple-button {
+  @apply inline-flex items-center justify-center px-apple-4 py-apple-2 rounded-apple-md font-medium;
+  @apply transition-all duration-200 ease-out apple-text-rendering;
+  @apply focus:outline-none focus:ring-2 focus:ring-apple-accent focus:ring-offset-2;
+}
+
+.apple-button:active {
+  transform: scale(0.96);
+}
+
+.apple-button-primary {
+  @apply apple-button bg-apple-accent text-white;
+}
+
+.apple-button-primary:hover {
+  background-color: var(--apple-accent-hover);
+}
+
+.apple-button-primary:active {
+  background-color: var(--apple-accent-pressed);
+}
+
+.apple-button-secondary {
+  @apply apple-button bg-apple-bg-tertiary text-apple-text border border-apple-border;
+}
+
+.apple-button-secondary:hover {
+  @apply bg-apple-bg-secondary border-apple-border-secondary;
+}
+
+.dark .apple-button-secondary {
+  @apply bg-zinc-800 text-zinc-200 border-zinc-700;
+}
+
+.dark .apple-button-secondary:hover {
+  @apply bg-zinc-700 border-zinc-600;
+}
+
+/* Apple-style glass effect */
+.apple-glass {
+  backdrop-filter: blur(20px) saturate(180%);
+  background-color: var(--apple-glass-bg);
+  border: 1px solid var(--apple-glass-border);
+}
+
+/* Apple-style input */
+.apple-input {
+  @apply w-full px-apple-3 py-apple-2 bg-apple-bg border border-apple-border;
+  @apply rounded-apple-md text-apple-text placeholder-apple-text-tertiary;
+  @apply focus:outline-none focus:ring-2 focus:ring-apple-accent focus:border-transparent;
+  @apply transition-all duration-200 ease-out apple-text-rendering;
+}
+
+.dark .apple-input {
+  @apply bg-zinc-800 border-zinc-700 text-white;
+}
+
+.dark .apple-input:focus {
+  @apply border-transparent;
+}
+
+/* Utilities for common Apple patterns */
+.apple-divider {
+  @apply border-apple-border;
+}
+
+.dark .apple-divider {
+  @apply border-zinc-700;
+}
+
+.apple-text-primary {
+  @apply text-apple-text apple-text-rendering;
+}
+
+.apple-text-secondary {
+  @apply text-apple-text-secondary apple-text-rendering;
+}
+
+.apple-text-tertiary {
+  @apply text-apple-text-tertiary apple-text-rendering;
+}
+
+/* Dark mode overrides */
+.dark .apple-text-primary {
+  @apply text-white;
+}
+
+.dark .apple-text-secondary {
+  @apply text-zinc-400;
+}
+
+.dark .apple-text-tertiary {
+  @apply text-zinc-500;
+}
+
+/* Apple-style transition for theme switching */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* Disable transitions during theme switch to prevent flash */
+.theme-transition-disable * {
+  transition: none !important;
 }
