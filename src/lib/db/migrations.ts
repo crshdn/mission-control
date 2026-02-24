@@ -202,6 +202,27 @@ const migrations: Migration[] = [
         console.log('[Migration 007] Added gateway_agent_id to agents');
       }
     }
+  },
+  {
+    id: '008',
+    name: 'add_task_result_field',
+    up: (db) => {
+      console.log('[Migration 008] Adding result field to tasks...');
+
+      const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
+
+      // Add result column to store agent output when task completes
+      if (!tasksInfo.some(col => col.name === 'result')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN result TEXT`);
+        console.log('[Migration 008] Added result to tasks');
+      }
+
+      // Add result_captured_at column to track when result was captured
+      if (!tasksInfo.some(col => col.name === 'result_captured_at')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN result_captured_at TEXT`);
+        console.log('[Migration 008] Added result_captured_at to tasks');
+      }
+    }
   }
 ];
 

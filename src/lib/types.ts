@@ -64,6 +64,8 @@ export interface Task {
   workspace_id: string;
   business_id: string;
   due_date?: string;
+  result?: string;
+  result_captured_at?: string;
   created_at: string;
   updated_at: string;
   // Joined fields

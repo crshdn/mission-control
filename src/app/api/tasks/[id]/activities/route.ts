@@ -107,6 +107,17 @@ export async function POST(
       metadata ? JSON.stringify(metadata) : null
     );
 
+    // RESULT CAPTURE: When activity_type is "completed", capture the message as the task result
+    if (activity_type === 'completed') {
+      const now = new Date().toISOString();
+      db.prepare(`
+        UPDATE tasks 
+        SET result = ?, result_captured_at = ?, updated_at = ?
+        WHERE id = ? AND result IS NULL
+      `).run(message, now, now, taskId);
+      console.log(`[RESULT CAPTURE] Captured result for task ${taskId} from completed activity`);
+    }
+
     // Get the created activity with agent info
     const activity = db.prepare(`
       SELECT 

@@ -4,6 +4,7 @@ import { queryOne, run, queryAll } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
 import { UpdateTaskSchema } from '@/lib/validation';
+import { captureResultFromSession } from '@/lib/result-capture';
 import type { Task, UpdateTaskRequest, Agent, TaskDeliverable } from '@/lib/types';
 
 // GET /api/tasks/[id] - Get a single task
@@ -96,6 +97,14 @@ export async function PATCH(
       updates.push('due_date = ?');
       values.push(validatedData.due_date);
     }
+    
+    // Handle result field update
+    if (validatedData.result !== undefined) {
+      updates.push('result = ?');
+      values.push(validatedData.result);
+      updates.push('result_captured_at = ?');
+      values.push(now);
+    }
 
     // Track if we need to dispatch task
     let shouldDispatch = false;
@@ -108,6 +117,15 @@ export async function PATCH(
       // Auto-dispatch when moving to assigned
       if (validatedData.status === 'assigned' && existing.assigned_agent_id) {
         shouldDispatch = true;
+      }
+
+      // RESULT CAPTURE: When moving to "review", attempt to capture result from session
+      // This is a fallback if the agent didn't explicitly log a "completed" activity
+      if (validatedData.status === 'review') {
+        // Do this asynchronously to not block the response
+        captureResultFromSession(id).catch(err => {
+          console.error('[TASK PATCH] Failed to capture result from session:', err);
+        });
       }
 
       // Log status change event

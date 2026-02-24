@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus, FileText, CheckCircle } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { triggerAutoDispatch, shouldTriggerAutoDispatch } from '@/lib/auto-dispatch';
 import { ActivityLog } from './ActivityLog';
@@ -11,7 +11,7 @@ import { PlanningTab } from './PlanningTab';
 import { AgentModal } from './AgentModal';
 import type { Task, TaskPriority, TaskStatus } from '@/lib/types';
 
-type TabType = 'overview' | 'planning' | 'activity' | 'deliverables' | 'sessions';
+type TabType = 'overview' | 'planning' | 'activity' | 'deliverables' | 'sessions' | 'result';
 
 interface TaskModalProps {
   task?: Task;
@@ -150,6 +150,8 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
     { id: 'activity' as TabType, label: 'Activity', icon: <Activity className="w-4 h-4" /> },
     { id: 'deliverables' as TabType, label: 'Deliverables', icon: <Package className="w-4 h-4" /> },
     { id: 'sessions' as TabType, label: 'Sessions', icon: <Bot className="w-4 h-4" /> },
+    // Only show Result tab if task has a result
+    ...(task?.result ? [{ id: 'result' as TabType, label: 'Result', icon: <FileText className="w-4 h-4" /> }] : []),
   ];
 
   return (
@@ -193,6 +195,24 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Result Display - Show prominently if task has a result */}
+          {task?.result && (
+            <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="w-5 h-5 text-emerald-500" />
+                <h3 className="font-medium text-emerald-400">Agent Output</h3>
+                {task.result_captured_at && (
+                  <span className="text-xs text-mc-text-secondary ml-auto">
+                    Captured {new Date(task.result_captured_at).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              <div className="text-sm text-mc-text whitespace-pre-wrap bg-mc-bg/50 p-3 rounded max-h-64 overflow-y-auto">
+                {task.result}
+              </div>
+            </div>
+          )}
+
           {/* Title */}
           <div>
             <label className="block text-sm font-medium mb-1">Title</label>
@@ -337,6 +357,28 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
           {/* Sessions Tab */}
           {activeTab === 'sessions' && task && (
             <SessionsList taskId={task.id} />
+          )}
+
+          {/* Result Tab */}
+          {activeTab === 'result' && task && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-lg flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-emerald-500" />
+                  Agent Output
+                </h3>
+                {task.result_captured_at && (
+                  <span className="text-sm text-mc-text-secondary">
+                    Captured {new Date(task.result_captured_at).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              <div className="bg-mc-bg border border-mc-border rounded-lg p-4">
+                <pre className="text-sm text-mc-text whitespace-pre-wrap font-mono">
+                  {task.result}
+                </pre>
+              </div>
+            </div>
           )}
         </div>
 

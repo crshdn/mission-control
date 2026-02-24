@@ -59,6 +59,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   planning_spec TEXT,
   planning_agents TEXT,
   planning_dispatch_error TEXT,
+  result TEXT,
+  result_captured_at TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
