@@ -1,0 +1,1 @@
+export const hello = "E2E test passed";

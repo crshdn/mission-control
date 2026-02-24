@@ -22,7 +22,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
 
     // Get task with agent info
-    const task = queryOne<Task & { assigned_agent_name?: string; workspace_id: string }>(
+    const task = queryOne<Task & { assigned_agent_name?: string; workspace_id: string; planning_agents?: string; execution_state?: string }>(
       `SELECT t.*, a.name as assigned_agent_name, a.is_master
        FROM tasks t
        LEFT JOIN agents a ON t.assigned_agent_id = a.id

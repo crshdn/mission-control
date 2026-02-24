@@ -158,7 +158,7 @@ const config: Config = {
   },
   plugins: [
     // Custom Apple-style utilities
-    function({ addUtilities }) {
+    function({ addUtilities }: any) {
       addUtilities({
         '.apple-glass': {
           'backdrop-filter': 'blur(20px) saturate(180%)',
