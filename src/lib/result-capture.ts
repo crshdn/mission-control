@@ -1,8 +1,8 @@
 /**
- * Result Capture Utility
+ * Enhanced Result Capture Utility
  * 
- * Captures agent outputs when tasks complete, ensuring deliverables
- * are properly recorded even if the agent doesn't call the APIs.
+ * Handles both single-agent and multi-agent task completion flows.
+ * For multi-agent tasks, triggers Polly review instead of auto-completion.
  */
 
 import * as fs from 'fs';
@@ -11,6 +11,7 @@ import * as os from 'os';
 import * as crypto from 'crypto';
 import { queryOne, run } from './db';
 import { broadcast } from './events';
+import { triggerPollyReview } from './orchestration-review';
 import type { OpenClawSession } from './types';
 
 interface SessionMessage {
@@ -21,13 +22,25 @@ interface SessionMessage {
   };
 }
 
+interface ExecutionState {
+  current_agent_index: number;
+  total_agents: number;
+  agent_outputs: Array<{
+    agent_index: number;
+    agent_id: string;
+    agent_name: string;
+    output: string;
+    completed_at: string;
+    revision_count: number;
+  }>;
+  revision_count: number;
+  max_revisions: number;
+  planning_agents: any[]; // Reference to original spec
+}
+
 /**
  * Read session history from the JSONL file directly
  * Searches for the task ID in session files to find the right session
- * 
- * @param sessionKey - Format: agent:{gatewayAgentId}:{sessionId}
- * @param taskId - Optional task ID to search for
- * @param gatewayAgentId - Optional agent ID (extracted from sessionKey if not provided)
  */
 function readSessionHistory(sessionKey: string, taskId?: string, gatewayAgentId?: string): Array<{ role: string; content: string }> {
   const openclawDir = path.join(os.homedir(), '.openclaw');
@@ -99,21 +112,136 @@ function readSessionHistory(sessionKey: string, taskId?: string, gatewayAgentId?
 }
 
 /**
+ * Check if task is multi-agent based on planning_agents field
+ */
+function isMultiAgentTask(task: any): boolean {
+  if (!task.planning_agents) return false;
+  
+  try {
+    const planningAgents = JSON.parse(task.planning_agents);
+    return Array.isArray(planningAgents) && planningAgents.length > 1;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Initialize execution state for multi-agent task
+ */
+function initializeExecutionState(task: any): ExecutionState {
+  let planningAgents = [];
+  try {
+    planningAgents = JSON.parse(task.planning_agents || '[]');
+  } catch {
+    planningAgents = [];
+  }
+
+  return {
+    current_agent_index: 0,
+    total_agents: planningAgents.length,
+    agent_outputs: [],
+    revision_count: 0,
+    max_revisions: 3,
+    planning_agents: planningAgents,
+  };
+}
+
+/**
+ * Store agent output in execution state and determine next action
+ */
+async function handleMultiAgentCompletion(taskId: string, agentOutputText: string, agentInfo: any): Promise<void> {
+  const now = new Date().toISOString();
+  
+  // Get current task with execution state
+  const task = queryOne<{ 
+    execution_state?: string; 
+    planning_agents?: string;
+    assigned_agent_id?: string;
+  }>('SELECT execution_state, planning_agents, assigned_agent_id FROM tasks WHERE id = ?', [taskId]);
+  
+  if (!task) {
+    console.error(`[MULTI-AGENT] Task ${taskId} not found`);
+    return;
+  }
+
+  // Initialize or parse execution state
+  let executionState: ExecutionState;
+  if (task.execution_state) {
+    try {
+      executionState = JSON.parse(task.execution_state);
+    } catch {
+      executionState = initializeExecutionState(task);
+    }
+  } else {
+    executionState = initializeExecutionState(task);
+  }
+
+  // Add current agent output to execution state
+  const agentOutput = {
+    agent_index: executionState.current_agent_index,
+    agent_id: agentInfo.id,
+    agent_name: agentInfo.name,
+    output: agentOutputText,
+    completed_at: now,
+    revision_count: 0, // Reset for new agent
+  };
+
+  // Find existing output for this agent (for revision tracking)
+  const existingOutputIndex = executionState.agent_outputs.findIndex(
+    output => output.agent_index === executionState.current_agent_index
+  );
+
+  if (existingOutputIndex >= 0) {
+    // This is a revision - increment count
+    agentOutput.revision_count = executionState.agent_outputs[existingOutputIndex].revision_count + 1;
+    executionState.agent_outputs[existingOutputIndex] = agentOutput;
+  } else {
+    // New agent output
+    executionState.agent_outputs.push(agentOutput);
+  }
+
+  // Update execution state in database
+  run(
+    'UPDATE tasks SET execution_state = ?, updated_at = ? WHERE id = ?',
+    [JSON.stringify(executionState), now, taskId]
+  );
+
+  console.log(`[MULTI-AGENT] Stored output for agent ${agentInfo.name} (index ${executionState.current_agent_index})`);
+  
+  // Trigger Polly review instead of auto-progression
+  await triggerPollyReview(taskId, executionState, agentOutput);
+}
+
+/**
  * Attempt to capture the result from an agent's session history.
- * Called when task moves to "review" status as a fallback if no result was captured via activity.
+ * Enhanced to handle multi-agent orchestration with Polly review.
  */
 export async function captureResultFromSession(taskId: string): Promise<string | null> {
   try {
     // Check if task already has a result
-    const task = queryOne<{ result?: string }>('SELECT result FROM tasks WHERE id = ?', [taskId]);
-    if (task?.result) {
+    const task = queryOne<{ 
+      result?: string;
+      planning_agents?: string;
+      execution_state?: string;
+    }>('SELECT result, planning_agents, execution_state FROM tasks WHERE id = ?', [taskId]);
+    
+    if (!task) {
+      console.log(`[RESULT CAPTURE] Task ${taskId} not found`);
+      return null;
+    }
+
+    if (task.result) {
       console.log(`[RESULT CAPTURE] Task ${taskId} already has result, skipping session capture`);
       return task.result;
     }
 
-    // Find the active session for this task, including the agent's gateway_agent_id
+    // Check if this is a multi-agent task
+    const isMultiAgent = isMultiAgentTask(task);
+    console.log(`[RESULT CAPTURE] Task ${taskId} is ${isMultiAgent ? 'multi-agent' : 'single-agent'}`);
+
+    // Find the active session for this task
     const session = queryOne<OpenClawSession & { gateway_agent_id?: string }>(
-      `SELECT s.*, a.gateway_agent_id
+      `SELECT s.*, a.gateway_agent_id, a.name as agent_name, a.id as agent_id
        FROM openclaw_sessions s
        LEFT JOIN agents a ON s.agent_id = a.id
        WHERE s.task_id = ? OR (s.agent_id IN (
@@ -129,7 +257,7 @@ export async function captureResultFromSession(taskId: string): Promise<string |
       return null;
     }
 
-    // Read session history from file using the correct agent's sessions folder
+    // Read session history
     const history = readSessionHistory(session.openclaw_session_id, taskId, session.gateway_agent_id);
     console.log(`[RESULT CAPTURE] Found ${history.length} messages for task ${taskId}`);
     
@@ -138,15 +266,15 @@ export async function captureResultFromSession(taskId: string): Promise<string |
       return null;
     }
 
-    // Find the last assistant message containing deliverable block or TASK_COMPLETE
+    // Extract result from session history
     let result: string | null = null;
     
-    // Search backwards through messages
+    // Search backwards through messages for deliverable blocks or TASK_COMPLETE
     for (let i = history.length - 1; i >= 0; i--) {
       const msg = history[i];
       const content = msg.content;
       
-      // First priority: Look for ```deliverable block
+      // Priority: Look for ```deliverable block
       const deliverableMatch = content.match(/```deliverable\n([\s\S]*?)```/);
       if (deliverableMatch) {
         result = deliverableMatch[1].trim();
@@ -154,7 +282,7 @@ export async function captureResultFromSession(taskId: string): Promise<string |
         break;
       }
       
-      // Second priority: Look for ```output block (alternative format)
+      // Alternative: ```output block
       const outputMatch = content.match(/```output\n([\s\S]*?)```/);
       if (outputMatch) {
         result = outputMatch[1].trim();
@@ -162,7 +290,7 @@ export async function captureResultFromSession(taskId: string): Promise<string |
         break;
       }
       
-      // Third priority: Look for TASK_COMPLETE pattern
+      // TASK_COMPLETE pattern
       const taskCompleteMatch = content.match(/TASK_COMPLETE:\s*(.+?)(?:\n|$)/i);
       if (taskCompleteMatch) {
         result = taskCompleteMatch[1].trim();
@@ -170,9 +298,8 @@ export async function captureResultFromSession(taskId: string): Promise<string |
         break;
       }
       
-      // Fallback: If this is the last assistant message and it's substantial (>100 chars), use it
+      // Fallback: Last substantial message
       if (i === history.length - 1 && content.length > 100) {
-        // Truncate to first 2000 chars for storage
         result = content.slice(0, 2000);
         if (content.length > 2000) {
           result += '... [truncated]';
@@ -182,16 +309,50 @@ export async function captureResultFromSession(taskId: string): Promise<string |
       }
     }
 
-    // Store the result if found and complete the sub-agent workflow
-    if (result) {
-      const now = new Date().toISOString();
+    if (!result) {
+      console.log(`[RESULT CAPTURE] No result found in session history`);
+      return null;
+    }
+
+    const now = new Date().toISOString();
+    
+    // Get agent info for logging
+    const agent = queryOne<{ id: string; name: string }>(
+      'SELECT id, name FROM agents WHERE id = ?',
+      [session.agent_id]
+    );
+
+    if (!agent) {
+      console.error(`[RESULT CAPTURE] Agent not found for session ${session.id}`);
+      return null;
+    }
+
+    // **BRANCH: Multi-agent vs Single-agent handling**
+    if (isMultiAgent) {
+      // Multi-agent: Store in execution_state and trigger Polly review
+      await handleMultiAgentCompletion(taskId, result, agent);
       
-      // Store result on task
+      // Mark session as completed but don't auto-complete the task
+      run(
+        `UPDATE openclaw_sessions SET status = 'completed', ended_at = ? WHERE id = ?`,
+        [now, session.id]
+      );
+      
+      // Log activity but don't mark as completed yet
+      const activityId = crypto.randomUUID();
+      run(
+        `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [activityId, taskId, agent.id, 'updated', `${agent.name} completed their part: ${result.slice(0, 200)}${result.length > 200 ? '...' : ''}`, now]
+      );
+      
+      console.log(`[RESULT CAPTURE] Multi-agent task - stored output and triggered Polly review`);
+    } else {
+      // Single-agent: Original auto-completion behavior
       run(
         `UPDATE tasks SET result = ?, result_captured_at = ?, updated_at = ? WHERE id = ?`,
         [result, now, now, taskId]
       );
-      console.log(`[RESULT CAPTURE] Stored result for task ${taskId} from session history`);
       
       // Mark session as completed
       run(
@@ -199,36 +360,28 @@ export async function captureResultFromSession(taskId: string): Promise<string |
         [now, session.id]
       );
       
-      // Get agent info for activity logging
-      const agent = queryOne<{ id: string; name: string }>(
-        'SELECT id, name FROM agents WHERE id = ?',
-        [session.agent_id]
+      // Log completion activity
+      const activityId = crypto.randomUUID();
+      run(
+        `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [activityId, taskId, agent.id, 'completed', `${agent.name} completed: ${result.slice(0, 200)}${result.length > 200 ? '...' : ''}`, now]
       );
       
-      // Log completion activity
-      if (agent) {
-        const activityId = crypto.randomUUID();
-        run(
-          `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [activityId, taskId, agent.id, 'completed', `${agent.name} completed: ${result.slice(0, 200)}${result.length > 200 ? '...' : ''}`, now]
-        );
-        
-        // Update agent status back to standby
-        run(
-          `UPDATE agents SET status = 'standby', updated_at = ? WHERE id = ?`,
-          [now, agent.id]
-        );
-        
-        // Broadcast agent completed event for real-time UI updates
-        broadcast({
-          type: 'agent_completed',
-          payload: { taskId, agentId: agent.id, agentName: agent.name, sessionId: session.openclaw_session_id },
-        });
-        
-        console.log(`[RESULT CAPTURE] Marked ${agent.name} session as completed, agent now standby`);
-      }
+      console.log(`[RESULT CAPTURE] Single-agent task - auto-completed`);
     }
+
+    // Update agent status back to standby in both cases
+    run(
+      `UPDATE agents SET status = 'standby', updated_at = ? WHERE id = ?`,
+      [now, agent.id]
+    );
+    
+    // Broadcast agent completed event for real-time UI updates
+    broadcast({
+      type: 'agent_completed',
+      payload: { taskId, agentId: agent.id, agentName: agent.name, sessionId: session.openclaw_session_id },
+    });
 
     return result;
   } catch (err) {

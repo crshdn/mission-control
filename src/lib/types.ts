@@ -318,6 +318,7 @@ export interface SSEEvent {
   payload: Task | TaskActivity | TaskDeliverable | {
     taskId: string;
     sessionId: string;
+    agentId?: string;
     agentName?: string;
     summary?: string;
     deleted?: boolean;
