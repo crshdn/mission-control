@@ -165,7 +165,7 @@ Respond with ONLY valid JSON:
 - **Requirements:** Does it address the task requirements?
 - **Handoff:** ${isLastAgent ? 'Is this a suitable final deliverable?' : 'Does it provide good context for the next agent?'}
 - **Consistency:** Does it align with previous outputs and overall task goals?
-- **Revision History:** ${currentOutput.revision_count > 0 ? `This is revision ${currentOutput.revision_count + 1}. Has the agent addressed previous feedback?` : 'This is the agent\\'s first attempt.'}
+- **Revision History:** ${currentOutput.revision_count > 0 ? `This is revision ${currentOutput.revision_count + 1}. Has the agent addressed previous feedback?` : 'This is the agent\'s first attempt.'}
 
 Proceed with your review:`;
 

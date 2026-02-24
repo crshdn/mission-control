@@ -182,6 +182,34 @@ The system will automatically capture your deliverable and update the task statu
 
 If you need help or clarification, ask the orchestrator.`;
 
+    // Initialize execution_state for multi-agent tasks
+    // This MUST happen before dispatch so result-capture can track progress
+    if (task.planning_agents && !task.execution_state) {
+      try {
+        const planningAgents = JSON.parse(task.planning_agents);
+        if (Array.isArray(planningAgents) && planningAgents.length > 0) {
+          const executionState = {
+            current_agent_index: 0,
+            total_agents: planningAgents.length,
+            agent_outputs: [],
+            revision_count: 0,
+            max_revisions: 3,
+            planning_agents: planningAgents
+          };
+          
+          run(
+            'UPDATE tasks SET execution_state = ?, updated_at = ? WHERE id = ?',
+            [JSON.stringify(executionState), now, id]
+          );
+          
+          console.log(`[DISPATCH] Initialized execution_state for multi-agent task ${id} with ${planningAgents.length} agents`);
+        }
+      } catch (parseErr) {
+        console.warn(`[DISPATCH] Failed to parse planning_agents for task ${id}:`, parseErr);
+        // Continue with dispatch anyway - single-agent tasks don't need execution_state
+      }
+    }
+
     // Send message to agent's session using chat.send
     try {
       // Use sessionKey for routing to the agent's session
