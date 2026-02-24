@@ -90,12 +90,14 @@ function buildReviewContext(
   currentOutput: AgentOutput
 ): string {
   const planningAgents = executionState.planning_agents || [];
-  const currentAgent = planningAgents[currentOutput.agent_index] || { role: 'Unknown' };
+  const agentIndex = currentOutput?.agent_index ?? 0;
+  const currentAgent = planningAgents[agentIndex] || { role: 'Unknown' };
   const isLastAgent = executionState.current_agent_index === executionState.total_agents - 1;
   
-  // Build accumulated context from previous agents
-  const previousOutputs = executionState.agent_outputs
-    .filter(output => output.agent_index < currentOutput.agent_index)
+  // Build accumulated context from previous agents (defensive: handle undefined arrays)
+  const agentOutputs = executionState.agent_outputs || [];
+  const previousOutputs = agentOutputs
+    .filter(output => output.agent_index < agentIndex)
     .map(output => `### ${output.agent_name} Output:\n${output.output}`)
     .join('\n\n');
 
