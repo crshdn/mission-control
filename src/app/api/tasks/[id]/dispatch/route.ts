@@ -171,8 +171,10 @@ If you need help or clarification, ask the orchestrator.`;
     // Send message to agent's session using chat.send
     try {
       // Use sessionKey for routing to the agent's session
-      // Format: agent:main:{openclaw_session_id}
-      const sessionKey = `agent:main:${session.openclaw_session_id}`;
+      // Format: agent:{gateway_agent_id}:{openclaw_session_id}
+      // The gateway_agent_id routes to the correct OpenClaw agent (e.g., "researcher" for Vale)
+      const gatewayAgentId = agent.gateway_agent_id || 'main';
+      const sessionKey = `agent:${gatewayAgentId}:${session.openclaw_session_id}`;
       await client.call('chat.send', {
         sessionKey,
         message: taskMessage,

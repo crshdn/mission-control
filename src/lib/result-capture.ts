@@ -22,10 +22,32 @@ interface SessionMessage {
 /**
  * Read session history from the JSONL file directly
  * Searches for the task ID in session files to find the right session
+ * 
+ * @param sessionKey - Format: agent:{gatewayAgentId}:{sessionId}
+ * @param taskId - Optional task ID to search for
+ * @param gatewayAgentId - Optional agent ID (extracted from sessionKey if not provided)
  */
-function readSessionHistory(sessionKey: string, taskId?: string): Array<{ role: string; content: string }> {
+function readSessionHistory(sessionKey: string, taskId?: string, gatewayAgentId?: string): Array<{ role: string; content: string }> {
   const openclawDir = path.join(os.homedir(), '.openclaw');
-  const sessionsDir = path.join(openclawDir, 'agents', 'main', 'sessions');
+  
+  // Extract agent ID from sessionKey if not provided
+  // Format: agent:{gatewayAgentId}:{sessionId}
+  if (!gatewayAgentId && sessionKey.startsWith('agent:')) {
+    const parts = sessionKey.split(':');
+    if (parts.length >= 2) {
+      gatewayAgentId = parts[1];
+    }
+  }
+  
+  // Default to 'main' if we can't determine the agent
+  const agentDir = gatewayAgentId || 'main';
+  const sessionsDir = path.join(openclawDir, 'agents', agentDir, 'sessions');
+  
+  // Check if directory exists
+  if (!fs.existsSync(sessionsDir)) {
+    console.log(`[RESULT CAPTURE] Sessions directory not found: ${sessionsDir}`);
+    return [];
+  }
   
   // Find session files - look for task ID or session key
   const files = fs.readdirSync(sessionsDir)
@@ -87,13 +109,15 @@ export async function captureResultFromSession(taskId: string): Promise<string |
       return task.result;
     }
 
-    // Find the active session for this task
-    const session = queryOne<OpenClawSession>(
-      `SELECT * FROM openclaw_sessions 
-       WHERE task_id = ? OR (agent_id IN (
+    // Find the active session for this task, including the agent's gateway_agent_id
+    const session = queryOne<OpenClawSession & { gateway_agent_id?: string }>(
+      `SELECT s.*, a.gateway_agent_id
+       FROM openclaw_sessions s
+       LEFT JOIN agents a ON s.agent_id = a.id
+       WHERE s.task_id = ? OR (s.agent_id IN (
          SELECT assigned_agent_id FROM tasks WHERE id = ?
        ))
-       ORDER BY created_at DESC
+       ORDER BY s.created_at DESC
        LIMIT 1`,
       [taskId, taskId]
     );
@@ -103,8 +127,8 @@ export async function captureResultFromSession(taskId: string): Promise<string |
       return null;
     }
 
-    // Read session history from file
-    const history = readSessionHistory(session.openclaw_session_id, taskId);
+    // Read session history from file using the correct agent's sessions folder
+    const history = readSessionHistory(session.openclaw_session_id, taskId, session.gateway_agent_id);
     console.log(`[RESULT CAPTURE] Found ${history.length} messages for task ${taskId}`);
     
     if (!history || history.length === 0) {

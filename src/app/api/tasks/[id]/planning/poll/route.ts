@@ -26,26 +26,27 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
   // Wrap all database operations in a transaction for atomicity
   // Set status to 'pending_dispatch' first - don't mark as complete until dispatch succeeds
   const transaction = db.transaction(() => {
-    // Create the agents in the workspace FIRST and track first agent for auto-assign
+    // Look up existing agents by name - DO NOT create new ones
+    // Polly returns agent names like "Mason", "Scout" - we need to find the existing agent records
     if (parsed.agents && parsed.agents.length > 0) {
-      const insertAgent = db.prepare(`
-        INSERT INTO agents (id, workspace_id, name, role, description, avatar_emoji, status, soul_md, created_at, updated_at)
-        VALUES (?, (SELECT workspace_id FROM tasks WHERE id = ?), ?, ?, ?, ?, 'standby', ?, datetime('now'), datetime('now'))
-      `);
-
+      const task = db.prepare('SELECT workspace_id FROM tasks WHERE id = ?').get(taskId) as { workspace_id: string } | undefined;
+      
       for (const agent of parsed.agents) {
-        const agentId = crypto.randomUUID();
-        if (!firstAgentId) firstAgentId = agentId;
+        // Look up by name (case-insensitive) - agents were imported from OpenClaw gateway
+        const existingAgent = db.prepare(`
+          SELECT id, gateway_agent_id FROM agents 
+          WHERE LOWER(name) = LOWER(?) 
+          AND (workspace_id = ? OR workspace_id = 'default')
+          AND gateway_agent_id IS NOT NULL
+          LIMIT 1
+        `).get(agent.name, task?.workspace_id || 'default') as { id: string; gateway_agent_id: string } | undefined;
 
-        insertAgent.run(
-          agentId,
-          taskId,
-          agent.name,
-          agent.role,
-          agent.instructions || '',
-          agent.avatar_emoji || '🤖',
-          agent.soul_md || ''
-        );
+        if (existingAgent) {
+          if (!firstAgentId) firstAgentId = existingAgent.id;
+          console.log(`[Planning] Found existing agent "${agent.name}" -> ${existingAgent.id} (gateway: ${existingAgent.gateway_agent_id})`);
+        } else {
+          console.warn(`[Planning] Agent "${agent.name}" not found in database - skipping (agent must be imported from gateway first)`);
+        }
       }
     }
 
