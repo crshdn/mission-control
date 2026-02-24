@@ -1,9 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, ArrowRight, Folder, Users, CheckSquare, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, ArrowRight, Folder, Users, CheckSquare, Trash2, AlertTriangle, Briefcase, Building2, Rocket, Lightbulb, Target, BarChart3, Wrench, Star, Home, Palette, Zap } from 'lucide-react';
 import Link from 'next/link';
 import type { WorkspaceStats } from '@/lib/types';
+
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  folder: Folder,
+  briefcase: Briefcase,
+  building: Building2,
+  rocket: Rocket,
+  lightbulb: Lightbulb,
+  target: Target,
+  chart: BarChart3,
+  wrench: Wrench,
+  star: Star,
+  home: Home,
+  palette: Palette,
+  zap: Zap,
+};
 
 export function WorkspaceDashboard() {
   const [workspaces, setWorkspaces] = useState<WorkspaceStats[]>([]);
@@ -32,8 +47,8 @@ export function WorkspaceDashboard() {
     return (
       <div className="min-h-screen bg-apple-bg flex items-center justify-center">
         <div className="text-center animate-apple-fade-in">
-          <div className="text-5xl mb-apple-4 animate-pulse opacity-60">🦞</div>
-          <p className="apple-text-secondary text-apple-body">Loading workspaces...</p>
+          <div className="w-8 h-8 mb-apple-4 mx-auto border-2 border-apple-accent border-t-transparent rounded-full animate-spin" />
+          <p className="text-apple-text-secondary text-apple-body">Loading workspaces...</p>
         </div>
       </div>
     );
@@ -46,8 +61,10 @@ export function WorkspaceDashboard() {
         <div className="max-w-7xl mx-auto px-apple-6 py-apple-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-apple-3">
-              <span className="text-3xl">🦞</span>
-              <h1 className="text-apple-title-2 apple-text-primary font-semibold">Mission Control</h1>
+              <div className="w-8 h-8 bg-apple-accent rounded-apple-md flex items-center justify-center">
+                <Target className="w-5 h-5 text-white" />
+              </div>
+              <h1 className="text-apple-title-2 text-apple-text font-semibold">Mission Control</h1>
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
@@ -166,8 +183,11 @@ function WorkspaceCard({ workspace, onDelete }: { workspace: WorkspaceStats; onD
           {/* Card content */}
           <div className="flex items-start justify-between mb-apple-6">
             <div className="flex items-center gap-apple-4">
-              <div className="w-12 h-12 rounded-apple-lg bg-apple-bg-tertiary flex items-center justify-center text-2xl">
-                {workspace.icon}
+              <div className="w-12 h-12 rounded-apple-lg bg-apple-bg-tertiary flex items-center justify-center">
+                {(() => {
+                  const IconComponent = iconMap[workspace.icon] || Folder;
+                  return <IconComponent className="w-6 h-6 text-apple-text-secondary" />;
+                })()}
               </div>
               <div>
                 <h3 className="text-apple-headline font-semibold group-hover:text-apple-accent transition-colors">
@@ -238,8 +258,9 @@ function WorkspaceCard({ workspace, onDelete }: { workspace: WorkspaceStats; onD
             <p className="text-apple-body apple-text-secondary mb-apple-8">
               Are you sure you want to delete <strong className="apple-text-primary">{workspace.name}</strong>? 
               {workspace.taskCounts.total > 0 && (
-                <span className="block mt-apple-2 text-red-600 font-medium">
-                  ⚠️ This workspace has {workspace.taskCounts.total} task(s). Delete them first.
+                <span className="mt-apple-2 text-apple-red font-medium flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  This workspace has {workspace.taskCounts.total} task(s). Delete them first.
                 </span>
               )}
             </p>
@@ -268,11 +289,11 @@ function WorkspaceCard({ workspace, onDelete }: { workspace: WorkspaceStats; onD
 
 function CreateWorkspaceModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState('');
-  const [icon, setIcon] = useState('📁');
+  const [icon, setIcon] = useState('folder');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const icons = ['📁', '💼', '🏢', '🚀', '💡', '🎯', '📊', '🔧', '🌟', '🏠', '🎨', '⚡'];
+  const icons = Object.keys(iconMap);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -312,22 +333,25 @@ function CreateWorkspaceModal({ onClose, onCreated }: { onClose: () => void; onC
         <form onSubmit={handleSubmit} className="p-apple-6 space-y-apple-6">
           {/* Icon selector */}
           <div>
-            <label className="block text-apple-callout font-medium mb-apple-3 apple-text-primary">Icon</label>
+            <label className="block text-apple-callout font-medium mb-apple-3 text-apple-text">Icon</label>
             <div className="grid grid-cols-6 gap-apple-2">
-              {icons.map((i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setIcon(i)}
-                  className={`aspect-square rounded-apple-md text-xl flex items-center justify-center transition-all duration-200 apple-button ${
-                    icon === i 
-                      ? 'bg-apple-accent/10 border-2 border-apple-accent shadow-apple-sm' 
-                      : 'bg-apple-bg-tertiary border border-apple-border hover:border-apple-accent/50 hover:bg-apple-bg-secondary'
-                  }`}
-                >
-                  {i}
-                </button>
-              ))}
+              {icons.map((i) => {
+                const IconComponent = iconMap[i];
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setIcon(i)}
+                    className={`aspect-square rounded-apple-md flex items-center justify-center transition-all duration-200 apple-button ${
+                      icon === i 
+                        ? 'bg-apple-accent/10 border-2 border-apple-accent shadow-apple-sm' 
+                        : 'bg-apple-bg-tertiary border border-apple-border hover:border-apple-accent/50 hover:bg-apple-bg-secondary'
+                    }`}
+                  >
+                    <IconComponent className={`w-5 h-5 ${icon === i ? 'text-apple-accent' : 'text-apple-text-secondary'}`} />
+                  </button>
+                );
+              })}
             </div>
           </div>
 
