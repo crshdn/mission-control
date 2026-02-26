@@ -176,6 +176,9 @@ async function checkTaskForCompletion(taskId: string, agentId: string): Promise<
       // Only consider messages after task dispatch
       if (entryTime < taskDispatchTime) continue;
       
+      // Only check assistant messages (not dispatch instructions)
+      if (entry.message?.role !== 'assistant') continue;
+      
       // Check if this message contains TASK_COMPLETE
       const msgContent = JSON.stringify(entry.message?.content || '');
       if (msgContent.includes('TASK_COMPLETE')) {

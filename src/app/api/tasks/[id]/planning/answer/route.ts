@@ -79,7 +79,15 @@ If planning is complete, respond with JSON:
     "approach": "How to execute",
     "steps": ["Step 1", "Step 2"]
   }
-}`;
+}
+
+IMPORTANT: The "agents" array must ALWAYS contain at least one agent. Every task needs someone to execute it. 
+- For code/building tasks: Use Mason (Builder)
+- For research tasks: Use Vale (Researcher)  
+- For design tasks: Use Riff (Creative)
+- For marketing tasks: Use Scout (Marketing)
+- For finance tasks: Use Ledger (Finance)
+Never return an empty agents array.`;
 
     // Parse existing messages
     const messages = task.planning_messages ? JSON.parse(task.planning_messages) : [];

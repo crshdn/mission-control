@@ -1,0 +1,116 @@
+=== Atelier Tools Auto-Builder ===
+Starting 2026-02-24T22:10:57.815Z
+20 tools to build
+
+
+[1/20] Word Counter Tool
+──────────────────────────────────────────────────
+  Task: f5143e7d-7aab-438a-b6a0-6fa3f337b22f
+  Starting planning for Word Counter Tool...
+  Q: What additional features should the Word Counter include bey... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[2/20] Lorem Ipsum Generator
+──────────────────────────────────────────────────
+  Task: 2907ddbd-0773-4750-9912-79d8e3ff7293
+  Starting planning for Lorem Ipsum Generator...
+  Q: What style of placeholder text should the Lorem Ipsum Genera... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[SKIP] Case Converter - already built
+
+[3/20] Text Reverser
+──────────────────────────────────────────────────
+  Task: a5eca109-0191-4978-ba7f-6b3edbbb5ae3
+  Starting planning for Text Reverser...
+  Q: What reversal modes should the Text Reverser support?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[4/20] Duplicate Line Remover
+──────────────────────────────────────────────────
+  Task: 1da5e0e4-0ba9-4584-aeef-7aa77694ac4e
+  Starting planning for Duplicate Line Remover...
+  Q: How should the tool handle case sensitivity when detecting d... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[5/20] Line Sorter
+──────────────────────────────────────────────────
+  Task: 45a01e6e-b33b-484b-8d32-660012ebd77b
+  Starting planning for Line Sorter...
+  Q: Which sorting methods should the Line Sorter support?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[SKIP] JSON Formatter - already built
+
+[6/20] JSON to CSV Converter
+──────────────────────────────────────────────────
+  Task: e739190f-2a40-445b-a183-329ea079d462
+  Starting planning for JSON to CSV Converter...
+  Q: What type of JSON input should the converter primarily handl... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[7/20] CSV to JSON Converter
+──────────────────────────────────────────────────
+  Task: 952671e4-07e4-4169-8342-e8c9193dd845
+  Starting planning for CSV to JSON Converter...
+  Q: How should users input their CSV data?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[8/20] Base64 Encoder/Decoder
+──────────────────────────────────────────────────
+  Task: c63aa33a-7109-41a8-99f1-e924fa2e6b23
+  Starting planning for Base64 Encoder/Decoder...
+  Q: There's already a 'base64-encoder' tool in the builds direct... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[9/20] URL Encoder/Decoder
+──────────────────────────────────────────────────
+  Task: 2fe7f599-b0c0-449e-950a-c502ae9f86f1
+  Starting planning for URL Encoder/Decoder...
+  Q: What encoding modes should the URL Encoder/Decoder support?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[SKIP] HTML Entity Encoder - already built
+
+[SKIP] Markdown Preview - already built
+
+[SKIP] Hash Generator - already built
+
+[10/20] UUID Generator
+──────────────────────────────────────────────────
+  Task: 6f37b416-06be-4441-8bcd-bb7ba8e9e620
+  Starting planning for UUID Generator...
+  Q: Which UUID versions should the generator support?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[SKIP] Password Generator - already built
+
+[11/20] Color Picker
+──────────────────────────────────────────────────
+  Task: 41ba9dc7-96ea-4e49-9f9b-514a35bdc4bd
+  Starting planning for Color Picker...
+  Q: What should be the PRIMARY input method for selecting colors... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[12/20] Gradient Generator
+──────────────────────────────────────────────────
+  Task: 25ae980a-9962-4e3f-affa-155319707c4a
+  Starting planning for Gradient Generator...
+  Q: What gradient types should this tool support?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[SKIP] Box Shadow Generator - already built
+
+[13/20] Timestamp Converter
+──────────────────────────────────────────────────
+  Task: 3a675526-6244-4c2a-989e-54e146cfdebe
+  Starting planning for Timestamp Converter...
+  Q: What timestamp formats should the converter support?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+==================================================
+Finished 2026-02-24T22:15:00.885Z
+Completed: 0
+Skipped (already built): 7
+Failed: 13
+Total: 20/20

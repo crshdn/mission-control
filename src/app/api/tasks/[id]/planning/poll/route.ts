@@ -102,16 +102,16 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
     }
   }
 
-  // Check if task is already assigned (idempotency - prevents duplicate dispatches from multiple polls)
+  // Check if task was already dispatched (idempotency - prevents duplicate dispatches from multiple polls)
+  // Use execution_state as the indicator - it's only set by the dispatch endpoint after successful dispatch
   let skipDispatch = false;
   if (firstAgentId) {
-    const currentTask = queryOne<{ assigned_agent_id?: string }>(
-      'SELECT assigned_agent_id FROM tasks WHERE id = ?',
+    const currentTask = queryOne<{ execution_state?: string }>(
+      'SELECT execution_state FROM tasks WHERE id = ?',
       [taskId]
     );
-    if (currentTask?.assigned_agent_id) {
-      console.log('[Planning Poll] Task already assigned to', currentTask.assigned_agent_id, ', skipping dispatch');
-      firstAgentId = currentTask.assigned_agent_id;
+    if (currentTask?.execution_state) {
+      console.log('[Planning Poll] Task already dispatched (has execution_state), skipping dispatch');
       dispatchError = null;
       skipDispatch = true; // Skip the HTTP dispatch call, but still mark as complete
     }
@@ -119,7 +119,9 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
 
   // Trigger dispatch - use localhost since we're in the same process
   if (firstAgentId && !skipDispatch) {
-    const dispatchUrl = `http://localhost:${process.env.PORT || 3000}/api/tasks/${taskId}/dispatch`;
+    // MC runs on port 4000 by default (set in package.json dev script)
+    const port = process.env.PORT || process.env.MC_PORT || '4000';
+    const dispatchUrl = `http://localhost:${port}/api/tasks/${taskId}/dispatch`;
     console.log(`[Planning Poll] Triggering dispatch: ${dispatchUrl}`);
 
     try {
@@ -266,10 +268,82 @@ export async function GET(
             hasStatus: !!parsed?.status,
             hasQuestion: !!parsed?.question,
             hasOptions: !!parsed?.options,
+            hasSkip: !!(parsed as any)?.skip,
             status: parsed?.status,
             question: parsed?.question?.substring(0, 50),
             rawPreview: msg.content?.substring(0, 200)
           });
+
+          // Handle skip response from Polly
+          // Format: {"skip": true, "reason": "...", "dispatch_to": "Mason"}
+          if (parsed && (parsed as any).skip === true) {
+            const skipData = parsed as { skip: boolean; reason?: string; dispatch_to?: string };
+            console.log('[Planning Poll] Skip requested:', skipData.reason, '-> dispatch to:', skipData.dispatch_to);
+
+            // Look up agent by name
+            let agentId: string | null = null;
+            if (skipData.dispatch_to) {
+              const agent = queryOne<{ id: string }>(
+                `SELECT id FROM agents WHERE LOWER(name) = LOWER(?) AND gateway_agent_id IS NOT NULL LIMIT 1`,
+                [skipData.dispatch_to]
+              );
+              if (agent) {
+                agentId = agent.id;
+                console.log('[Planning Poll] Found agent:', skipData.dispatch_to, '->', agentId);
+              } else {
+                console.warn('[Planning Poll] Agent not found:', skipData.dispatch_to);
+              }
+            }
+
+            // Update task - mark planning complete, assign agent
+            run(`
+              UPDATE tasks 
+              SET planning_complete = 1,
+                  planning_messages = ?,
+                  assigned_agent_id = ?,
+                  status = ?
+              WHERE id = ?
+            `, [JSON.stringify(messages), agentId, agentId ? 'assigned' : 'inbox', taskId]);
+
+            // Dispatch if we have an agent
+            let dispatchError: string | null = null;
+            if (agentId) {
+              const port = process.env.PORT || process.env.MC_PORT || '4000';
+              const dispatchUrl = `http://localhost:${port}/api/tasks/${taskId}/dispatch`;
+              try {
+                const dispatchRes = await fetch(dispatchUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                });
+                if (dispatchRes.ok) {
+                  console.log('[Planning Poll] Skip dispatch successful');
+                } else {
+                  dispatchError = `Dispatch failed: ${await dispatchRes.text()}`;
+                  console.error('[Planning Poll]', dispatchError);
+                }
+              } catch (err) {
+                dispatchError = `Dispatch error: ${(err as Error).message}`;
+                console.error('[Planning Poll]', dispatchError);
+              }
+            }
+
+            // Broadcast update
+            const updatedTask = queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [taskId]);
+            if (updatedTask) {
+              broadcast({ type: 'task_updated', payload: updatedTask });
+            }
+
+            return NextResponse.json({
+              hasUpdates: true,
+              complete: true,
+              skipped: true,
+              skipReason: skipData.reason,
+              dispatchedTo: skipData.dispatch_to,
+              autoDispatched: !!agentId,
+              dispatchError,
+              messages,
+            });
+          }
 
           if (parsed && parsed.status === 'complete') {
             // Handle completion

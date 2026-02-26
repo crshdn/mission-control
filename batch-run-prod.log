@@ -1,0 +1,136 @@
+=== Atelier Tools Auto-Builder ===
+Starting 2026-02-24T21:38:34.376Z
+20 tools to build
+
+
+[SKIP] Word Counter Tool - already built
+
+[SKIP] Lorem Ipsum Generator - already built
+
+[SKIP] Case Converter - already built
+
+[1/20] Text Reverser
+──────────────────────────────────────────────────
+  Task: 731bca37-91e1-4b28-aedb-7692ea0e1a4e
+  Starting planning for Text Reverser...
+  Q: What reversal modes should the Text Reverser support?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[2/20] Duplicate Line Remover
+──────────────────────────────────────────────────
+  Task: a636f47f-df7b-4d9c-b5bf-46bde452cf10
+  Starting planning for Duplicate Line Remover...
+  Q: How should duplicate detection handle case sensitivity?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[3/20] Line Sorter
+──────────────────────────────────────────────────
+  Task: 11724410-36d0-4cea-8943-f6b7c3321d11
+  Starting planning for Line Sorter...
+  Q: What sorting options should the Line Sorter include?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[4/20] JSON Formatter
+──────────────────────────────────────────────────
+  Task: 76bd4b70-e0ad-4a71-9054-88b24b2f244f
+  Starting planning for JSON Formatter...
+  Q: What formatting features should the JSON Formatter include?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[5/20] JSON to CSV Converter
+──────────────────────────────────────────────────
+  Task: aed9dcd3-2fe5-47a6-8ba7-34d16eb7045b
+  Starting planning for JSON to CSV Converter...
+  Q: How should the tool handle nested JSON objects and arrays?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[6/20] CSV to JSON Converter
+──────────────────────────────────────────────────
+  Task: 0420723b-733e-4c9d-aebc-07e7b5795ee0
+  Starting planning for CSV to JSON Converter...
+  Q: What JSON output format should the converter produce?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[7/20] Base64 Encoder/Decoder
+──────────────────────────────────────────────────
+  Task: bcbd44ca-1a0a-41df-95a4-0bcae84d7628
+  Starting planning for Base64 Encoder/Decoder...
+  Q: What encoding modes should this Base64 tool support?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[8/20] URL Encoder/Decoder
+──────────────────────────────────────────────────
+  Task: d438a995-17d6-425b-9836-30f1e2f5d758
+  Starting planning for URL Encoder/Decoder...
+  Q: What encoding mode should the tool support?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[9/20] HTML Entity Encoder
+──────────────────────────────────────────────────
+  Task: 853ac6dc-8f92-40a2-815d-154f928d729a
+  Starting planning for HTML Entity Encoder...
+  Q: What encoding scope should the HTML Entity Encoder support?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[10/20] Markdown Preview
+──────────────────────────────────────────────────
+  Task: 6a66498a-7973-4ded-b9a3-9122648d52c0
+  Starting planning for Markdown Preview...
+  Q: What layout should the Markdown Preview use?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[11/20] Hash Generator
+──────────────────────────────────────────────────
+  Task: 1915d7df-48a6-48d3-9069-f8d744e5e5c7
+  Starting planning for Hash Generator...
+  Q: Which hash algorithms should the tool support?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[12/20] UUID Generator
+──────────────────────────────────────────────────
+  Task: 3db3e339-f225-4586-b9cc-f1e30eada769
+  Starting planning for UUID Generator...
+  Q: How many UUIDs should users be able to generate at once?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[13/20] Password Generator
+──────────────────────────────────────────────────
+  Task: 4ebc7caa-9cb7-4959-b235-b68f454da062
+  Starting planning for Password Generator...
+  Q: What type of password generation should this tool support?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[14/20] Color Picker
+──────────────────────────────────────────────────
+  Task: 04f5d13e-e2bb-47f7-9c15-7509f548fc5f
+  Starting planning for Color Picker...
+  Q: What should be the primary way users pick colors?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[15/20] Gradient Generator
+──────────────────────────────────────────────────
+  Task: 476e118e-f7e1-4e5d-a879-987f4a5f9f47
+  Starting planning for Gradient Generator...
+  Q: What types of CSS gradients should this tool support?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[16/20] Box Shadow Generator
+──────────────────────────────────────────────────
+  Task: 69758d33-c7ac-4115-8d63-c6349008d7be
+  Starting planning for Box Shadow Generator...
+  Q: How many box shadows should users be able to create at once?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+[17/20] Timestamp Converter
+──────────────────────────────────────────────────
+  Task: 8198c0c4-faf4-4092-ab0e-8c29354c0b4a
+  Starting planning for Timestamp Converter...
+  Q: What timestamp formats should the converter support?... → A
+  ❌ ERROR: API error 500: Internal Server Error
+
+==================================================
+Finished 2026-02-24T21:42:59.333Z
+Completed: 0
+Skipped (already built): 3
+Failed: 17
+Total: 20/20
