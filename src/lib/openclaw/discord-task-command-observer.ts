@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { OpenClawClient } from '@/lib/openclaw/client';
-import { getDiscordTaskCommandConfig } from '@/lib/config';
+import { getDiscordTaskCommandConfig, getMissionControlUrl } from '@/lib/config';
 import { queryOne, run, transaction } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import type { Agent, Task, TaskPriority } from '@/lib/types';
@@ -142,6 +142,32 @@ function createTaskFromDiscordCommand(input: {
      LIMIT 1`,
     [input.workspaceId],
   );
+  const assignee =
+    queryOne<Agent>(
+      `SELECT *
+       FROM agents
+       WHERE workspace_id = ?
+         AND is_master = 0
+         AND status != 'offline'
+       ORDER BY
+         CASE status WHEN 'standby' THEN 0 WHEN 'working' THEN 1 ELSE 2 END,
+         datetime(updated_at) DESC
+       LIMIT 1`,
+      [input.workspaceId],
+    ) ||
+    queryOne<Agent>(
+      `SELECT *
+       FROM agents
+       WHERE workspace_id = ?
+         AND is_master = 1
+         AND status != 'offline'
+       ORDER BY datetime(updated_at) DESC
+       LIMIT 1`,
+      [input.workspaceId],
+    ) ||
+    null;
+
+  const initialStatus = assignee ? 'assigned' : 'inbox';
 
   transaction(() => {
     run(
@@ -151,9 +177,9 @@ function createTaskFromDiscordCommand(input: {
         taskId,
         input.title,
         input.description,
-        'inbox',
+        initialStatus,
         input.priority,
-        null,
+        assignee?.id || null,
         creator?.id || null,
         input.workspaceId,
         'default',
@@ -175,6 +201,33 @@ function createTaskFromDiscordCommand(input: {
         now,
       ],
     );
+
+    if (assignee) {
+      run(
+        `INSERT INTO events (id, type, task_id, agent_id, message, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          uuidv4(),
+          'task_assigned',
+          taskId,
+          assignee.id,
+          `"${input.title}" assigned to ${assignee.name} (Discord command)`,
+          now,
+        ],
+      );
+
+      run(
+        `INSERT INTO events (id, type, task_id, message, created_at)
+         VALUES (?, ?, ?, ?, ?)`,
+        [
+          uuidv4(),
+          'task_status_changed',
+          taskId,
+          `Task "${input.title}" moved to assigned`,
+          now,
+        ],
+      );
+    }
   });
 
   const createdTask = queryOne<Task>(
@@ -202,6 +255,7 @@ function createTaskFromDiscordCommand(input: {
   logAudit('success', 'Task created from Discord command', {
     task_id: createdTask.id,
     title: createdTask.title,
+    assigned_agent_id: createdTask.assigned_agent_id,
     session_key: input.sessionKey,
     sender_id: input.senderId,
     workspace_id: input.workspaceId,
@@ -323,10 +377,34 @@ export function attachDiscordTaskCommandObserver(client: OpenClawClient): void {
         sessionKey,
       });
 
+      if (created.assigned_agent_id) {
+        const dispatchUrl = `${getMissionControlUrl()}/api/tasks/${created.id}/dispatch`;
+        fetch(dispatchUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+          .then(async (response) => {
+            if (!response.ok) {
+              const details = await response.text();
+              logAudit('failure', 'Auto-dispatch for Discord-created task failed', {
+                task_id: created.id,
+                status_code: response.status,
+                response_body: details.slice(0, 600),
+              });
+            }
+          })
+          .catch((error) => {
+            logAudit('failure', 'Auto-dispatch request failed', {
+              task_id: created.id,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
+      }
+
       void sendAck(
         client,
         sessionKey,
-        `✅ Mission Control task created: "${created.title}" (id: ${created.id}, status: ${created.status}).`,
+        `✅ Mission Control task created: "${created.title}" (id: ${created.id}, status: ${created.status})${created.assigned_agent_id ? ' and auto-dispatched.' : '.'}`,
         fingerprint,
       );
     } catch (error) {
