@@ -301,6 +301,19 @@ export interface AgentWithOpenClaw extends Agent {
   openclawSession?: OpenClawSession | null;
 }
 
+// View mode
+export type ViewMode = 'fleet' | 'kanban';
+
+// Agent role templates for quick creation
+export interface AgentRoleTemplate {
+  id: string;
+  name: string;
+  role: string;
+  avatar_emoji: string;
+  description: string;
+  soul_md: string;
+}
+
 // Real-time SSE event types
 export type SSEEventType =
   | 'task_updated'
@@ -309,11 +322,12 @@ export type SSEEventType =
   | 'activity_logged'
   | 'deliverable_added'
   | 'agent_spawned'
-  | 'agent_completed';
+  | 'agent_completed'
+  | 'agent_updated';
 
 export interface SSEEvent {
   type: SSEEventType;
-  payload: Task | TaskActivity | TaskDeliverable | {
+  payload: Task | Agent | TaskActivity | TaskDeliverable | {
     taskId: string;
     sessionId: string;
     agentName?: string;

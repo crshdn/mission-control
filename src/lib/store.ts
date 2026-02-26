@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { debug } from './debug';
-import type { Agent, Task, Conversation, Message, Event, TaskStatus, OpenClawSession } from './types';
+import type { Agent, Task, Conversation, Message, Event, TaskStatus, OpenClawSession, ViewMode } from './types';
 
 interface MissionControlState {
   // Data
@@ -18,6 +18,7 @@ interface MissionControlState {
   openclawMessages: Message[]; // Messages from OpenClaw (displayed alongside regular messages)
 
   // UI State
+  viewMode: ViewMode;
   selectedAgent: Agent | null;
   selectedTask: Task | null;
   isOnline: boolean;
@@ -37,6 +38,7 @@ interface MissionControlState {
   setSelectedTask: (task: Task | null) => void;
   setIsOnline: (online: boolean) => void;
   setIsLoading: (loading: boolean) => void;
+  setViewMode: (mode: ViewMode) => void;
   setSelectedBusiness: (business: string) => void;
 
   // Task mutations
@@ -64,6 +66,7 @@ export const useMissionControl = create<MissionControlState>((set) => ({
   messages: [],
   agentOpenClawSessions: {},
   openclawMessages: [],
+  viewMode: 'fleet',
   selectedAgent: null,
   selectedTask: null,
   isOnline: false,
@@ -94,6 +97,7 @@ export const useMissionControl = create<MissionControlState>((set) => ({
     set({ isOnline: online });
   },
   setIsLoading: (loading) => set({ isLoading: loading }),
+  setViewMode: (mode) => set({ viewMode: mode }),
   setSelectedBusiness: (business) => set({ selectedBusiness: business }),
 
   // Task mutations

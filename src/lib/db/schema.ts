@@ -171,6 +171,25 @@ CREATE TABLE IF NOT EXISTS task_deliverables (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
+-- Agent heartbeats (daemon health tracking)
+CREATE TABLE IF NOT EXISTS agent_heartbeats (
+  agent_id TEXT PRIMARY KEY REFERENCES agents(id) ON DELETE CASCADE,
+  last_seen TEXT NOT NULL DEFAULT (datetime('now')),
+  session_alive INTEGER DEFAULT 1,
+  consecutive_failures INTEGER DEFAULT 0,
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Scheduled job runs (daemon scheduler dedup)
+CREATE TABLE IF NOT EXISTS scheduled_job_runs (
+  id TEXT PRIMARY KEY,
+  job_id TEXT NOT NULL,
+  fired_at TEXT NOT NULL,
+  task_id TEXT REFERENCES tasks(id),
+  status TEXT DEFAULT 'fired',
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_agent_id);
@@ -183,4 +202,6 @@ CREATE INDEX IF NOT EXISTS idx_activities_task ON task_activities(task_id, creat
 CREATE INDEX IF NOT EXISTS idx_deliverables_task ON task_deliverables(task_id);
 CREATE INDEX IF NOT EXISTS idx_openclaw_sessions_task ON openclaw_sessions(task_id);
 CREATE INDEX IF NOT EXISTS idx_planning_questions_task ON planning_questions(task_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_heartbeats_last_seen ON agent_heartbeats(last_seen);
+CREATE INDEX IF NOT EXISTS idx_job_runs_job_fired ON scheduled_job_runs(job_id, fired_at DESC);
 `;

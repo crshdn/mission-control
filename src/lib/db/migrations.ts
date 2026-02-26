@@ -202,6 +202,39 @@ const migrations: Migration[] = [
         console.log('[Migration 007] Added gateway_agent_id to agents');
       }
     }
+  },
+  {
+    id: '008',
+    name: 'add_daemon_tables',
+    up: (db) => {
+      console.log('[Migration 008] Adding daemon tables (agent_heartbeats, scheduled_job_runs)...');
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS agent_heartbeats (
+          agent_id TEXT PRIMARY KEY REFERENCES agents(id) ON DELETE CASCADE,
+          last_seen TEXT NOT NULL,
+          session_alive INTEGER DEFAULT 1,
+          consecutive_failures INTEGER DEFAULT 0,
+          updated_at TEXT DEFAULT (datetime('now'))
+        );
+      `);
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS scheduled_job_runs (
+          id TEXT PRIMARY KEY,
+          job_id TEXT NOT NULL,
+          fired_at TEXT NOT NULL,
+          task_id TEXT REFERENCES tasks(id),
+          status TEXT DEFAULT 'fired',
+          created_at TEXT DEFAULT (datetime('now'))
+        );
+      `);
+
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_heartbeats_last_seen ON agent_heartbeats(last_seen)`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_job_runs_job_fired ON scheduled_job_runs(job_id, fired_at DESC)`);
+
+      console.log('[Migration 008] Daemon tables created');
+    }
   }
 ];
 

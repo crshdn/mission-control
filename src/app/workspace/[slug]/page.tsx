@@ -7,6 +7,7 @@ import { ChevronLeft } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { AgentsSidebar } from '@/components/AgentsSidebar';
 import { MissionQueue } from '@/components/MissionQueue';
+import { AgentFleetView } from '@/components/AgentFleetView';
 import { LiveFeed } from '@/components/LiveFeed';
 import { SSEDebugPanel } from '@/components/SSEDebugPanel';
 import { useMissionControl } from '@/lib/store';
@@ -25,6 +26,7 @@ export default function WorkspacePage() {
     setIsOnline,
     setIsLoading,
     isLoading,
+    viewMode,
   } = useMissionControl();
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -88,26 +90,7 @@ export default function WorkspacePage() {
       }
     }
 
-    // Check OpenClaw connection separately (non-blocking)
-    async function checkOpenClaw() {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-        const openclawRes = await fetch('/api/openclaw/status', { signal: controller.signal });
-        clearTimeout(timeoutId);
-
-        if (openclawRes.ok) {
-          const status = await openclawRes.json();
-          setIsOnline(status.connected);
-        }
-      } catch {
-        setIsOnline(false);
-      }
-    }
-
     loadData();
-    checkOpenClaw();
 
     // SSE is the primary real-time mechanism - these are fallback polls with longer intervals
     // to reduce server load while providing redundancy
@@ -205,13 +188,20 @@ export default function WorkspacePage() {
       <Header workspace={workspace} />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Agents Sidebar */}
-        <AgentsSidebar workspaceId={workspace.id} />
+        {viewMode === 'fleet' ? (
+          <>
+            {/* Fleet View */}
+            <AgentFleetView workspaceId={workspace.id} />
+          </>
+        ) : (
+          <>
+            {/* Kanban View */}
+            <AgentsSidebar workspaceId={workspace.id} />
+            <MissionQueue workspaceId={workspace.id} />
+          </>
+        )}
 
-        {/* Main Content Area */}
-        <MissionQueue workspaceId={workspace.id} />
-
-        {/* Live Feed */}
+        {/* Live Feed — always visible */}
         <LiveFeed />
       </div>
 

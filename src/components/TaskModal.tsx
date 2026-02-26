@@ -17,9 +17,10 @@ interface TaskModalProps {
   task?: Task;
   onClose: () => void;
   workspaceId?: string;
+  initialAgentId?: string;
 }
 
-export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
+export function TaskModal({ task, onClose, workspaceId, initialAgentId }: TaskModalProps) {
   const { agents, addTask, updateTask, addEvent } = useMissionControl();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAgentModal, setShowAgentModal] = useState(false);
@@ -37,7 +38,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
     description: task?.description || '',
     priority: task?.priority || 'normal' as TaskPriority,
     status: task?.status || 'inbox' as TaskStatus,
-    assigned_agent_id: task?.assigned_agent_id || '',
+    assigned_agent_id: task?.assigned_agent_id || initialAgentId || '',
     due_date: task?.due_date || '',
   });
 

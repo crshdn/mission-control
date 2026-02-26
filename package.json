@@ -10,7 +10,9 @@
     "db:seed": "tsx src/lib/db/seed.ts",
     "db:backup": "sqlite3 mission-control.db 'PRAGMA wal_checkpoint(TRUNCATE);' && cp mission-control.db mission-control.db.backup && echo 'Backed up to mission-control.db.backup'",
     "db:restore": "cp mission-control.db.backup mission-control.db && echo 'Restored from backup'",
-    "db:reset": "rm -f mission-control.db mission-control.db-* && npm run db:seed"
+    "db:reset": "rm -f mission-control.db mission-control.db-* && npm run db:seed",
+    "daemon": "tsx src/daemon/index.ts",
+    "daemon:dev": "tsx watch src/daemon/index.ts"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^17.0.0",

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, run } from '@/lib/db';
+import { broadcast } from '@/lib/events';
 import type { Agent, UpdateAgentRequest } from '@/lib/types';
 
 // GET /api/agents/[id] - Get a single agent
@@ -100,6 +101,9 @@ export async function PATCH(
     run(`UPDATE agents SET ${updates.join(', ')} WHERE id = ?`, values);
 
     const agent = queryOne<Agent>('SELECT * FROM agents WHERE id = ?', [id]);
+    if (agent) {
+      broadcast({ type: 'agent_updated', payload: agent });
+    }
     return NextResponse.json(agent);
   } catch (error) {
     console.error('Failed to update agent:', error);
