@@ -12,6 +12,8 @@ const DEFAULT_AGENT_IDS = [
   '39b73ae6-124c-42fd-accf-9adb27b84b41', // SEO Content Editor
   '0d6529a4-22e5-4182-b82c-15654c0ac0f6', // Orchestrator
 ];
+const MAX_BOOTSTRAP_AGENTS = 50;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function toSessionLabel(agentName: string): string {
   return `mission-control-${agentName.toLowerCase().trim().replace(/\s+/g, '-')}`;
@@ -64,8 +66,24 @@ function buildBootstrapMessage(agent: Agent): string {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const agentIds = Array.isArray(body.agent_ids) && body.agent_ids.length > 0
-      ? body.agent_ids
+    const requestedAgentIds: unknown[] = Array.isArray(body.agent_ids) ? body.agent_ids : [];
+
+    if (requestedAgentIds.length > MAX_BOOTSTRAP_AGENTS) {
+      return NextResponse.json(
+        { error: `agent_ids exceeds max allowed (${MAX_BOOTSTRAP_AGENTS})` },
+        { status: 400 },
+      );
+    }
+
+    if (requestedAgentIds.some((id: unknown) => typeof id !== 'string' || !UUID_PATTERN.test(id))) {
+      return NextResponse.json(
+        { error: 'agent_ids must contain valid UUID strings' },
+        { status: 400 },
+      );
+    }
+
+    const agentIds: string[] = requestedAgentIds.length > 0
+      ? requestedAgentIds as string[]
       : DEFAULT_AGENT_IDS;
 
     const agents = queryAll<Agent>(

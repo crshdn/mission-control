@@ -18,7 +18,6 @@ interface Boilerplate {
   id: string;
   name: string;
   description: string;
-  path: string;
   fileCount: number;
 }
 
@@ -41,14 +40,24 @@ async function getBoilerplateDescription(dir: string): Promise<string> {
   return '';
 }
 
-async function countFiles(dir: string): Promise<number> {
+const MAX_SCAN_DEPTH = 12;
+const MAX_SCAN_ENTRIES = 5000;
+
+async function countFiles(dir: string, depth = 0, state = { visited: 0 }): Promise<number> {
+  if (depth > MAX_SCAN_DEPTH) return 0;
+  if (state.visited > MAX_SCAN_ENTRIES) return 0;
+
   let count = 0;
   try {
     const entries = await fs.readdir(dir, { withFileTypes: true });
     for (const entry of entries) {
+      state.visited += 1;
+      if (state.visited > MAX_SCAN_ENTRIES) break;
+
       if (entry.name.startsWith('.')) continue;
+      if (entry.isSymbolicLink()) continue;
       if (entry.isDirectory()) {
-        count += await countFiles(path.join(dir, entry.name));
+        count += await countFiles(path.join(dir, entry.name), depth + 1, state);
       } else {
         count++;
       }
@@ -86,7 +95,6 @@ export async function GET() {
           id: entry.name,
           name: entry.name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
           description,
-          path: fullPath,
           fileCount,
         });
       }

@@ -15,7 +15,6 @@ interface Boilerplate {
   id: string;
   name: string;
   description: string;
-  path: string;
   fileCount: number;
 }
 
@@ -124,7 +123,8 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
         } else {
           // Copy boilerplate if one was selected
           if (selectedBoilerplate) {
-            const projectSlug = form.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+            const baseSlug = form.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+            const projectSlug = baseSlug || `task-${savedTask.id.slice(0, 8)}`;
             const targetPath = `~/Documents/Shared/projects/${projectSlug}`;
             
             try {

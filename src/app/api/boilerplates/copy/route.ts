@@ -7,10 +7,39 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
+import { getProjectsPath, getWorkspaceBasePath } from '@/lib/config';
 
 const BOILERPLATES_DIR = path.join(os.homedir(), 'boilerplates');
+const MAX_COPY_DEPTH = 12;
+const MAX_COPY_BYTES = 100 * 1024 * 1024; // 100MB safety cap
+const BOILERPLATE_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
 
-async function copyDir(src: string, dest: string): Promise<void> {
+function expandTilde(p: string): string {
+  if (p.startsWith('~/')) {
+    return path.join(os.homedir(), p.slice(2));
+  }
+  return p;
+}
+
+function isWithinRoot(target: string, root: string): boolean {
+  const normalizedTarget = path.resolve(target);
+  const normalizedRoot = path.resolve(root);
+  return (
+    normalizedTarget === normalizedRoot ||
+    normalizedTarget.startsWith(normalizedRoot + path.sep)
+  );
+}
+
+async function copyDir(
+  src: string,
+  dest: string,
+  depth = 0,
+  state = { copiedBytes: 0 },
+): Promise<void> {
+  if (depth > MAX_COPY_DEPTH) {
+    throw new Error(`Boilerplate directory nesting exceeds max depth (${MAX_COPY_DEPTH})`);
+  }
+
   await fs.mkdir(dest, { recursive: true });
   const entries = await fs.readdir(src, { withFileTypes: true });
 
@@ -18,21 +47,24 @@ async function copyDir(src: string, dest: string): Promise<void> {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
 
+    if (entry.isSymbolicLink()) {
+      // Skip symlinks to prevent loop/traversal surprises.
+      continue;
+    }
+
     if (entry.isDirectory()) {
       // Skip .git directories
       if (entry.name === '.git') continue;
-      await copyDir(srcPath, destPath);
+      await copyDir(srcPath, destPath, depth + 1, state);
     } else {
+      const stat = await fs.stat(srcPath);
+      state.copiedBytes += stat.size;
+      if (state.copiedBytes > MAX_COPY_BYTES) {
+        throw new Error(`Boilerplate exceeds max allowed size (${MAX_COPY_BYTES} bytes)`);
+      }
       await fs.copyFile(srcPath, destPath);
     }
   }
-}
-
-function expandTilde(p: string): string {
-  if (p.startsWith('~/')) {
-    return path.join(os.homedir(), p.slice(2));
-  }
-  return p;
 }
 
 export async function POST(request: NextRequest) {
@@ -47,12 +79,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const srcPath = path.join(BOILERPLATES_DIR, boilerplateId);
-    const destPath = expandTilde(targetPath);
+    if (
+      typeof boilerplateId !== 'string' ||
+      !BOILERPLATE_ID_PATTERN.test(boilerplateId) ||
+      boilerplateId.includes('/') ||
+      boilerplateId.includes('\\') ||
+      boilerplateId.startsWith('.')
+    ) {
+      return NextResponse.json(
+        { error: 'Invalid boilerplate ID' },
+        { status: 400 }
+      );
+    }
+
+    const srcPath = path.resolve(path.join(BOILERPLATES_DIR, boilerplateId));
+    const boilerplatesRoot = path.resolve(BOILERPLATES_DIR);
+    if (!isWithinRoot(srcPath, boilerplatesRoot)) {
+      return NextResponse.json(
+        { error: 'Boilerplate path is outside allowed directory' },
+        { status: 400 }
+      );
+    }
+
+    const destPath = path.resolve(expandTilde(targetPath));
+
+    const allowedRoots = [
+      path.resolve(expandTilde(getWorkspaceBasePath())),
+      path.resolve(expandTilde(getProjectsPath())),
+    ];
+    const isAllowedDestination = allowedRoots.some((root) => isWithinRoot(destPath, root) && destPath !== root);
+    if (!isAllowedDestination) {
+      return NextResponse.json(
+        { error: 'Target path is outside allowed workspace/project directories' },
+        { status: 400 }
+      );
+    }
 
     // Verify source exists
     try {
       await fs.access(srcPath);
+      const srcStat = await fs.stat(srcPath);
+      if (!srcStat.isDirectory()) {
+        return NextResponse.json(
+          { error: 'Boilerplate source must be a directory' },
+          { status: 400 }
+        );
+      }
     } catch {
       return NextResponse.json(
         { error: `Boilerplate "${boilerplateId}" not found` },
@@ -90,8 +162,9 @@ export async function POST(request: NextRequest) {
         await execAsync('git init', { cwd: destPath });
         await execAsync('git add -A', { cwd: destPath });
         await execAsync('git commit -m "Initial commit from boilerplate"', { cwd: destPath });
-      } catch {
-        // Git init failed, not critical
+      } catch (error) {
+        // Git init failure isn't fatal for project bootstrapping, but keep observability.
+        console.warn('Git initialization failed for boilerplate copy:', destPath, error);
       }
     }
 

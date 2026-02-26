@@ -9,11 +9,28 @@ import path from 'path';
 
 // Simple markdown to HTML (basic formatting)
 function markdownToHtml(md: string): string {
+  const sanitizeHref = (href: string): string => {
+    const trimmed = href.trim();
+    const lowered = trimmed.toLowerCase();
+    if (
+      lowered.startsWith('http://') ||
+      lowered.startsWith('https://') ||
+      lowered.startsWith('mailto:') ||
+      lowered.startsWith('/') ||
+      lowered.startsWith('#')
+    ) {
+      return trimmed;
+    }
+    return '#';
+  };
+
   const html = md
     // Escape HTML
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
     // Headers
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
@@ -26,7 +43,10 @@ function markdownToHtml(md: string): string {
     // Inline code
     .replace(/`(.+?)`/g, '<code>$1</code>')
     // Links
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+    .replace(
+      /\[([^\]]+)\]\(([^)]+)\)/g,
+      (_match, text, href) => `<a href="${sanitizeHref(href)}" target="_blank" rel="noopener noreferrer">${text}</a>`,
+    )
     // Line breaks
     .replace(/\n\n/g, '</p><p>')
     .replace(/\n/g, '<br>');
