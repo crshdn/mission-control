@@ -6,7 +6,7 @@
 import type { SSEEvent } from '../lib/types';
 import { log } from './logger';
 
-const MISSION_CONTROL_URL = process.env.MISSION_CONTROL_URL || 'http://localhost:3000';
+const MISSION_CONTROL_URL = process.env.MISSION_CONTROL_URL || 'http://localhost:4000';
 
 export async function broadcastEvent(event: SSEEvent): Promise<void> {
   try {

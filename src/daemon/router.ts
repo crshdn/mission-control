@@ -8,7 +8,7 @@ import { queryAll } from '../lib/db';
 import { log } from './logger';
 import type { Task } from '../lib/types';
 
-const MISSION_CONTROL_URL = process.env.MISSION_CONTROL_URL || 'http://localhost:3000';
+const MISSION_CONTROL_URL = process.env.MISSION_CONTROL_URL || 'http://localhost:4000';
 
 // Track tasks we've already triggered tests for to avoid re-firing
 const processedTestTasks = new Set<string>();
