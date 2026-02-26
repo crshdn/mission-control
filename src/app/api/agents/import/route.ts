@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run, transaction } from '@/lib/db';
 import type { Agent } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
 interface ImportAgentRequest {
   gateway_agent_id: string;
   name: string;

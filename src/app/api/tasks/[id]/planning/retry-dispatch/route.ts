@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { queryOne, run, getDb } from '@/lib/db';
 import { triggerAutoDispatch } from '@/lib/auto-dispatch';
 
+export const dynamic = 'force-dynamic';
 /**
  * POST /api/tasks/[id]/planning/retry-dispatch
  * 

@@ -3,6 +3,7 @@ import { getOpenClawClient } from '@/lib/openclaw/client';
 import { queryAll } from '@/lib/db';
 import type { OpenClawSession } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
 // GET /api/openclaw/sessions - List OpenClaw sessions
 export async function GET(request: NextRequest) {
   try {

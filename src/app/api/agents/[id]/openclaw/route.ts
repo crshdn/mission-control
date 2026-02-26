@@ -4,6 +4,7 @@ import { queryOne, run } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import type { Agent, OpenClawSession } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
 interface RouteParams {
   params: Promise<{ id: string }>;
 }

@@ -8,9 +8,10 @@ import { getDb } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { CreateDeliverableSchema } from '@/lib/validation';
 import { existsSync } from 'fs';
-import path from 'path';
+
 import type { TaskDeliverable } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
 /**
  * GET /api/tasks/[id]/deliverables
  * Retrieve all deliverables for a task

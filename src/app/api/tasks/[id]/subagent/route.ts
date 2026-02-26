@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 
+export const dynamic = 'force-dynamic';
 /**
  * POST /api/tasks/[id]/subagent
  * Register a sub-agent session for a task
