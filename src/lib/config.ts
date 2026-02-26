@@ -22,7 +22,7 @@ export interface MissionControlConfig {
   defaultProjectName: string; // 'mission-control' or custom
 }
 
-const DEFAULT_DISCORD_RELAY_CHANNEL_ID = '1467633883678769244';
+const DEFAULT_DISCORD_RELAY_CHANNEL_ID = '';
 const DEFAULT_DISCORD_TASK_COMMAND_PREFIX = '!task';
 
 const DEFAULT_CONFIG: MissionControlConfig = {
