@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- OpenClaw diagnostics endpoints for relay/completion tracing:
+  - `GET /api/openclaw/diagnostics`
+  - `POST /api/openclaw/diagnostics/trigger-completion` (dev-only)
+- Discord task command observer for controlled `task: <title> | <description>` ingestion into Mission Control.
+- Mission Control -> Discord relay instrumentation with explicit attempt/success/failure markers.
+
+### Changed
+
+- Planning completion dispatch reliability:
+  - pre-assigns generated agent before dispatch
+  - resolves dispatch target using request origin/configured Mission Control URL
+- Completion workflow explicitly treats `TASK_COMPLETE` as `in_progress/assigned -> review` (approval gate remains `review -> done`).
+- Session update endpoint now resolves the active matching session deterministically.
+
+### Fixed
+
+- Added migration `008` to enforce one active `openclaw_session_id` mapping at a time via partial unique index.
+- Migration `008` auto-deactivates legacy duplicate active session rows before applying the index.
+- Session-link/dispatch/bootstrap flows now return clear `409` conflicts instead of opaque failures when a session key is already active on another agent.
+
+### Docs
+
+- Clarified lifecycle policy in docs:
+  - Keep approved tasks in `DONE` as operational history.
+  - Delete only test/noise/duplicate artifacts.
+
+---
+
 ## [1.2.0] - 2026-02-19
 
 ### Added

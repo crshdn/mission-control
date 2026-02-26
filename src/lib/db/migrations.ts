@@ -202,6 +202,69 @@ const migrations: Migration[] = [
         console.log('[Migration 007] Added gateway_agent_id to agents');
       }
     }
+  },
+  {
+    id: '008',
+    name: 'enforce_unique_active_openclaw_session_id',
+    up: (db) => {
+      console.log('[Migration 008] Enforcing unique active openclaw_session_id...');
+
+      // Ensure openclaw_sessions exists before attempting cleanup/indexing.
+      const tableExists = db
+        .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='openclaw_sessions'")
+        .get() as { name: string } | undefined;
+      if (!tableExists) {
+        console.log('[Migration 008] openclaw_sessions table not found, skipping');
+        return;
+      }
+
+      const duplicateIds = db.prepare(`
+        SELECT openclaw_session_id
+        FROM openclaw_sessions
+        WHERE status = 'active'
+        GROUP BY openclaw_session_id
+        HAVING COUNT(*) > 1
+      `).all() as Array<{ openclaw_session_id: string }>;
+
+      if (duplicateIds.length > 0) {
+        const deactivateStmt = db.prepare(`
+          UPDATE openclaw_sessions
+          SET status = 'inactive',
+              ended_at = COALESCE(ended_at, datetime('now')),
+              updated_at = datetime('now')
+          WHERE id = ?
+        `);
+
+        const keepStmt = db.prepare(`
+          SELECT id
+          FROM openclaw_sessions
+          WHERE openclaw_session_id = ?
+            AND status = 'active'
+          ORDER BY datetime(COALESCE(updated_at, created_at)) DESC, id DESC
+        `);
+
+        for (const row of duplicateIds) {
+          const candidates = keepStmt.all(row.openclaw_session_id) as Array<{ id: string }>;
+          if (candidates.length <= 1) continue;
+
+          // Keep most recently updated active session, deactivate older duplicates.
+          for (const duplicate of candidates.slice(1)) {
+            deactivateStmt.run(duplicate.id);
+          }
+        }
+
+        console.log(`[Migration 008] Deactivated duplicate active sessions for ${duplicateIds.length} session id(s)`);
+      }
+
+      // Enforce one active session record per OpenClaw session key.
+      db.exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_openclaw_sessions_unique_active
+        ON openclaw_sessions(openclaw_session_id)
+        WHERE status = 'active'
+      `);
+
+      console.log('[Migration 008] Active session uniqueness index ready');
+    }
   }
 ];
 

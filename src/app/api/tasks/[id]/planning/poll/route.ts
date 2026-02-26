@@ -3,6 +3,7 @@ import { queryOne, run, getDb, queryAll } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
 import { extractJSON, getMessagesFromOpenClaw } from '@/lib/planning-utils';
+import { getMissionControlUrl } from '@/lib/config';
 import { Task } from '@/lib/types';
 
 // Planning timeout and poll interval configuration with validation
@@ -18,7 +19,12 @@ if (isNaN(PLANNING_POLL_INTERVAL_MS) || PLANNING_POLL_INTERVAL_MS < 100) {
 }
 
 // Helper to handle planning completion with proper error handling and rollback
-async function handlePlanningCompletion(taskId: string, parsed: any, messages: any[]) {
+async function handlePlanningCompletion(
+  taskId: string,
+  parsed: any,
+  messages: any[],
+  requestOrigin?: string,
+) {
   const db = getDb();
   let dispatchError: string | null = null;
   let firstAgentId: string | null = null;
@@ -63,6 +69,16 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
           agent.soul_md || ''
         );
       }
+    }
+
+    // Pre-assign the first generated agent so /dispatch can resolve assigned_agent_id.
+    // If dispatch fails, status remains pending_dispatch and can be retried safely.
+    if (firstAgentId) {
+      db.prepare(`
+        UPDATE tasks
+        SET assigned_agent_id = ?
+        WHERE id = ?
+      `).run(firstAgentId, taskId);
     }
 
     return firstAgentId;
@@ -114,7 +130,8 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
 
   // Trigger dispatch - use localhost since we're in the same process
   if (firstAgentId && !skipDispatch) {
-    const dispatchUrl = `http://localhost:${process.env.PORT || 3000}/api/tasks/${taskId}/dispatch`;
+    const baseUrl = requestOrigin || getMissionControlUrl();
+    const dispatchUrl = `${baseUrl}/api/tasks/${taskId}/dispatch`;
     console.log(`[Planning Poll] Triggering dispatch: ${dispatchUrl}`);
 
     try {
@@ -268,7 +285,12 @@ export async function GET(
           if (parsed && parsed.status === 'complete') {
             // Handle completion
             console.log('[Planning Poll] Planning complete, handling...');
-            const { firstAgentId, parsed: fullParsed, dispatchError } = await handlePlanningCompletion(taskId, parsed, messages);
+            const { firstAgentId, parsed: fullParsed, dispatchError } = await handlePlanningCompletion(
+              taskId,
+              parsed,
+              messages,
+              request.nextUrl.origin,
+            );
 
             return NextResponse.json({
               hasUpdates: true,

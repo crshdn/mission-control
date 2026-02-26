@@ -8,6 +8,30 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+function truncate(input: string | null | undefined, max = 3500): string {
+  if (!input) return '';
+  if (input.length <= max) return input;
+  return `${input.slice(0, max)}\n\n[truncated]`;
+}
+
+function buildLinkBootstrapMessage(agent: Agent): string {
+  const soul = truncate(agent.soul_md);
+  const user = truncate(agent.user_md);
+  const chunks = [
+    '🧭 [Mission Control Link Bootstrap]',
+    `Agent: ${agent.name}`,
+    `Role: ${agent.role}`,
+    '',
+    'You are linked to Mission Control.',
+    'Completion format: TASK_COMPLETE: <summary>',
+    'Progress format: PROGRESS_UPDATE: <what changed> | next: <next step> | eta: <time>',
+    'Blocked format: BLOCKED: <what is blocked> | need: <specific input> | meanwhile: <fallback work>',
+  ];
+  if (soul) chunks.push('', 'SOUL.md (injected):', soul);
+  if (user) chunks.push('', 'USER.md (injected):', user);
+  return chunks.join('\n');
+}
+
 // GET /api/agents/[id]/openclaw - Get the agent's OpenClaw session
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
@@ -47,18 +71,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
 
-    // Check if already linked
-    const existingSession = queryOne<OpenClawSession>(
-      'SELECT * FROM openclaw_sessions WHERE agent_id = ? AND status = ?',
-      [id, 'active']
-    );
-    if (existingSession) {
-      return NextResponse.json(
-        { error: 'Agent is already linked to an OpenClaw session', session: existingSession },
-        { status: 409 }
-      );
-    }
-
     // Connect to OpenClaw Gateway
     const client = getOpenClawClient();
     if (!client.isConnected()) {
@@ -70,6 +82,29 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           { status: 503 }
         );
       }
+    }
+
+    // Check if already linked
+    const existingSession = queryOne<OpenClawSession>(
+      'SELECT * FROM openclaw_sessions WHERE agent_id = ? AND status = ?',
+      [id, 'active']
+    );
+    if (existingSession) {
+      // Best effort bootstrap ping so existing links are immediately usable.
+      try {
+        const sessionKey = `agent:main:${existingSession.openclaw_session_id}`;
+        await client.call('chat.send', {
+          sessionKey,
+          message: buildLinkBootstrapMessage(agent),
+          idempotencyKey: `mc-link-bootstrap-existing-${id}-${Date.now()}`,
+        });
+      } catch (err) {
+        console.warn('Failed to send bootstrap to existing OpenClaw session:', err);
+      }
+
+      return NextResponse.json(
+        { linked: true, session: existingSession, reused: true }
+      );
     }
 
     // OpenClaw creates sessions automatically when messages are sent
@@ -90,6 +125,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const openclawSessionId = `mission-control-${agent.name.toLowerCase().replace(/\s+/g, '-')}`;
     const now = new Date().toISOString();
 
+    const conflictingSession = queryOne<OpenClawSession>(
+      'SELECT * FROM openclaw_sessions WHERE openclaw_session_id = ? AND status = ?',
+      [openclawSessionId, 'active']
+    );
+    if (conflictingSession && conflictingSession.agent_id !== id) {
+      return NextResponse.json(
+        {
+          error: 'Session key already linked to another active agent',
+          session_id: openclawSessionId,
+          conflicting_agent_id: conflictingSession.agent_id,
+        },
+        { status: 409 }
+      );
+    }
+
     run(
       `INSERT INTO openclaw_sessions (id, agent_id, openclaw_session_id, channel, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -107,6 +157,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       'SELECT * FROM openclaw_sessions WHERE id = ?',
       [sessionId]
     );
+
+    // Best effort bootstrap ping to initialize persistent session context.
+    try {
+      const sessionKey = `agent:main:${openclawSessionId}`;
+      await client.call('chat.send', {
+        sessionKey,
+        message: buildLinkBootstrapMessage(agent),
+        idempotencyKey: `mc-link-bootstrap-new-${id}-${Date.now()}`,
+      });
+    } catch (err) {
+      console.warn('Failed to send bootstrap to new OpenClaw session:', err);
+    }
 
     return NextResponse.json({ linked: true, session }, { status: 201 });
   } catch (error) {

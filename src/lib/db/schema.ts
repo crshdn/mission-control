@@ -182,5 +182,8 @@ CREATE INDEX IF NOT EXISTS idx_agents_status ON agents(status);
 CREATE INDEX IF NOT EXISTS idx_activities_task ON task_activities(task_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_deliverables_task ON task_deliverables(task_id);
 CREATE INDEX IF NOT EXISTS idx_openclaw_sessions_task ON openclaw_sessions(task_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_openclaw_sessions_unique_active
+ON openclaw_sessions(openclaw_session_id)
+WHERE status = 'active';
 CREATE INDEX IF NOT EXISTS idx_planning_questions_task ON planning_questions(task_id, sort_order);
 `;

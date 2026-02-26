@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus, FolderGit2 } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { triggerAutoDispatch, shouldTriggerAutoDispatch } from '@/lib/auto-dispatch';
 import { ActivityLog } from './ActivityLog';
@@ -10,6 +10,14 @@ import { SessionsList } from './SessionsList';
 import { PlanningTab } from './PlanningTab';
 import { AgentModal } from './AgentModal';
 import type { Task, TaskPriority, TaskStatus } from '@/lib/types';
+
+interface Boilerplate {
+  id: string;
+  name: string;
+  description: string;
+  path: string;
+  fileCount: number;
+}
 
 type TabType = 'overview' | 'planning' | 'activity' | 'deliverables' | 'sessions';
 
@@ -26,6 +34,33 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
   const [usePlanningMode, setUsePlanningMode] = useState(false);
   // Auto-switch to planning tab if task is in planning status
   const [activeTab, setActiveTab] = useState<TabType>(task?.status === 'planning' ? 'planning' : 'overview');
+  
+  // Boilerplate selection (new tasks only)
+  const [boilerplates, setBoilerplates] = useState<Boilerplate[]>([]);
+  const [selectedBoilerplate, setSelectedBoilerplate] = useState<string>('');
+  const [boilerplatesLoading, setBoilerplatesLoading] = useState(false);
+  const [boilerplatesError, setBoilerplatesError] = useState<string>('');
+
+  // Fetch available boilerplates on mount (for new tasks only)
+  useEffect(() => {
+    if (!task) {
+      setBoilerplatesLoading(true);
+      setBoilerplatesError('');
+      fetch('/api/boilerplates', { cache: 'no-store' })
+        .then(async (res) => {
+          if (!res.ok) {
+            throw new Error(`Failed to load boilerplates (${res.status})`);
+          }
+          return res.json();
+        })
+        .then(data => setBoilerplates(data.boilerplates || []))
+        .catch(err => {
+          console.error('Failed to load boilerplates:', err);
+          setBoilerplatesError('Unable to load boilerplates from ~/boilerplates.');
+        })
+        .finally(() => setBoilerplatesLoading(false));
+    }
+  }, [task]);
 
   // Stable callback for when spec is locked - use window.location.reload() to refresh data
   const handleSpecLocked = useCallback(() => {
@@ -87,6 +122,30 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
 
           onClose();
         } else {
+          // Copy boilerplate if one was selected
+          if (selectedBoilerplate) {
+            const projectSlug = form.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+            const targetPath = `~/Documents/Shared/projects/${projectSlug}`;
+            
+            try {
+              const copyRes = await fetch('/api/boilerplates/copy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  boilerplateId: selectedBoilerplate, 
+                  targetPath 
+                }),
+              });
+              
+              if (!copyRes.ok) {
+                const error = await copyRes.json();
+                console.error('Failed to copy boilerplate:', error);
+              }
+            } catch (error) {
+              console.error('Failed to copy boilerplate:', error);
+            }
+          }
+
           addTask(savedTask);
           addEvent({
             id: crypto.randomUUID(),
@@ -217,6 +276,51 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
               placeholder="Add details..."
             />
           </div>
+
+          {/* Boilerplate Selection - only for new tasks */}
+          {!task && (
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                <span className="flex items-center gap-2">
+                  <FolderGit2 className="w-4 h-4 text-mc-accent" />
+                  Start from Boilerplate
+                </span>
+              </label>
+              <select
+                value={selectedBoilerplate}
+                onChange={(e) => setSelectedBoilerplate(e.target.value)}
+                disabled={boilerplatesLoading || !!boilerplatesError}
+                className="w-full bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
+              >
+                <option value="">None (empty project)</option>
+                {boilerplates.map((bp) => (
+                  <option key={bp.id} value={bp.id}>
+                    {bp.name} ({bp.fileCount} files)
+                  </option>
+                ))}
+              </select>
+              {boilerplatesLoading && (
+                <p className="text-xs text-mc-text-secondary mt-1">
+                  Loading available boilerplates from ~/boilerplates...
+                </p>
+              )}
+              {!boilerplatesLoading && boilerplatesError && (
+                <p className="text-xs text-mc-accent-red mt-1">
+                  {boilerplatesError}
+                </p>
+              )}
+              {!boilerplatesLoading && !boilerplatesError && boilerplates.length === 0 && (
+                <p className="text-xs text-mc-text-secondary mt-1">
+                  No boilerplates found in ~/boilerplates.
+                </p>
+              )}
+              {!boilerplatesLoading && !boilerplatesError && selectedBoilerplate && (
+                <p className="text-xs text-mc-text-secondary mt-1">
+                  {boilerplates.find(bp => bp.id === selectedBoilerplate)?.description || 'Template files will be copied to the project folder.'}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Planning Mode Toggle - only for new tasks */}
           {!task && (

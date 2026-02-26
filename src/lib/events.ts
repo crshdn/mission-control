@@ -4,6 +4,7 @@
  */
 
 import type { SSEEvent } from './types';
+import { relayMissionControlEventToDiscord } from './openclaw/discord-relay';
 
 // Store active SSE client connections
 const clients = new Set<ReadableStreamDefaultController>();
@@ -43,6 +44,9 @@ export function broadcast(event: SSEEvent): void {
   }
 
   console.log(`[SSE] Broadcast ${event.type} to ${clients.size} client(s)`);
+
+  // Fire-and-forget relay to Discord via OpenClaw (if enabled).
+  void relayMissionControlEventToDiscord(event);
 }
 
 /**

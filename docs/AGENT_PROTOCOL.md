@@ -195,6 +195,7 @@ Only the orchestrator (master agent with `is_master = 1`) can approve tasks from
 - the orchestrator must manually approve (drag to DONE)
 - Only master agent can approve
 - Provides quality control checkpoint
+- Keep approved tasks in `DONE` for operational history; only delete test/noise tasks.
 
 ## Example Workflow
 

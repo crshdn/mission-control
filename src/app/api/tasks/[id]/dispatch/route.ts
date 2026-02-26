@@ -103,7 +103,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       // Create session record
       const sessionId = uuidv4();
       const openclawSessionId = `mission-control-${agent.name.toLowerCase().replace(/\s+/g, '-')}`;
-      
+
+      const conflictingSession = queryOne<OpenClawSession>(
+        'SELECT * FROM openclaw_sessions WHERE openclaw_session_id = ? AND status = ?',
+        [openclawSessionId, 'active']
+      );
+
+      if (conflictingSession && conflictingSession.agent_id !== agent.id) {
+        return NextResponse.json(
+          {
+            error: 'OpenClaw session key already linked to another active agent',
+            session_id: openclawSessionId,
+            conflicting_agent_id: conflictingSession.agent_id,
+          },
+          { status: 409 }
+        );
+      }
+
       run(
         `INSERT INTO openclaw_sessions (id, agent_id, openclaw_session_id, channel, status, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -129,6 +145,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         { status: 500 }
       );
     }
+
+    const sessionKey = `agent:main:${session.openclaw_session_id}`;
 
     // Build task message for agent
     const priorityEmoji = {
@@ -166,13 +184,23 @@ Create this directory and save all deliverables there.
 When complete, reply with:
 \`TASK_COMPLETE: [brief summary of what you did]\`
 
+If progress takes more than a few minutes, send:
+\`PROGRESS_UPDATE: [what changed] | next: [next step] | eta: [time]\`
+
+If blocked, send:
+\`BLOCKED: [what is blocked] | need: [specific input] | meanwhile: [fallback work]\`
+
 If you need help or clarification, ask the orchestrator.`;
 
-    // Send message to agent's session using chat.send
+    // Send message to agent's session using chat.send.
+    // Start with a lightweight handshake so stale sessions get rehydrated before task dispatch.
     try {
-      // Use sessionKey for routing to the agent's session
-      // Format: agent:main:{openclaw_session_id}
-      const sessionKey = `agent:main:${session.openclaw_session_id}`;
+      await client.call('chat.send', {
+        sessionKey,
+        message: '[Mission Control] Dispatch handshake',
+        idempotencyKey: `dispatch-handshake-${task.id}-${Date.now()}`,
+      });
+
       await client.call('chat.send', {
         sessionKey,
         message: taskMessage,

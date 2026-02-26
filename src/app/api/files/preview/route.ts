@@ -1,11 +1,63 @@
 /**
  * File Preview API
- * Serves local files for preview (HTML only for security)
+ * Serves local files for preview (HTML and Markdown)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync, existsSync } from 'fs';
 import path from 'path';
+
+// Simple markdown to HTML (basic formatting)
+function markdownToHtml(md: string): string {
+  const html = md
+    // Escape HTML
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    // Headers
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    // Bold and italic
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // Code blocks
+    .replace(/```[\w]*\n([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+    // Inline code
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    // Links
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+    // Line breaks
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+  
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px; 
+      margin: 40px auto; 
+      padding: 20px;
+      background: #0d0d0d;
+      color: #e0e0e0;
+      line-height: 1.6;
+    }
+    h1, h2, h3 { color: #ff6b35; margin-top: 24px; }
+    code { background: #1a1a1a; padding: 2px 6px; border-radius: 4px; }
+    pre { background: #1a1a1a; padding: 16px; border-radius: 8px; overflow-x: auto; }
+    pre code { padding: 0; }
+    a { color: #4fc3f7; }
+    strong { color: #fff; }
+  </style>
+</head>
+<body>
+  <p>${html}</p>
+</body>
+</html>`;
+}
 
 export async function GET(request: NextRequest) {
   const filePath = request.nextUrl.searchParams.get('path');
@@ -14,9 +66,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'path is required' }, { status: 400 });
   }
 
-  // Only allow HTML files
-  if (!filePath.endsWith('.html') && !filePath.endsWith('.htm')) {
-    return NextResponse.json({ error: 'Only HTML files can be previewed' }, { status: 400 });
+  // Allow HTML and Markdown files
+  const ext = path.extname(filePath).toLowerCase();
+  if (!['.html', '.htm', '.md', '.markdown'].includes(ext)) {
+    return NextResponse.json({ error: 'Only HTML and Markdown files can be previewed' }, { status: 400 });
   }
 
   // Expand tilde and normalize
@@ -43,7 +96,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const content = readFileSync(normalizedPath, 'utf-8');
-    return new NextResponse(content, {
+    
+    // Convert markdown to HTML if needed
+    const isMarkdown = ['.md', '.markdown'].includes(ext);
+    const html = isMarkdown ? markdownToHtml(content) : content;
+    
+    return new NextResponse(html, {
       headers: {
         'Content-Type': 'text/html',
       },

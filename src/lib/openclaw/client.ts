@@ -4,6 +4,8 @@ import { EventEmitter } from 'events';
 import type { OpenClawMessage, OpenClawSessionInfo } from '../types';
 import { loadOrCreateDeviceIdentity, signDevicePayload, buildDeviceAuthPayload, publicKeyRawBase64Url } from './device-identity';
 import { createHash } from 'crypto';
+import { attachCompletionObserver } from './completion-observer';
+import { attachDiscordTaskCommandObserver } from './discord-task-command-observer';
 
 const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL || 'ws://127.0.0.1:18789';
 const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || '';
@@ -354,7 +356,7 @@ export class OpenClawClient extends EventEmitter {
     return this.connecting;
   }
 
-  private handleMessage(data: OpenClawMessage & { type?: string; ok?: boolean; payload?: unknown }): void {
+  private handleMessage(data: OpenClawMessage & { type?: string; ok?: boolean; payload?: unknown; event?: string }): void {
     // Handle OpenClaw ResponseFrame format (type: "res")
     if (data.type === 'res' && data.id !== undefined) {
       const requestId = data.id as string | number;
@@ -386,10 +388,26 @@ export class OpenClawClient extends EventEmitter {
       return;
     }
 
-    // Handle events/notifications
+    // Handle JSON-RPC style events/notifications.
     if (data.method) {
       this.emit('notification', data);
       this.emit(data.method, data.params);
+      return;
+    }
+
+    // Handle OpenClaw event-frame style notifications.
+    // Example shape: { type: 'event', event: 'chat.message', payload: {...} }
+    if (data.type === 'event' && data.event) {
+      this.emit('notification', data);
+      this.emit(data.event, data.payload);
+      return;
+    }
+
+    // Fallback for provider-specific/untyped frames: surface them to observers.
+    // This keeps observers resilient when gateway frame shapes evolve.
+    this.emit('notification', data);
+    if (typeof data.type === 'string') {
+      this.emit(data.type, data.payload ?? data);
     }
   }
 
@@ -510,6 +528,8 @@ let clientInstance: OpenClawClient | null = null;
 export function getOpenClawClient(): OpenClawClient {
   if (!clientInstance) {
     clientInstance = new OpenClawClient();
+    attachCompletionObserver(clientInstance);
+    attachDiscordTaskCommandObserver(clientInstance);
   }
   return clientInstance;
 }

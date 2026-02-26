@@ -22,6 +22,9 @@ export interface MissionControlConfig {
   defaultProjectName: string; // 'mission-control' or custom
 }
 
+const DEFAULT_DISCORD_RELAY_CHANNEL_ID = '1467633883678769244';
+const DEFAULT_DISCORD_TASK_COMMAND_PREFIX = '!task';
+
 const DEFAULT_CONFIG: MissionControlConfig = {
   workspaceBasePath: '~/Documents/Shared',
   projectsPath: '~/Documents/Shared/projects',
@@ -161,4 +164,79 @@ export function getProjectPath(projectName: string, subpath?: string): string {
   const projectsPath = getProjectsPath();
   const base = `${projectsPath}/${projectName}`;
   return subpath ? `${base}/${subpath}` : base;
+}
+
+/**
+ * Get Discord relay session key for Mission Control broadcast messages.
+ * Server-side only.
+ */
+export function getDiscordRelaySessionKey(): string | null {
+  if (typeof window !== 'undefined') return null;
+
+  const enabled = (process.env.OPENCLAW_DISCORD_RELAY_ENABLED || 'true').toLowerCase() !== 'false';
+  if (!enabled) return null;
+
+  const channelId = process.env.OPENCLAW_DISCORD_CHANNEL_ID || DEFAULT_DISCORD_RELAY_CHANNEL_ID;
+  if (!channelId) return null;
+
+  return `agent:main:discord:channel:${channelId}`;
+}
+
+export interface DiscordTaskCommandConfig {
+  enabled: boolean;
+  sessionKey: string | null;
+  commandPrefix: string;
+  workspaceId: string;
+  defaultPriority: 'low' | 'normal' | 'high' | 'urgent';
+  maxOpenTasks: number;
+  minIntervalMs: number;
+  allowedUserIds: Set<string>;
+}
+
+/**
+ * Get configuration for Discord -> Mission Control task command ingestion.
+ * Server-side only.
+ */
+export function getDiscordTaskCommandConfig(): DiscordTaskCommandConfig {
+  if (typeof window !== 'undefined') {
+    return {
+      enabled: false,
+      sessionKey: null,
+      commandPrefix: DEFAULT_DISCORD_TASK_COMMAND_PREFIX,
+      workspaceId: 'default',
+      defaultPriority: 'normal',
+      maxOpenTasks: 200,
+      minIntervalMs: 5000,
+      allowedUserIds: new Set<string>(),
+    };
+  }
+
+  const sessionKey = getDiscordRelaySessionKey();
+  const enabled = (process.env.OPENCLAW_DISCORD_TASK_COMMANDS_ENABLED || 'false').toLowerCase() === 'true';
+  const commandPrefix = (process.env.OPENCLAW_DISCORD_TASK_COMMAND_PREFIX || DEFAULT_DISCORD_TASK_COMMAND_PREFIX).trim() || DEFAULT_DISCORD_TASK_COMMAND_PREFIX;
+  const workspaceId = (process.env.OPENCLAW_DISCORD_TASK_WORKSPACE_ID || 'default').trim() || 'default';
+  const configuredPriority = (process.env.OPENCLAW_DISCORD_TASK_DEFAULT_PRIORITY || 'normal').trim().toLowerCase();
+  const defaultPriority = (['low', 'normal', 'high', 'urgent'] as const).includes(configuredPriority as 'low' | 'normal' | 'high' | 'urgent')
+    ? (configuredPriority as 'low' | 'normal' | 'high' | 'urgent')
+    : 'normal';
+  const maxOpenTasks = Number(process.env.OPENCLAW_DISCORD_TASK_MAX_OPEN || 200);
+  const minIntervalMs = Number(process.env.OPENCLAW_DISCORD_TASK_MIN_INTERVAL_MS || 5000);
+  const allowlistRaw = process.env.OPENCLAW_DISCORD_TASK_COMMAND_USER_ALLOWLIST || '';
+  const allowedUserIds = new Set(
+    allowlistRaw
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean),
+  );
+
+  return {
+    enabled,
+    sessionKey,
+    commandPrefix,
+    workspaceId,
+    defaultPriority,
+    maxOpenTasks: Number.isFinite(maxOpenTasks) && maxOpenTasks > 0 ? maxOpenTasks : 200,
+    minIntervalMs: Number.isFinite(minIntervalMs) && minIntervalMs >= 0 ? minIntervalMs : 5000,
+    allowedUserIds,
+  };
 }

@@ -95,8 +95,19 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     const db = getDb();
 
-    // Find session by openclaw_session_id
-    const session = db.prepare('SELECT * FROM openclaw_sessions WHERE openclaw_session_id = ?').get(id) as any;
+    // Find the active session by openclaw_session_id, fallback to direct id lookup.
+    let session = db.prepare(
+      `SELECT *
+       FROM openclaw_sessions
+       WHERE openclaw_session_id = ?
+         AND status = 'active'
+       ORDER BY datetime(COALESCE(updated_at, created_at)) DESC, id DESC
+       LIMIT 1`
+    ).get(id) as any;
+
+    if (!session) {
+      session = db.prepare('SELECT * FROM openclaw_sessions WHERE id = ?').get(id) as any;
+    }
 
     if (!session) {
       return NextResponse.json(
@@ -134,7 +145,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     // If status changed to completed, update the agent status too
     if (status === 'completed') {
       if (session.agent_id) {
-        db.prepare('UPDATE agents SET status = ? WHERE id = ?').run('idle', session.agent_id);
+        db.prepare('UPDATE agents SET status = ? WHERE id = ?').run('standby', session.agent_id);
       }
       if (session.task_id) {
         broadcast({
@@ -189,8 +200,8 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       if (agent && agent.role === 'Sub-Agent') {
         db.prepare('DELETE FROM agents WHERE id = ?').run(agentId);
       } else if (agent) {
-        // Update non-subagent back to idle
-        db.prepare('UPDATE agents SET status = ? WHERE id = ?').run('idle', agentId);
+        // Update non-subagent back to standby
+        db.prepare('UPDATE agents SET status = ? WHERE id = ?').run('standby', agentId);
       }
     }
 

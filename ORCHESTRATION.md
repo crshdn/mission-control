@@ -28,6 +28,11 @@ INBOX → ASSIGNED → IN_PROGRESS → TESTING → REVIEW → DONE
 - **REVIEW**: Passed automated tests, awaiting human approval
 - **DONE**: Task completed and approved
 
+Lifecycle policy:
+- Agent `TASK_COMPLETE` signals move work to **REVIEW**.
+- The orchestrator moves reviewed work to **DONE**.
+- Keep **DONE** tasks as historical records; delete only duplicates/test artifacts.
+
 ## When You Receive a Task
 
 When a task is dispatched to you, the message includes:

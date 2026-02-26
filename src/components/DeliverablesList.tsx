@@ -158,8 +158,8 @@ export function DeliverablesList({ taskId }: DeliverablesListProps) {
                 <h4 className="font-medium text-mc-text">{deliverable.title}</h4>
               )}
               <div className="flex items-center gap-1">
-                {/* Preview button for HTML files */}
-                {deliverable.deliverable_type === 'file' && deliverable.path?.endsWith('.html') && (
+                {/* Preview button for HTML and Markdown files */}
+                {deliverable.deliverable_type === 'file' && (deliverable.path?.endsWith('.html') || deliverable.path?.endsWith('.md')) && (
                   <button
                     onClick={() => handlePreview(deliverable)}
                     className="flex-shrink-0 p-1.5 hover:bg-mc-bg-tertiary rounded text-mc-accent-cyan"

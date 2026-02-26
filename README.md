@@ -209,6 +209,11 @@ PLANNING → INBOX → ASSIGNED → IN PROGRESS → TESTING → REVIEW → DONE
 
 Drag tasks between columns or let the system auto-advance them.
 
+Operational notes:
+- `TASK_COMPLETE: ...` from an agent moves active work to `REVIEW`.
+- `DONE` is an approval/closure state and should be retained for audit history.
+- Delete tasks only for test data, duplicates, or accidental noise entries.
+
 ---
 
 ## ⚙️ Configuration

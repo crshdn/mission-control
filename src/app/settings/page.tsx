@@ -218,6 +218,11 @@ export default function SettingsPage() {
             <li><code>PROJECTS_PATH</code> - Projects directory</li>
             <li><code>OPENCLAW_GATEWAY_URL</code> - Gateway WebSocket URL</li>
             <li><code>OPENCLAW_GATEWAY_TOKEN</code> - Gateway auth token</li>
+            <li><code>OPENCLAW_DISCORD_RELAY_ENABLED</code> - Enable/disable Mission Control event relay to Discord</li>
+            <li><code>OPENCLAW_DISCORD_CHANNEL_ID</code> - Discord channel ID for relay messages</li>
+            <li><code>OPENCLAW_DISCORD_TASK_COMMANDS_ENABLED</code> - Enable Discord <code>!task</code> command ingestion</li>
+            <li><code>OPENCLAW_DISCORD_TASK_COMMAND_USER_ALLOWLIST</code> - Comma-separated Discord user IDs allowed to create tasks (optional)</li>
+            <li><code>OPENCLAW_DISCORD_TASK_WORKSPACE_ID</code> - Workspace target for Discord-created tasks (default: <code>default</code>)</li>
           </ul>
           <p className="text-xs text-blue-400 mt-3">
             Environment variables take precedence over UI settings for server-side operations.
