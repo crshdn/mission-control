@@ -54,6 +54,9 @@ export function useSSE() {
       };
 
       eventSource.onmessage = (event) => {
+        // Any message means we're connected
+        setIsOnline(true);
+
         try {
           // Skip keep-alive messages (they start with ":")
           if (event.data.startsWith(':')) {

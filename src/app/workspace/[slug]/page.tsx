@@ -90,26 +90,7 @@ export default function WorkspacePage() {
       }
     }
 
-    // Check OpenClaw connection separately (non-blocking)
-    async function checkOpenClaw() {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-        const openclawRes = await fetch('/api/openclaw/status', { signal: controller.signal });
-        clearTimeout(timeoutId);
-
-        if (openclawRes.ok) {
-          const status = await openclawRes.json();
-          setIsOnline(status.connected);
-        }
-      } catch {
-        setIsOnline(false);
-      }
-    }
-
     loadData();
-    checkOpenClaw();
 
     // SSE is the primary real-time mechanism - these are fallback polls with longer intervals
     // to reduce server load while providing redundancy

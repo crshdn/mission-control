@@ -17,9 +17,9 @@ export async function GET(request: NextRequest) {
       // Register this client
       registerClient(controller);
 
-      // Send initial connection message
-      const connectMsg = encoder.encode(`: connected\n\n`);
-      controller.enqueue(connectMsg);
+      // Send initial connection event (data event so onmessage fires)
+      controller.enqueue(encoder.encode(`: connected\n\n`));
+      controller.enqueue(encoder.encode(`data: {"type":"connected"}\n\n`));
 
       // Set up keep-alive ping every 30 seconds
       const keepAliveInterval = setInterval(() => {
