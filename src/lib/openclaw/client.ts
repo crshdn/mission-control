@@ -5,6 +5,28 @@ import type { OpenClawMessage, OpenClawSessionInfo } from '../types';
 import { loadOrCreateDeviceIdentity, signDevicePayload, buildDeviceAuthPayload, publicKeyRawBase64Url } from './device-identity';
 import { createHash } from 'crypto';
 
+// Types for gateway model discovery (matches OpenClaw models.list response)
+export interface GatewayModelChoice {
+  id: string;
+  name: string;
+  provider: string;
+  contextWindow?: number;
+  reasoning?: boolean;
+}
+
+// Partial type for config.get response (only fields we need)
+export interface GatewayConfigSnapshot {
+  config?: {
+    agents?: {
+      defaults?: {
+        model?: {
+          primary?: string;
+        };
+      };
+    };
+  };
+}
+
 const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL || 'ws://127.0.0.1:18789';
 const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || '';
 
@@ -471,6 +493,23 @@ export class OpenClawClient extends EventEmitter {
 
   async describeNode(nodeId: string): Promise<unknown> {
     return this.call('node.describe', { node_id: nodeId });
+  }
+
+  // Model discovery methods (queries remote gateway via RPC)
+  async listModels(): Promise<GatewayModelChoice[]> {
+    const result = await this.call<{ models?: GatewayModelChoice[] }>('models.list', {});
+    if (result && typeof result === 'object' && Array.isArray((result as Record<string, unknown>).models)) {
+      return (result as Record<string, unknown>).models as GatewayModelChoice[];
+    }
+    return [];
+  }
+
+  async getConfig(): Promise<GatewayConfigSnapshot> {
+    const result = await this.call<unknown>('config.get', {});
+    if (result && typeof result === 'object') {
+      return result as GatewayConfigSnapshot;
+    }
+    return {};
   }
 
   disconnect(): void {
