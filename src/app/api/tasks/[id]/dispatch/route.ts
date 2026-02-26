@@ -6,6 +6,7 @@ import { broadcast } from '@/lib/events';
 import { getProjectsPath, getMissionControlUrl } from '@/lib/config';
 import type { Task, Agent, OpenClawSession } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
 interface RouteParams {
   params: Promise<{ id: string }>;
 }

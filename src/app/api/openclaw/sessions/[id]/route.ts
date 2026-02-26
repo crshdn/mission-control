@@ -3,6 +3,7 @@ import { getOpenClawClient } from '@/lib/openclaw/client';
 import { getDb } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 
+export const dynamic = 'force-dynamic';
 interface RouteParams {
   params: Promise<{ id: string }>;
 }

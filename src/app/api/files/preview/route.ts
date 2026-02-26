@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   const filePath = request.nextUrl.searchParams.get('path');
 

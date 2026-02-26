@@ -4,6 +4,7 @@ import { createHmac } from 'crypto';
 import { queryOne, queryAll, run } from '@/lib/db';
 import type { Task, Agent, OpenClawSession } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
 /**
  * Verify HMAC-SHA256 signature of webhook request
  */

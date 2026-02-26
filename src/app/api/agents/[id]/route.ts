@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { queryOne, run } from '@/lib/db';
 import type { Agent, UpdateAgentRequest } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
 // GET /api/agents/[id] - Get a single agent
 export async function GET(
   request: NextRequest,

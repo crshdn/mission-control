@@ -6,6 +6,8 @@ import { getMissionControlUrl } from '@/lib/config';
 import { UpdateTaskSchema } from '@/lib/validation';
 import type { Task, UpdateTaskRequest, Agent, TaskDeliverable } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/tasks/[id] - Get a single task
 export async function GET(
   request: NextRequest,

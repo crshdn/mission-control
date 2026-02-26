@@ -5,6 +5,7 @@ import { broadcast } from '@/lib/events';
 import { extractJSON, getMessagesFromOpenClaw } from '@/lib/planning-utils';
 import { Task } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
 // Planning timeout and poll interval configuration with validation
 const PLANNING_TIMEOUT_MS = parseInt(process.env.PLANNING_TIMEOUT_MS || '30000', 10);
 const PLANNING_POLL_INTERVAL_MS = parseInt(process.env.PLANNING_POLL_INTERVAL_MS || '2000', 10);

@@ -9,6 +9,8 @@ import { broadcast } from '@/lib/events';
 import { CreateActivitySchema } from '@/lib/validation';
 import type { TaskActivity } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/tasks/[id]/activities
  * Retrieve all activities for a task

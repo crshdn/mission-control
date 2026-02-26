@@ -5,6 +5,8 @@ import { broadcast } from '@/lib/events';
 import { extractJSON } from '@/lib/planning-utils';
 // File system imports removed - using OpenClaw API instead
 
+export const dynamic = 'force-dynamic';
+
 // Planning session prefix for OpenClaw (must match agent:main: format)
 const PLANNING_SESSION_PREFIX = 'agent:main:planning:';
 

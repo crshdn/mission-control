@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { extractJSON } from '@/lib/planning-utils';
 
+export const dynamic = 'force-dynamic';
 // POST /api/tasks/[id]/planning/answer - Submit an answer and get next question
 export async function POST(
   request: NextRequest,

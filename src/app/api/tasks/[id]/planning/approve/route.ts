@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import type { PlanningQuestion, PlanningCategory } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
 // Generate markdown spec from answered questions
 function generateSpecMarkdown(task: { title: string; description?: string }, questions: PlanningQuestion[]): string {
   const lines: string[] = [];

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne, queryAll } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 interface OrchestraStatusResponse {
   hasOtherOrchestrators: boolean;
   orchestratorCount: number;
