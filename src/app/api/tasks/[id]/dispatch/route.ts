@@ -197,7 +197,7 @@ If you need help or clarification, ask the orchestrator.`;
     try {
       await client.call('chat.send', {
         sessionKey,
-        message: '[Mission Control] Dispatch handshake',
+        message: '[Mission Control] Lightweight handshake',
         idempotencyKey: `dispatch-handshake-${task.id}-${Date.now()}`,
       });
 
