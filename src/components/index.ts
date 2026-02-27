@@ -1,6 +1,9 @@
 export { Header } from './Header';
 export { AgentsSidebar } from './AgentsSidebar';
 export { AgentModal } from './AgentModal';
+export { AgentStatsTab } from './AgentStatsTab';
+export { AgentHistoryTab } from './AgentHistoryTab';
+export { ChatPanel } from './ChatPanel';
 export { DiscoverAgentsModal } from './DiscoverAgentsModal';
 export { MissionQueue } from './MissionQueue';
 export { TaskModal } from './TaskModal';

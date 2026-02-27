@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { X, Save, Trash2 } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
+import { AgentStatsTab } from './AgentStatsTab';
+import { AgentHistoryTab } from './AgentHistoryTab';
 import type { Agent, AgentStatus } from '@/lib/types';
 
 interface AgentModalProps {
@@ -16,7 +18,7 @@ const EMOJI_OPTIONS = ['🤖', '🦞', '💻', '🔍', '✍️', '🎨', '📊',
 
 export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: AgentModalProps) {
   const { addAgent, updateAgent, agents } = useMissionControl();
-  const [activeTab, setActiveTab] = useState<'info' | 'soul' | 'user' | 'agents'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'soul' | 'user' | 'agents' | 'stats' | 'history'>('info');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [defaultModel, setDefaultModel] = useState<string>('');
@@ -113,12 +115,20 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
     }
   };
 
-  const tabs = [
-    { id: 'info', label: 'Info' },
-    { id: 'soul', label: 'SOUL.md' },
-    { id: 'user', label: 'USER.md' },
-    { id: 'agents', label: 'AGENTS.md' },
-  ] as const;
+  const baseTabs = [
+    { id: 'info' as const, label: 'Info' },
+    { id: 'soul' as const, label: 'SOUL.md' },
+    { id: 'user' as const, label: 'USER.md' },
+    { id: 'agents' as const, label: 'AGENTS.md' },
+  ];
+
+  const tabs = agent
+    ? [
+        ...baseTabs,
+        { id: 'stats' as const, label: '📊 Stats' },
+        { id: 'history' as const, label: '💬 History' },
+      ]
+    : baseTabs;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -318,6 +328,14 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
                 placeholder="# Team Roster&#10;&#10;Information about other agents this agent works with..."
               />
             </div>
+          )}
+
+          {activeTab === 'stats' && agent && (
+            <AgentStatsTab agentId={agent.id} />
+          )}
+
+          {activeTab === 'history' && agent && (
+            <AgentHistoryTab agentId={agent.id} agentName={agent.name} />
           )}
         </form>
 

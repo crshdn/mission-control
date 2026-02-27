@@ -22,8 +22,20 @@ export async function GET(request: Request, { params }: RouteParams) {
       }
     }
 
-    const history = await client.getSessionHistory(id);
-    return NextResponse.json({ history });
+    const result = await client.getSessionHistory(id);
+    
+    // Gateway returns { sessionKey, sessionId, messages, thinkingLevel }
+    let messages: unknown[] = [];
+    if (Array.isArray(result)) {
+      messages = result;
+    } else if (result && typeof result === 'object') {
+      const obj = result as unknown as Record<string, unknown>;
+      if (Array.isArray(obj.messages)) {
+        messages = obj.messages;
+      }
+    }
+    
+    return NextResponse.json({ history: messages });
   } catch (error) {
     console.error('Failed to get OpenClaw session history:', error);
     return NextResponse.json(
