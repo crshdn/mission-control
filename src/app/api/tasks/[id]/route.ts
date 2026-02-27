@@ -5,7 +5,8 @@ import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
 import { UpdateTaskSchema } from '@/lib/validation';
 import { captureResultFromSession } from '@/lib/result-capture';
-import type { Task, UpdateTaskRequest, Agent, TaskDeliverable } from '@/lib/types';
+import { triggerTaskStatusChange } from '@/lib/webhooks';
+import type { Task, UpdateTaskRequest, Agent, TaskDeliverable, TaskStatus } from '@/lib/types';
 
 // GET /api/tasks/[id] - Get a single task
 export async function GET(
@@ -59,6 +60,8 @@ export async function PATCH(
     if (!existing) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
+    // Store previous status for webhook trigger
+    const previousStatus = existing.status;
 
     const updates: string[] = [];
     const values: unknown[] = [];
@@ -189,6 +192,13 @@ export async function PATCH(
         type: 'task_updated',
         payload: task,
       });
+
+      // WEBHOOK TRIGGER: Fire webhook if status changed
+      if (validatedData.status !== undefined && validatedData.status !== previousStatus) {
+        triggerTaskStatusChange(task, previousStatus as TaskStatus).catch(err => {
+          console.error('[WEBHOOK] Failed to trigger webhook for task status change:', err);
+        });
+      }
     }
 
     // Trigger auto-dispatch if needed

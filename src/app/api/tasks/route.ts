@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { queryAll, queryOne, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { CreateTaskSchema } from '@/lib/validation';
+import { triggerTaskCreated } from '@/lib/webhooks';
 import type { Task, CreateTaskRequest, Agent } from '@/lib/types';
 
 // GET /api/tasks - List all tasks with optional filters
@@ -150,6 +151,11 @@ export async function POST(request: NextRequest) {
       broadcast({
         type: 'task_created',
         payload: task,
+      });
+      
+      // WEBHOOK TRIGGER: Fire webhook for task creation
+      triggerTaskCreated(task).catch(err => {
+        console.error("[WEBHOOK] Failed to trigger webhook for task creation:", err);
       });
     }
     

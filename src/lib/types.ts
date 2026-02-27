@@ -66,6 +66,7 @@ export interface Task {
   due_date?: string;
   result?: string;
   result_captured_at?: string;
+  planning_spec?: string;
   created_at: string;
   updated_at: string;
   // Joined fields
@@ -325,4 +326,66 @@ export interface SSEEvent {
   } | {
     id: string;  // For task_deleted events
   };
+}
+
+// Webhook system types
+export type WebhookEventType =
+  | "task.created"
+  | "task.status_changed"
+  | "task.planning_complete"
+  | "task.stuck"
+  | "task.review_ready"
+  | "task.completed"
+  | "agent.spawned"
+  | "agent.completed";
+
+export interface Webhook {
+  id: string;
+  name: string;
+  url: string;
+  secret?: string;
+  events: WebhookEventType[];
+  enabled: boolean;
+  created_at: string;
+  last_triggered_at?: string;
+  failure_count: number;
+}
+
+export interface WebhookEvent {
+  id: string;
+  type: WebhookEventType;
+  timestamp: string;
+  data: {
+    task_id?: string;
+    title?: string;
+    status?: TaskStatus;
+    previous_status?: TaskStatus;
+    priority?: TaskPriority;
+    description?: string;
+    planning_spec?: string;
+    stuck_duration?: string;
+    agent_id?: string;
+    agent_name?: string;
+    session_id?: string;
+  };
+  metadata: {
+    workspace_id: string;
+    triggered_by: string;
+  };
+}
+
+export interface CreateWebhookRequest {
+  name: string;
+  url: string;
+  secret?: string;
+  events: WebhookEventType[];
+  enabled?: boolean;
+}
+
+export interface UpdateWebhookRequest {
+  name?: string;
+  url?: string;
+  secret?: string;
+  events?: WebhookEventType[];
+  enabled?: boolean;
 }
