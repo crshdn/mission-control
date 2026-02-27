@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryAll, queryOne, run } from '@/lib/db';
+import { readAllAgentFiles } from '@/lib/workspace';
 import type { Agent, CreateAgentRequest } from '@/lib/types';
 
 // GET /api/agents - List all agents
@@ -18,6 +19,17 @@ export async function GET(request: NextRequest) {
         SELECT * FROM agents ORDER BY is_master DESC, name ASC
       `);
     }
+
+    // Overlay workspace files for gateway agents
+    for (const agent of agents) {
+      if (agent.gateway_agent_id) {
+        const files = readAllAgentFiles(agent.gateway_agent_id);
+        if (files.soul_md !== null) agent.soul_md = files.soul_md;
+        if (files.user_md !== null) agent.user_md = files.user_md;
+        if (files.agents_md !== null) agent.agents_md = files.agents_md;
+      }
+    }
+
     return NextResponse.json(agents);
   } catch (error) {
     console.error('Failed to fetch agents:', error);

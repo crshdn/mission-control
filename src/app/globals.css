@@ -135,3 +135,279 @@ body {
 .online-glow {
   box-shadow: 0 0 10px var(--mc-accent-green), 0 0 20px var(--mc-accent-green);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   2nd Brain — Markdown Content Styles (Obsidian-like)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.brain-content {
+  @apply text-mc-text leading-relaxed;
+  font-size: 0.925rem;
+}
+
+.brain-content h1 {
+  @apply text-2xl font-bold text-mc-text mt-8 mb-4 pb-2 border-b border-mc-border;
+}
+
+.brain-content h2 {
+  @apply text-xl font-bold text-mc-text mt-7 mb-3 pl-3 border-l-2 border-mc-accent-purple;
+}
+
+.brain-content h3 {
+  @apply text-lg font-semibold text-mc-text mt-5 mb-2 pl-3 border-l-2 border-mc-accent-purple/50;
+}
+
+.brain-content h4 {
+  @apply text-base font-semibold text-mc-text-secondary mt-4 mb-2;
+}
+
+.brain-content h5,
+.brain-content h6 {
+  @apply text-sm font-semibold text-mc-text-secondary mt-3 mb-1;
+}
+
+.brain-content p {
+  @apply mb-4 leading-relaxed;
+}
+
+.brain-content a {
+  @apply text-mc-accent underline underline-offset-2 decoration-mc-accent/40 hover:decoration-mc-accent transition-colors;
+}
+
+.brain-content strong {
+  @apply font-bold text-mc-text;
+}
+
+.brain-content em {
+  @apply italic text-mc-text/90;
+}
+
+.brain-content ul {
+  @apply mb-4 pl-6 space-y-1;
+  list-style-type: disc;
+}
+
+.brain-content ol {
+  @apply mb-4 pl-6 space-y-1;
+  list-style-type: decimal;
+}
+
+.brain-content li {
+  @apply text-mc-text leading-relaxed;
+}
+
+.brain-content li::marker {
+  @apply text-mc-text-secondary;
+}
+
+.brain-content blockquote {
+  @apply border-l-2 border-mc-accent-purple pl-4 py-1 my-4 bg-mc-accent-purple/5 rounded-r;
+}
+
+.brain-content blockquote p {
+  @apply text-mc-text-secondary mb-0;
+}
+
+.brain-content code {
+  @apply bg-mc-bg-tertiary text-mc-accent-pink rounded px-1.5 py-0.5 text-[0.85em] font-mono;
+}
+
+.brain-content pre {
+  @apply bg-mc-bg rounded-lg border border-mc-border p-4 my-4 overflow-x-auto;
+}
+
+.brain-content pre code {
+  @apply bg-transparent p-0 rounded-none text-mc-text text-sm;
+}
+
+.brain-content table {
+  @apply w-full my-4 border-collapse;
+}
+
+.brain-content thead {
+  @apply border-b-2 border-mc-border;
+}
+
+.brain-content th {
+  @apply text-left px-4 py-2 text-sm font-semibold text-mc-text-secondary bg-mc-bg-tertiary;
+}
+
+.brain-content td {
+  @apply px-4 py-2 text-sm border-b border-mc-border/50;
+}
+
+.brain-content tr:hover td {
+  @apply bg-mc-bg-tertiary/30;
+}
+
+.brain-content hr {
+  @apply my-8 border-mc-border;
+}
+
+.brain-content img {
+  @apply rounded-lg border border-mc-border my-4 max-w-full;
+}
+
+/* Task lists */
+.brain-content input[type="checkbox"] {
+  @apply mr-2 accent-mc-accent-purple;
+}
+
+/* Highlight.js dark theme overrides */
+.brain-content .hljs {
+  @apply bg-transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Pixel Office Animations
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Walking animation — bob up and down */
+.pixel-walk {
+  animation: pixel-bob 0.3s ease-in-out infinite;
+}
+
+@keyframes pixel-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* Leg animations for walking */
+.pixel-leg-left {
+  animation: leg-swing-left 0.3s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+.pixel-leg-right {
+  animation: leg-swing-right 0.3s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+@keyframes leg-swing-left {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-15deg); }
+}
+
+@keyframes leg-swing-right {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(15deg); }
+}
+
+/* Typing animation — slight body shake */
+.pixel-typing {
+  animation: pixel-type-shake 0.2s ease-in-out infinite;
+}
+
+@keyframes pixel-type-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-0.7px) translateY(-0.3px); }
+  75% { transform: translateX(0.7px) translateY(-0.3px); }
+}
+
+/* Arm typing animation */
+.pixel-arm-left {
+  animation: arm-type-left 0.25s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+.pixel-arm-right {
+  animation: arm-type-right 0.25s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+@keyframes arm-type-left {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-3deg) translateY(-1px); }
+}
+
+@keyframes arm-type-right {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(3deg) translateY(-1px); }
+}
+
+/* Idle animation — subtle breathing */
+.pixel-idle {
+  animation: pixel-breathe 3s ease-in-out infinite;
+}
+
+@keyframes pixel-breathe {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+}
+
+/* Eye blink */
+.pixel-blink {
+  animation: pixel-eye-blink 3s ease-in-out infinite;
+}
+
+@keyframes pixel-eye-blink {
+  0%, 92%, 100% { opacity: 1; height: 2px; }
+  95% { opacity: 0.3; height: 0.5px; }
+}
+
+/* Screen glow for working monitors */
+.pixel-screen-glow {
+  animation: screen-glow 2s ease-in-out infinite;
+}
+
+@keyframes screen-glow {
+  0%, 100% { fill: #0d3320; }
+  50% { fill: #0f4028; }
+}
+
+/* Code lines scrolling on screen */
+.pixel-code-line {
+  animation: code-scroll 1.5s linear infinite;
+}
+
+.pixel-code-line-2 {
+  animation: code-scroll 2s linear infinite;
+  animation-delay: 0.3s;
+}
+
+.pixel-code-line-3 {
+  animation: code-scroll 1.8s linear infinite;
+  animation-delay: 0.7s;
+}
+
+@keyframes code-scroll {
+  0% { opacity: 0.3; width: 4px; }
+  50% { opacity: 0.8; }
+  100% { opacity: 0.3; width: 18px; }
+}
+
+/* Status pulse */
+.pixel-pulse {
+  animation: pixel-status-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pixel-status-pulse {
+  0%, 100% { r: 3; opacity: 1; }
+  50% { r: 4; opacity: 0.7; }
+}
+
+/* Typing indicator text */
+.pixel-typing-indicator {
+  animation: typing-fade 1s ease-in-out infinite;
+}
+
+@keyframes typing-fade {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+/* Zzz floating for standby */
+.pixel-zzz {
+  animation: zzz-float 2.5s ease-in-out infinite;
+}
+
+@keyframes zzz-float {
+  0%, 100% { 
+    transform: translateY(0) scale(1); 
+    opacity: 0.5; 
+  }
+  50% { 
+    transform: translateY(-6px) scale(1.1); 
+    opacity: 0.9; 
+  }
+}

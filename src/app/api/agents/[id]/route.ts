@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, run } from '@/lib/db';
+import { readAllAgentFiles, writeAgentFile } from '@/lib/workspace';
 import type { Agent, UpdateAgentRequest } from '@/lib/types';
 
 // GET /api/agents/[id] - Get a single agent
@@ -14,6 +15,14 @@ export async function GET(
 
     if (!agent) {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+    }
+
+    // If agent has a gateway_agent_id, read md files from actual workspace
+    if (agent.gateway_agent_id) {
+      const files = readAllAgentFiles(agent.gateway_agent_id);
+      if (files.soul_md !== null) agent.soul_md = files.soul_md;
+      if (files.user_md !== null) agent.user_md = files.user_md;
+      if (files.agents_md !== null) agent.agents_md = files.agents_md;
     }
 
     return NextResponse.json(agent);
@@ -75,14 +84,26 @@ export async function PATCH(
     if (body.soul_md !== undefined) {
       updates.push('soul_md = ?');
       values.push(body.soul_md);
+      // Write to actual workspace file
+      if (existing.gateway_agent_id) {
+        writeAgentFile(existing.gateway_agent_id, 'SOUL.md', body.soul_md);
+      }
     }
     if (body.user_md !== undefined) {
       updates.push('user_md = ?');
       values.push(body.user_md);
+      // Write to actual workspace file
+      if (existing.gateway_agent_id) {
+        writeAgentFile(existing.gateway_agent_id, 'USER.md', body.user_md);
+      }
     }
     if (body.agents_md !== undefined) {
       updates.push('agents_md = ?');
       values.push(body.agents_md);
+      // Write to actual workspace file
+      if (existing.gateway_agent_id) {
+        writeAgentFile(existing.gateway_agent_id, 'AGENTS.md', body.agents_md);
+      }
     }
     if (body.model !== undefined) {
       updates.push('model = ?');
@@ -99,7 +120,15 @@ export async function PATCH(
 
     run(`UPDATE agents SET ${updates.join(', ')} WHERE id = ?`, values);
 
+    // Re-fetch and overlay workspace files for response
     const agent = queryOne<Agent>('SELECT * FROM agents WHERE id = ?', [id]);
+    if (agent && agent.gateway_agent_id) {
+      const files = readAllAgentFiles(agent.gateway_agent_id);
+      if (files.soul_md !== null) agent.soul_md = files.soul_md;
+      if (files.user_md !== null) agent.user_md = files.user_md;
+      if (files.agents_md !== null) agent.agents_md = files.agents_md;
+    }
+
     return NextResponse.json(agent);
   } catch (error) {
     console.error('Failed to update agent:', error);
