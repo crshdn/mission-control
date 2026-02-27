@@ -18,6 +18,21 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Mission Control color system (uses CSS variables for dark mode)
+        'mc-bg': 'var(--mc-bg)',
+        'mc-bg-secondary': 'var(--mc-bg-secondary)',
+        'mc-bg-tertiary': 'var(--mc-bg-tertiary)',
+        'mc-border': 'var(--mc-border)',
+        'mc-text': 'var(--mc-text)',
+        'mc-text-secondary': 'var(--mc-text-secondary)',
+        'mc-accent': 'var(--mc-accent)',
+        'mc-accent-cyan': 'var(--mc-accent-cyan)',
+        'mc-accent-purple': 'var(--mc-accent-purple)',
+        'mc-accent-green': 'var(--mc-accent-green)',
+        'mc-accent-yellow': 'var(--mc-accent-yellow)',
+        'mc-accent-red': 'var(--mc-accent-red)',
+        'mc-accent-pink': 'var(--mc-accent-pink)',
+        
         // Apple-style color system
         // Light mode (primary)
         'apple-bg': '#ffffff',

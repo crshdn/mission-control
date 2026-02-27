@@ -2,6 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mission Control CSS Variables */
+:root {
+  /* MC Light mode */
+  --mc-bg: #ffffff;
+  --mc-bg-secondary: #f5f5f7;
+  --mc-bg-tertiary: #e8e8ed;
+  --mc-border: #d2d2d7;
+  --mc-text: #1d1d1f;
+  --mc-text-secondary: #86868b;
+  --mc-accent: #0071e3;
+  --mc-accent-cyan: #64d2ff;
+  --mc-accent-purple: #bf5af2;
+  --mc-accent-green: #30d158;
+  --mc-accent-yellow: #ffd60a;
+  --mc-accent-red: #ff453a;
+  --mc-accent-pink: #ff375f;
+}
+
+.dark {
+  /* MC Dark mode */
+  --mc-bg: #000000;
+  --mc-bg-secondary: #1c1c1e;
+  --mc-bg-tertiary: #2c2c2e;
+  --mc-border: #38383a;
+  --mc-text: #f5f5f7;
+  --mc-text-secondary: #98989d;
+  --mc-accent: #0a84ff;
+  --mc-accent-cyan: #64d2ff;
+  --mc-accent-purple: #bf5af2;
+  --mc-accent-green: #30d158;
+  --mc-accent-yellow: #ffd60a;
+  --mc-accent-red: #ff453a;
+  --mc-accent-pink: #ff375f;
+}
+
 /* Apple Design System CSS Variables */
 :root {
   /* Light mode colors */
