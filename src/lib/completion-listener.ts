@@ -198,8 +198,98 @@ async function checkTaskForCompletion(taskId: string, agentId: string): Promise<
   
   console.log(`[COMPLETION LISTENER] Found TASK_COMPLETE for task ${taskId}: ${completionSummary.slice(0, 50)}...`);
   
-  // Update task status
   const now = new Date().toISOString();
+  
+  // Check if this is a multi-agent task
+  const taskData = queryOne<{ execution_state?: string }>('SELECT execution_state FROM tasks WHERE id = ?', [taskId]);
+  
+  if (taskData?.execution_state) {
+    try {
+      const state = JSON.parse(taskData.execution_state);
+      const currentIndex = state.current_agent_index || 0;
+      const totalAgents = state.total_agents || 1;
+      const planningAgents = state.planning_agents || [];
+      
+      // Store output from current agent
+      if (!state.agent_outputs) state.agent_outputs = [];
+      state.agent_outputs.push({
+        agent: planningAgents[currentIndex]?.name || 'Unknown',
+        output: completionSummary,
+        completed_at: now
+      });
+      
+      // Check if more agents in chain
+      if (currentIndex < totalAgents - 1) {
+        // Advance to next agent
+        const nextIndex = currentIndex + 1;
+        const nextAgent = planningAgents[nextIndex];
+        
+        console.log(`[COMPLETION LISTENER] Multi-agent task: advancing from agent ${currentIndex} to ${nextIndex} (${nextAgent?.name})`);
+        
+        // Update execution state
+        state.current_agent_index = nextIndex;
+        
+        // Find the next agent's ID
+        const nextAgentRecord = queryOne<{ id: string }>(
+          'SELECT id FROM agents WHERE LOWER(name) = LOWER(?) LIMIT 1',
+          [nextAgent?.name]
+        );
+        
+        if (nextAgentRecord) {
+          // Log activity for current agent completion
+          const activityId1 = crypto.randomUUID();
+          run(
+            `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [activityId1, taskId, agentId, 'completed', `${agent.name} completed: ${completionSummary}`, now]
+          );
+          
+          // Update task for next agent
+          run(
+            `UPDATE tasks 
+             SET assigned_agent_id = ?,
+                 execution_state = ?,
+                 status = 'assigned',
+                 updated_at = ?
+             WHERE id = ?`,
+            [nextAgentRecord.id, JSON.stringify(state), now, taskId]
+          );
+          
+          // Trigger dispatch to next agent
+          const port = process.env.PORT || process.env.MC_PORT || '4000';
+          fetch(`http://localhost:${port}/api/tasks/${taskId}/dispatch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          }).then(res => {
+            console.log(`[COMPLETION LISTENER] Dispatched to next agent ${nextAgent?.name}: ${res.status}`);
+          }).catch(err => {
+            console.error(`[COMPLETION LISTENER] Failed to dispatch to next agent:`, err);
+          });
+          
+          // Broadcast update
+          const updatedTask = queryOne<any>('SELECT * FROM tasks WHERE id = ?', [taskId]);
+          if (updatedTask) {
+            broadcast({ type: 'task_updated', payload: updatedTask });
+          }
+          
+          return; // Don't mark as done yet
+        }
+      }
+      
+      // Final agent completed - update state and mark done
+      run(
+        `UPDATE tasks 
+         SET execution_state = ?,
+             updated_at = ?
+         WHERE id = ?`,
+        [JSON.stringify(state), now, taskId]
+      );
+    } catch (parseErr) {
+      console.error(`[COMPLETION LISTENER] Failed to parse execution_state:`, parseErr);
+    }
+  }
+  
+  // Mark task as done (either single-agent or final agent in chain)
   run(
     `UPDATE tasks 
      SET status = 'done', 

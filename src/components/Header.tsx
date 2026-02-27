@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Zap, Settings, ChevronLeft, LayoutGrid } from 'lucide-react';
+import { ThemeToggle } from './ThemeToggle';
 import { useMissionControl } from '@/lib/store';
 import { format } from 'date-fns';
 import type { Workspace } from '@/lib/types';
@@ -119,6 +120,7 @@ export function Header({ workspace }: HeaderProps) {
           />
           {isOnline ? 'ONLINE' : 'OFFLINE'}
         </div>
+        <ThemeToggle />
         <button
           onClick={() => router.push('/settings')}
           className="p-2 hover:bg-mc-bg-tertiary rounded text-mc-text-secondary"

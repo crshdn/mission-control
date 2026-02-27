@@ -6,7 +6,7 @@ import { extractJSON } from '@/lib/planning-utils';
 // File system imports removed - using OpenClaw API instead
 
 // Planning session prefix for OpenClaw (must match agent:main: format)
-const PLANNING_SESSION_PREFIX = 'agent:main:planning:';
+const PLANNING_SESSION_PREFIX = 'agent:dispatcher:planning:';
 
 // GET /api/tasks/[id]/planning - Get planning state
 export async function GET(

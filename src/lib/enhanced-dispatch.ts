@@ -505,11 +505,17 @@ If you need clarification about your role or the previous work, ask the orchestr
 
 /**
  * Build context from previous agents (helper for both regular and revision messages)
+ * Handles both old format (agent) and new format (agent_name, agent_index)
  */
 function buildPreviousOutputsContext(executionState: ExecutionState, currentAgentIndex: number): string {
+  // Handle both old and new output formats
   const previousOutputs = executionState.agent_outputs
-    .filter(output => output.agent_index < currentAgentIndex)
-    .sort((a, b) => a.agent_index - b.agent_index);
+    .filter((output, index) => {
+      // Use agent_index if available, otherwise use array position
+      const outputIndex = output.agent_index ?? index;
+      return outputIndex < currentAgentIndex;
+    })
+    .sort((a, b) => (a.agent_index ?? 0) - (b.agent_index ?? 0));
 
   if (previousOutputs.length === 0) {
     return 'No previous agent work (you are the first agent).';
@@ -521,30 +527,42 @@ function buildPreviousOutputsContext(executionState: ExecutionState, currentAgen
         ? `${output.output.slice(0, 800)}...\n[Output truncated]`
         : output.output;
       
-      return `**${output.agent_name}:** ${truncatedOutput}`;
+      // Handle both old format (agent) and new format (agent_name)
+      const agentName = output.agent_name || (output as any).agent || 'Unknown Agent';
+      return `**${agentName}:** ${truncatedOutput}`;
     })
     .join('\n\n');
 }
 
 /**
  * Build section showing outputs from previous agents
+ * Handles both old format (agent) and new format (agent_name, agent_index)
  */
 function buildPreviousOutputsSection(executionState: ExecutionState, currentAgentIndex: number): string {
+  // Handle both old and new output formats
   const previousOutputs = executionState.agent_outputs
-    .filter(output => output.agent_index < currentAgentIndex)
-    .sort((a, b) => a.agent_index - b.agent_index);
+    .filter((output, index) => {
+      // Use agent_index if available, otherwise use array position
+      const outputIndex = output.agent_index ?? index;
+      return outputIndex < currentAgentIndex;
+    })
+    .sort((a, b) => (a.agent_index ?? 0) - (b.agent_index ?? 0));
 
   if (previousOutputs.length === 0) {
     return '';
   }
 
   const outputsText = previousOutputs
-    .map(output => {
+    .map((output, index) => {
       const truncatedOutput = output.output.length > 1000 
         ? `${output.output.slice(0, 1000)}...\n\n[Output truncated - full context available in task files]`
         : output.output;
       
-      return `### ${output.agent_name} (Agent ${output.agent_index + 1})
+      // Handle both old format (agent) and new format (agent_name)
+      const agentName = output.agent_name || (output as any).agent || 'Unknown Agent';
+      const agentIndex = output.agent_index ?? index;
+      
+      return `### ${agentName} (Agent ${agentIndex + 1})
 **Completed:** ${new Date(output.completed_at).toLocaleString()}
 **Output:**
 ${truncatedOutput}`;

@@ -11,7 +11,7 @@ import * as os from 'os';
 import * as crypto from 'crypto';
 import { queryOne, run } from './db';
 import { broadcast } from './events';
-import { triggerPollyReview } from './orchestration-review';
+// Note: triggerPollyReview removed - Polly now picks up 'review' status tasks during heartbeat
 import type { OpenClawSession } from './types';
 
 interface SessionMessage {
@@ -208,19 +208,22 @@ async function handleMultiAgentCompletion(taskId: string, agentOutputText: strin
 
   console.log(`[MULTI-AGENT] Stored output for agent ${agentInfo.name} (index ${executionState.current_agent_index})`);
   
-  // Add planning_agents to executionState for Polly review context
-  if (task.planning_agents) {
-    try {
-      executionState.planning_agents = JSON.parse(task.planning_agents);
-    } catch {
-      executionState.planning_agents = [];
-    }
-  } else {
-    executionState.planning_agents = [];
-  }
+  // Set task to 'review' status for Polly to pick up during heartbeat
+  // This replaces the broken synchronous triggerPollyReview approach
+  run(
+    'UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?',
+    ['review', now, taskId]
+  );
   
-  // Trigger Polly review instead of auto-progression
-  await triggerPollyReview(taskId, executionState, agentOutput);
+  // Log activity for visibility
+  const activityId = crypto.randomUUID();
+  run(
+    `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [activityId, taskId, agentInfo.id, 'review_requested', `🔍 ${agentInfo.name} completed - awaiting Polly QC review`, now]
+  );
+  
+  console.log(`[MULTI-AGENT] Task ${taskId} moved to 'review' status for Polly QC`);
 }
 
 /**

@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne, run } from '@/lib/db';
-import { triggerPollyReview } from '@/lib/orchestration-review';
+// Note: triggerPollyReview removed - Polly now uses /api/tasks/[id]/qc endpoint
 import { dispatchToNextAgent } from '@/lib/enhanced-dispatch';
 import { broadcast } from '@/lib/events';
 import * as crypto from 'crypto';
