@@ -8,6 +8,13 @@ const config: Config = {
   ],
   darkMode: 'class',
   safelist: [
+    // MC color classes
+    'bg-mc-bg', 'bg-mc-bg-secondary', 'bg-mc-bg-tertiary',
+    'text-mc-text', 'text-mc-text-secondary',
+    'border-mc-border',
+    'bg-mc-accent', 'bg-mc-accent-cyan', 'bg-mc-accent-purple', 'bg-mc-accent-green',
+    'bg-mc-accent-yellow', 'bg-mc-accent-red', 'bg-mc-accent-pink',
+    'text-mc-accent-cyan', 'text-mc-accent-green', 'text-mc-accent-red',
     // Apple color classes used in @apply
     'bg-apple-bg', 'bg-apple-bg-secondary', 'bg-apple-bg-tertiary',
     'text-apple-text', 'text-apple-text-secondary', 'text-apple-text-tertiary',

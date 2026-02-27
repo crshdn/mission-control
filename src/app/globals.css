@@ -100,6 +100,20 @@
   margin: 0;
 }
 
+/* Dark mode body styles - override tailwind utilities */
+body {
+  background-color: var(--mc-bg) !important;
+  color: var(--mc-text) !important;
+}
+
+/* Override common bg classes for dark mode */
+.dark .bg-mc-bg { background-color: var(--mc-bg) !important; }
+.dark .bg-mc-bg-secondary { background-color: var(--mc-bg-secondary) !important; }
+.dark .bg-mc-bg-tertiary { background-color: var(--mc-bg-tertiary) !important; }
+.dark .text-mc-text { color: var(--mc-text) !important; }
+.dark .text-mc-text-secondary { color: var(--mc-text-secondary) !important; }
+.dark .border-mc-border { border-color: var(--mc-border) !important; }
+
 html {
   /* Smooth scrolling with reduced motion support */
   scroll-behavior: smooth;
