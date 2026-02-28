@@ -29,6 +29,19 @@
 
 ---
 
+## 🌿 Branch Guide (this repo)
+
+This project contains a few branches for different purposes:
+
+- `main` → **recommended runtime branch** (includes mobile/orientation UX + task auto-promote fix)
+- `feat/mobile-orientation-ux` → mobile-first + portrait/landscape responsive dashboard work
+- `feat/auto-promote-assigned-dispatch` → backend workflow fix for `inbox -> assigned` when assigning an agent
+- `upstream-main` → snapshot of original upstream baseline for easy diff/rebase
+
+If you just want to run the latest stable custom version, use `main`.
+
+---
+
 ## ✨ Features
 
 🎯 **Task Management** — Kanban board with drag-and-drop across 7 status columns
