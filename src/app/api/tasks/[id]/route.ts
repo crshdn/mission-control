@@ -53,6 +53,7 @@ export async function PATCH(
     }
 
     const validatedData = validation.data;
+    let nextStatus = validatedData.status;
 
     const existing = queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [id]);
     if (!existing) {
@@ -100,22 +101,32 @@ export async function PATCH(
     // Track if we need to dispatch task
     let shouldDispatch = false;
 
+    // Auto-promote INBOX -> ASSIGNED when an agent is assigned and no explicit status was provided
+    if (
+      nextStatus === undefined &&
+      validatedData.assigned_agent_id !== undefined &&
+      validatedData.assigned_agent_id &&
+      existing.status === 'inbox'
+    ) {
+      nextStatus = 'assigned';
+    }
+
     // Handle status change
-    if (validatedData.status !== undefined && validatedData.status !== existing.status) {
+    if (nextStatus !== undefined && nextStatus !== existing.status) {
       updates.push('status = ?');
-      values.push(validatedData.status);
+      values.push(nextStatus);
 
       // Auto-dispatch when moving to assigned
-      if (validatedData.status === 'assigned' && existing.assigned_agent_id) {
+      if (nextStatus === 'assigned' && existing.assigned_agent_id) {
         shouldDispatch = true;
       }
 
       // Log status change event
-      const eventType = validatedData.status === 'done' ? 'task_completed' : 'task_status_changed';
+      const eventType = nextStatus === 'done' ? 'task_completed' : 'task_status_changed';
       run(
         `INSERT INTO events (id, type, task_id, message, created_at)
          VALUES (?, ?, ?, ?, ?)`,
-        [uuidv4(), eventType, id, `Task "${existing.title}" moved to ${validatedData.status}`, now]
+        [uuidv4(), eventType, id, `Task "${existing.title}" moved to ${nextStatus}`, now]
       );
     }
 
@@ -134,7 +145,7 @@ export async function PATCH(
           );
 
           // Auto-dispatch if already in assigned status or being assigned now
-          if (existing.status === 'assigned' || validatedData.status === 'assigned') {
+          if (existing.status === 'assigned' || nextStatus === 'assigned') {
             shouldDispatch = true;
           }
         }

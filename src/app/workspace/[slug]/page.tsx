@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ListTodo, Users, Activity, Settings as SettingsIcon, ExternalLink, Home, BarChart3 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { AgentsSidebar } from '@/components/AgentsSidebar';
 import { MissionQueue } from '@/components/MissionQueue';
@@ -14,26 +14,35 @@ import { useSSE } from '@/hooks/useSSE';
 import { debug } from '@/lib/debug';
 import type { Task, Workspace } from '@/lib/types';
 
+type MobileTab = 'queue' | 'agents' | 'feed' | 'settings';
+
 export default function WorkspacePage() {
   const params = useParams();
   const slug = params.slug as string;
-  
-  const {
-    setAgents,
-    setTasks,
-    setEvents,
-    setIsOnline,
-    setIsLoading,
-    isLoading,
-  } = useMissionControl();
+
+  const { setAgents, setTasks, setEvents, setIsOnline, setIsLoading, isLoading } = useMissionControl();
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [mobileTab, setMobileTab] = useState<MobileTab>('queue');
+  const [isPortrait, setIsPortrait] = useState(true);
 
-  // Connect to SSE for real-time updates
   useSSE();
 
-  // Load workspace data
+  useEffect(() => {
+    const media = window.matchMedia('(orientation: portrait)');
+    const updateOrientation = () => setIsPortrait(media.matches);
+
+    updateOrientation();
+    media.addEventListener('change', updateOrientation);
+    window.addEventListener('resize', updateOrientation);
+
+    return () => {
+      media.removeEventListener('change', updateOrientation);
+      window.removeEventListener('resize', updateOrientation);
+    };
+  }, []);
+
   useEffect(() => {
     async function loadWorkspace() {
       try {
@@ -57,17 +66,21 @@ export default function WorkspacePage() {
     loadWorkspace();
   }, [slug, setIsLoading]);
 
-  // Load workspace-specific data
+  useEffect(() => {
+    if (!isPortrait && mobileTab === 'queue') {
+      setMobileTab('agents');
+    }
+  }, [isPortrait, mobileTab]);
+
   useEffect(() => {
     if (!workspace) return;
-    
+
     const workspaceId = workspace.id;
 
     async function loadData() {
       try {
         debug.api('Loading workspace data...', { workspaceId });
-        
-        // Fetch workspace-scoped data
+
         const [agentsRes, tasksRes, eventsRes] = await Promise.all([
           fetch(`/api/agents?workspace_id=${workspaceId}`),
           fetch(`/api/tasks?workspace_id=${workspaceId}`),
@@ -88,7 +101,6 @@ export default function WorkspacePage() {
       }
     }
 
-    // Check OpenClaw connection separately (non-blocking)
     async function checkOpenClaw() {
       try {
         const controller = new AbortController();
@@ -109,10 +121,6 @@ export default function WorkspacePage() {
     loadData();
     checkOpenClaw();
 
-    // SSE is the primary real-time mechanism - these are fallback polls with longer intervals
-    // to reduce server load while providing redundancy
-
-    // Poll for events every 30 seconds (SSE fallback - increased from 5s)
     const eventPoll = setInterval(async () => {
       try {
         const res = await fetch('/api/events?limit=20');
@@ -122,9 +130,8 @@ export default function WorkspacePage() {
       } catch (error) {
         console.error('Failed to poll events:', error);
       }
-    }, 30000); // Increased from 5000 to 30000
+    }, 30000);
 
-    // Poll tasks as SSE fallback every 60 seconds (increased from 10s)
     const taskPoll = setInterval(async () => {
       try {
         const res = await fetch(`/api/tasks?workspace_id=${workspaceId}`);
@@ -132,10 +139,11 @@ export default function WorkspacePage() {
           const newTasks: Task[] = await res.json();
           const currentTasks = useMissionControl.getState().tasks;
 
-          const hasChanges = newTasks.length !== currentTasks.length ||
+          const hasChanges =
+            newTasks.length !== currentTasks.length ||
             newTasks.some((t) => {
-              const current = currentTasks.find(ct => ct.id === t.id);
-              return !current || current.status !== t.status;
+              const current = currentTasks.find((ct) => ct.id === t.id);
+              return !current || current.updated_at !== t.updated_at;
             });
 
           if (hasChanges) {
@@ -146,9 +154,8 @@ export default function WorkspacePage() {
       } catch (error) {
         console.error('Failed to poll tasks:', error);
       }
-    }, 60000); // Increased from 10000 to 60000
+    }, 60000);
 
-    // Check OpenClaw connection every 30 seconds (kept as-is for monitoring)
     const connectionCheck = setInterval(async () => {
       try {
         const res = await fetch('/api/openclaw/status');
@@ -174,13 +181,8 @@ export default function WorkspacePage() {
         <div className="text-center">
           <div className="text-6xl mb-4">🔍</div>
           <h1 className="text-2xl font-bold mb-2">Workspace Not Found</h1>
-          <p className="text-mc-text-secondary mb-6">
-            The workspace &ldquo;{slug}&rdquo; doesn&apos;t exist.
-          </p>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-mc-accent text-mc-bg rounded-lg font-medium hover:bg-mc-accent/90"
-          >
+          <p className="text-mc-text-secondary mb-6">The workspace &ldquo;{slug}&rdquo; doesn&apos;t exist.</p>
+          <Link href="/" className="inline-flex items-center gap-2 px-6 py-3 bg-mc-accent text-mc-bg rounded-lg font-medium hover:bg-mc-accent/90">
             <ChevronLeft className="w-4 h-4" />
             Back to Dashboard
           </Link>
@@ -200,23 +202,144 @@ export default function WorkspacePage() {
     );
   }
 
+  const showMobileBottomTabs = isPortrait;
+
   return (
     <div className="h-screen flex flex-col bg-mc-bg overflow-hidden">
-      <Header workspace={workspace} />
+      <Header workspace={workspace} isPortrait={isPortrait} />
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Agents Sidebar */}
+      <div className="hidden lg:flex flex-1 overflow-hidden">
         <AgentsSidebar workspaceId={workspace.id} />
-
-        {/* Main Content Area */}
         <MissionQueue workspaceId={workspace.id} />
-
-        {/* Live Feed */}
         <LiveFeed />
       </div>
 
-      {/* Debug Panel - only shows when debug mode enabled */}
+      <div
+        className={`lg:hidden flex-1 overflow-hidden ${
+          showMobileBottomTabs ? 'pb-[calc(4.5rem+env(safe-area-inset-bottom))]' : 'pb-[env(safe-area-inset-bottom)]'
+        }`}
+      >
+        {isPortrait ? (
+          <>
+            {mobileTab === 'queue' && <MissionQueue workspaceId={workspace.id} mobileMode isPortrait />}
+            {mobileTab === 'agents' && (
+              <div className="h-full p-3 overflow-y-auto">
+                <AgentsSidebar workspaceId={workspace.id} mobileMode isPortrait />
+              </div>
+            )}
+            {mobileTab === 'feed' && (
+              <div className="h-full p-3 overflow-y-auto">
+                <LiveFeed mobileMode isPortrait />
+              </div>
+            )}
+            {mobileTab === 'settings' && <MobileSettingsPanel workspace={workspace} />}
+          </>
+        ) : (
+          <div className="h-full p-3 grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-3">
+            <MissionQueue workspaceId={workspace.id} mobileMode isPortrait={false} />
+            <div className="min-w-0 h-full flex flex-col gap-3">
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => setMobileTab('agents')}
+                  className={`min-h-11 rounded-lg text-xs ${mobileTab === 'agents' ? 'bg-mc-accent text-mc-bg font-medium' : 'bg-mc-bg-secondary border border-mc-border text-mc-text-secondary'}`}
+                >
+                  Agents
+                </button>
+                <button
+                  onClick={() => setMobileTab('feed')}
+                  className={`min-h-11 rounded-lg text-xs ${mobileTab === 'feed' ? 'bg-mc-accent text-mc-bg font-medium' : 'bg-mc-bg-secondary border border-mc-border text-mc-text-secondary'}`}
+                >
+                  Feed
+                </button>
+                <button
+                  onClick={() => setMobileTab('settings')}
+                  className={`min-h-11 rounded-lg text-xs ${mobileTab === 'settings' ? 'bg-mc-accent text-mc-bg font-medium' : 'bg-mc-bg-secondary border border-mc-border text-mc-text-secondary'}`}
+                >
+                  Settings
+                </button>
+              </div>
+
+              <div className="min-h-0 flex-1">
+                {mobileTab === 'settings' ? (
+                  <MobileSettingsPanel workspace={workspace} denseLandscape />
+                ) : mobileTab === 'agents' ? (
+                  <AgentsSidebar workspaceId={workspace.id} mobileMode isPortrait={false} />
+                ) : (
+                  <LiveFeed mobileMode isPortrait={false} />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {showMobileBottomTabs && (
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-mc-border bg-mc-bg-secondary pb-[env(safe-area-inset-bottom)]">
+          <div className="grid grid-cols-4 gap-1 p-2">
+            <MobileTabButton label="Queue" active={mobileTab === 'queue'} icon={<ListTodo className="w-5 h-5" />} onClick={() => setMobileTab('queue')} />
+            <MobileTabButton label="Agents" active={mobileTab === 'agents'} icon={<Users className="w-5 h-5" />} onClick={() => setMobileTab('agents')} />
+            <MobileTabButton label="Feed" active={mobileTab === 'feed'} icon={<Activity className="w-5 h-5" />} onClick={() => setMobileTab('feed')} />
+            <MobileTabButton label="Settings" active={mobileTab === 'settings'} icon={<SettingsIcon className="w-5 h-5" />} onClick={() => setMobileTab('settings')} />
+          </div>
+        </nav>
+      )}
+
       <SSEDebugPanel />
+    </div>
+  );
+}
+
+function MobileTabButton({ label, active, icon, onClick }: { label: string; active: boolean; icon: ReactNode; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`min-h-11 rounded-lg flex flex-col items-center justify-center text-xs ${
+        active ? 'bg-mc-accent text-mc-bg font-medium' : 'text-mc-text-secondary'
+      }`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function MobileSettingsPanel({ workspace, denseLandscape = false }: { workspace: Workspace; denseLandscape?: boolean }) {
+  return (
+    <div className={`h-full overflow-y-auto ${denseLandscape ? 'p-0 pb-[env(safe-area-inset-bottom)]' : 'p-3 pb-[calc(1rem+env(safe-area-inset-bottom))]'}`}>
+      <div className="space-y-3">
+        <div className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4">
+          <div className="text-sm text-mc-text-secondary mb-2">Current workspace</div>
+          <div className="flex items-center gap-2 text-base font-medium">
+            <span>{workspace.icon}</span>
+            <span>{workspace.name}</span>
+          </div>
+          <div className="text-xs text-mc-text-secondary mt-1">/{workspace.slug}</div>
+        </div>
+
+
+        <Link href={`/workspace/${workspace.slug}/activity`} className="w-full min-h-11 px-4 rounded-lg border border-mc-border bg-mc-bg-secondary flex items-center justify-between text-sm">
+          <span className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Agent Activity Dashboard
+          </span>
+          <ExternalLink className="w-4 h-4 text-mc-text-secondary" />
+        </Link>
+        <Link href="/settings" className="w-full min-h-11 px-4 rounded-lg border border-mc-border bg-mc-bg-secondary flex items-center justify-between text-sm">
+          <span className="flex items-center gap-2">
+            <SettingsIcon className="w-4 h-4" />
+            Open Mission Control Settings
+          </span>
+          <ExternalLink className="w-4 h-4 text-mc-text-secondary" />
+        </Link>
+
+        <Link href="/" className="w-full min-h-11 px-4 rounded-lg border border-mc-border bg-mc-bg-secondary flex items-center justify-between text-sm">
+          <span className="flex items-center gap-2">
+            <Home className="w-4 h-4" />
+            Back to Workspaces
+          </span>
+          <ExternalLink className="w-4 h-4 text-mc-text-secondary" />
+        </Link>
+      </div>
     </div>
   );
 }

@@ -18,6 +18,7 @@ export function useSSE() {
   const {
     updateTask,
     addTask,
+    removeTask,
     setIsOnline,
     selectedTask,
     setSelectedTask,
@@ -85,6 +86,13 @@ export function useSSE() {
               }
               break;
 
+            case 'task_deleted':
+              removeTask((sseEvent.payload as { id: string }).id);
+              if (selectedTaskIdRef.current === (sseEvent.payload as { id: string }).id) {
+                setSelectedTask(null);
+              }
+              break;
+
             case 'activity_logged':
               debug.sse('Activity logged', sseEvent.payload);
               // Activities are fetched when task detail is opened
@@ -145,5 +153,5 @@ export function useSSE() {
     };
   // selectedTask removed from deps to prevent re-connection loop
   // We use selectedTaskIdRef to check the current selected task ID without triggering re-renders
-  }, [addTask, updateTask, setIsOnline, setSelectedTask]);
+  }, [addTask, removeTask, updateTask, setIsOnline, setSelectedTask]);
 }

@@ -121,8 +121,8 @@ export function DiscoverAgentsModal({ onClose, workspaceId }: DiscoverAgentsModa
   const availableCount = agents.filter((a) => !a.already_imported).length;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-mc-bg-secondary border border-mc-border rounded-lg w-full max-w-2xl max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-3 sm:p-4">
+      <div className="bg-mc-bg-secondary border border-mc-border rounded-t-xl sm:rounded-lg w-full max-w-2xl max-h-[88vh] sm:max-h-[80vh] flex flex-col pb-[env(safe-area-inset-bottom)] sm:pb-0">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-mc-border">
           <div>
@@ -178,15 +178,15 @@ export function DiscoverAgentsModal({ onClose, workspaceId }: DiscoverAgentsModa
           {!loading && agents.length > 0 && (
             <>
               {/* Selection controls */}
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <span className="text-sm text-mc-text-secondary">
                   {agents.length} agent{agents.length !== 1 ? 's' : ''} found
                   {availableCount < agents.length && ` · ${agents.length - availableCount} already imported`}
                 </span>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={discover}
-                    className="flex items-center gap-1 px-2 py-1 text-xs text-mc-text-secondary hover:text-mc-text hover:bg-mc-bg-tertiary rounded"
+                    className="min-h-11 flex items-center gap-1 px-3 py-2 text-xs text-mc-text-secondary hover:text-mc-text hover:bg-mc-bg-tertiary rounded"
                   >
                     <RefreshCw className="w-3 h-3" />
                     Refresh
@@ -195,13 +195,13 @@ export function DiscoverAgentsModal({ onClose, workspaceId }: DiscoverAgentsModa
                     <>
                       <button
                         onClick={selectAllAvailable}
-                        className="px-2 py-1 text-xs text-mc-accent hover:bg-mc-accent/10 rounded"
+                        className="min-h-11 px-3 py-2 text-xs text-mc-accent hover:bg-mc-accent/10 rounded"
                       >
                         Select All
                       </button>
                       <button
                         onClick={deselectAll}
-                        className="px-2 py-1 text-xs text-mc-text-secondary hover:bg-mc-bg-tertiary rounded"
+                        className="min-h-11 px-3 py-2 text-xs text-mc-text-secondary hover:bg-mc-bg-tertiary rounded"
                       >
                         Deselect All
                       </button>
@@ -219,7 +219,7 @@ export function DiscoverAgentsModal({ onClose, workspaceId }: DiscoverAgentsModa
                   return (
                     <div
                       key={agent.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                      className={`flex items-center gap-3 p-3 rounded-lg border transition-colors min-h-11 ${
                         isImported
                           ? 'border-mc-border/50 bg-mc-bg/50 opacity-60'
                           : isSelected
@@ -276,17 +276,17 @@ export function DiscoverAgentsModal({ onClose, workspaceId }: DiscoverAgentsModa
           <span className="text-sm text-mc-text-secondary">
             {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select agents to import'}
           </span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm text-mc-text-secondary hover:text-mc-text"
+              className="min-h-11 px-4 py-2 text-sm text-mc-text-secondary hover:text-mc-text"
             >
               {importResult ? 'Done' : 'Cancel'}
             </button>
             <button
               onClick={handleImport}
               disabled={selectedIds.size === 0 || importing}
-              className="flex items-center gap-2 px-4 py-2 bg-mc-accent text-mc-bg rounded text-sm font-medium hover:bg-mc-accent/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-h-11 flex items-center gap-2 px-4 py-2 bg-mc-accent text-mc-bg rounded text-sm font-medium hover:bg-mc-accent/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {importing ? (
                 <>

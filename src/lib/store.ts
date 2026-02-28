@@ -43,6 +43,7 @@ interface MissionControlState {
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
   updateTask: (task: Task) => void;
   addTask: (task: Task) => void;
+  removeTask: (taskId: string) => void;
 
   // Agent mutations
   updateAgent: (agent: Agent) => void;
@@ -135,6 +136,10 @@ export const useMissionControl = create<MissionControlState>((set) => ({
       }
       return { tasks: [task, ...state.tasks] };
     });
+  },
+  removeTask: (taskId) => {
+    debug.store('removeTask called', { taskId });
+    set((state) => ({ tasks: state.tasks.filter((task) => task.id !== taskId) }));
   },
 
   // Agent mutations
