@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="mission-control.png" alt="Mission Control" width="600" />
+  <img src="mission-control.png" alt="Mission-Claw" width="600" />
 </p>
 
-<h1 align="center">🦞 Mission Control</h1>
+<h1 align="center">🦞 Mission-Claw</h1>
 
 <p align="center">
-  <strong>AI Agent Orchestration Dashboard</strong><br>
-  Create tasks. Plan with AI. Dispatch to agents. Watch them work.
+  <strong>AI Agent Orchestration — Powered by Discord + OpenClaw</strong><br>
+  The nerve center of the GearSwitchr agent swarm.
 </p>
 
 <p align="center">
@@ -17,476 +17,190 @@
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT License" />
 </p>
 
-<p align="center">
-  <a href="https://missioncontrol.ghray.com"><strong>🎮 Live Demo</strong></a> •
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-docker">Docker</a> •
-  <a href="#-features">Features</a> •
-  <a href="#-how-it-works">How It Works</a> •
-  <a href="#-configuration">Configuration</a> •
-  <a href="#-contributors">Contributors</a>
-</p>
+---
+
+## What is Mission-Claw?
+
+Mission-Claw is a fork and significant extension of [Mission-Control](https://github.com/crshdn/mission-control) — a beautiful open-source AI agent orchestration dashboard built by [@crshdn](https://github.com/crshdn) and contributors. We owe the original team a huge debt. The Kanban UI, SSE real-time layer, SQLite persistence, and core agent dispatch architecture are all their work.
+
+**What Mission-Claw adds:**
+
+Mission-Control is a dashboard you *visit*. Mission-Claw is a system that *operates* — primarily through Discord and OpenClaw, with the web UI as secondary visibility.
+
+The key difference: **Discord is the primary operator interface.** You don't need to open a browser to create tasks, monitor agents, or get notified when work completes. Everything flows through the Discord ↔ OpenClaw ↔ Mission-Claw triangle.
 
 ---
 
-## ✨ Features
-
-🎯 **Task Management** — Kanban board with drag-and-drop across 7 status columns
-
-🧠 **AI Planning** — Interactive Q&A flow where AI asks clarifying questions before starting work
-
-🤖 **Agent System** — Auto-creates specialized agents, assigns tasks, tracks progress in real-time
-
-🔗 **Gateway Agent Discovery** — Import existing agents from your OpenClaw Gateway with one click — no need to recreate them
-
-🔌 **OpenClaw Integration** — WebSocket connection to [OpenClaw Gateway](https://github.com/openclaw/openclaw) for AI agent orchestration
-
-🐳 **Docker Ready** — Production-optimized Dockerfile and docker-compose for easy deployment
-
-🔒 **Security First** — Bearer token auth, HMAC webhooks, Zod validation, path traversal protection, security headers
-
-📡 **Live Feed** — Real-time event stream showing agent activity, task updates, and system events
-
-🌐 **Multi-Machine** — Run the dashboard and AI agents on different computers (supports Tailscale for remote)
-
----
-
-## 🏗 Architecture
+## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                       YOUR MACHINE                           │
-│                                                              │
-│  ┌─────────────────┐          ┌──────────────────────────┐  │
-│  │ Mission Control  │◄────────►│    OpenClaw Gateway      │  │
-│  │   (Next.js)      │   WS     │  (AI Agent Runtime)      │  │
-│  │   Port 4000      │          │  Port 18789              │  │
-│  └────────┬─────────┘          └───────────┬──────────────┘  │
-│           │                                │                  │
-│           ▼                                ▼                  │
-│  ┌─────────────────┐          ┌──────────────────────────┐  │
-│  │     SQLite       │          │     AI Provider          │  │
-│  │    Database      │          │  (Anthropic / OpenAI)    │  │
-│  └─────────────────┘          └──────────────────────────┘  │
-└──────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                      DISCORD                            │
+│  Human operator lives here. Creates tasks, reads        │
+│  notifications, monitors agent progress.                │
+└─────────────────┬───────────────────────┬───────────────┘
+                  │ commands               │ notifications
+                  ▼                       ▲
+┌─────────────────────────────────────────────────────────┐
+│                      OPENCLAW                           │
+│  AI backbone. Routes messages, manages agent sessions,  │
+│  parses completion signals (TASK_COMPLETE, BLOCKED,     │
+│  PROGRESS_UPDATE), dispatches work to sub-agents.       │
+└─────────────────┬───────────────────────┬───────────────┘
+                  │ tasks/dispatch         │ SSE events
+                  ▼                       ▲
+┌─────────────────────────────────────────────────────────┐
+│                    MISSION-CLAW                         │
+│  Persistent store (SQLite). Kanban UI. Task lifecycle.  │
+│  Agent roster. Real-time event bus. Webhook receiver.   │
+│  The source of truth for what's happening.              │
+└─────────────────────────────────────────────────────────┘
 ```
-
-**Mission Control** = The dashboard you interact with (this project)
-**OpenClaw Gateway** = The AI runtime that executes tasks ([separate project](https://github.com/openclaw/openclaw))
 
 ---
 
-## 🚀 Quick Start
+## The Loop (Plain English)
+
+1. **Discord command** — Operator types `!task <title> | <description>` in the `#mission-claw` channel
+2. **OpenClaw ingestion** — The Discord observer parses the command, creates a task in Mission-Claw via API
+3. **Auto-assign** — Task is assigned to the appropriate agent based on type (code → Developer, research → Researcher, etc.)
+4. **Agent dispatch** — OpenClaw sends a structured prompt to the agent's session with full context
+5. **Agent works** — Agent emits `PROGRESS_UPDATE:`, `BLOCKED:`, or `TASK_COMPLETE:` signals in its output
+6. **Completion** — OpenClaw parses the signal, hits the webhook, Mission-Claw moves task to `review`, broadcasts SSE
+7. **Discord notification** — Relay picks up the `task_completed` event and posts back to Discord: `✅ Task completed: <title>`
+
+The web UI reflects all of this in real-time, but you never *need* to open it.
+
+---
+
+## Key Features
+
+### From Mission-Control (upstream)
+- Kanban board with task lifecycle: `inbox → planning → assigned → in_progress → testing → review → done`
+- AI planning phase with structured Q&A before dispatch
+- Real-time SSE event bus with live feed UI
+- Agent roster with persistent identity and session tracking
+- Deliverables + activity log per task
+- File preview and upload
+
+### Mission-Claw Extensions
+- **Discord command ingestion** — Create MC tasks from Discord with `!task`
+- **Discord relay** — Task events (created, updated, completed, activities, deliverables) relayed back to Discord
+- **OpenClaw session bridge** — Agents maintain persistent sessions across tasks; session state tracked in DB
+- **Completion signal parsing** — `TASK_COMPLETE:`, `PROGRESS_UPDATE:`, `BLOCKED:` parsed automatically from agent output
+- **Auto-dispatch** — Tasks assigned to agents trigger immediate dispatch without manual intervention
+- **Diagnostics layer** — All OpenClaw ↔ MC handoffs are logged for debugging (`/api/openclaw/diagnostics`)
+- **Bootstrap** — One-shot agent session initialization from MC UI
+
+---
+
+## Agent Roster
+
+| Agent | Role | ID |
+|---|---|---|
+| **Orchestrator** | Routes tasks, multi-agent coordination | `0d6529a4-22e5-4182-b82c-15654c0ac0f6` |
+| **Developer** | Code, PRs, infrastructure | `72e5814f-3932-4249-81bb-049cda09d7cf` |
+| **Researcher** | Web research, competitive analysis | `1354b64e-8a51-4773-aab9-ee88612e7768` |
+| **Writer** | Blog posts, docs, copy | `74f764ae-f22c-47b1-a766-5ae9d7a37155` |
+| **Blueprint** | Architecture, planning, ADRs | `813008d4-26dd-4c7a-b303-fb04c9ba511b` |
+| **SEO Content Editor** | SEO-optimized content | `39b73ae6-124c-42fd-accf-9adb27b84b41` |
+
+---
+
+## Discord Commands
+
+| Command | Description |
+|---|---|
+| `!task <title> \| <description>` | Create a new task in Mission-Claw inbox |
+
+Commands are rate-limited per user and require the sender to be on the allowlist configured in `DISCORD_TASK_COMMAND_ALLOWLIST`.
+
+---
+
+## Setup
 
 ### Prerequisites
-
-- **Node.js** v18+ ([download](https://nodejs.org/))
-- **OpenClaw Gateway** — `npm install -g openclaw`
-- **AI API Key** — Anthropic (recommended), OpenAI, Google, or others via OpenRouter
-
-### Install
-
-```bash
-# Clone
-git clone https://github.com/crshdn/mission-control.git
-cd mission-control
-
-# Install dependencies
-npm install
-
-# Configure
-cp .env.example .env.local
-```
-
-Edit `.env.local`:
-
-```env
-OPENCLAW_GATEWAY_URL=ws://127.0.0.1:18789
-OPENCLAW_GATEWAY_TOKEN=your-token-here
-```
-
-> **Where to find the token:** Check `~/.openclaw/openclaw.json` under `gateway.token`
-
-### Run
-
-```bash
-# Start OpenClaw (separate terminal)
-openclaw gateway start
-
-# Start Mission Control
-npm run dev
-```
-
-Open **http://localhost:4000** — you're in! 🎉
-
-### Production
-
-```bash
-npm run build
-npx next start -p 4000
-```
-
----
-
-## 🐳 Docker
-
-You can run Mission Control in a container using the included `Dockerfile` and `docker-compose.yml`.
-
-### Prerequisites
-
-- Docker Desktop (or Docker Engine + Compose plugin)
-- OpenClaw Gateway running locally or remotely
-
-### 1. Configure environment
-
-Create a `.env` file for Compose:
-
-```bash
-cp .env.example .env
-```
-
-Then set at least:
-
-```env
-OPENCLAW_GATEWAY_URL=ws://host.docker.internal:18789
-OPENCLAW_GATEWAY_TOKEN=your-token-here
-```
-
-Notes:
-- Use `host.docker.internal` when OpenClaw runs on your host machine.
-- If OpenClaw is on another machine, set its reachable `ws://` or `wss://` URL instead.
-
-### 2. Build and start
-
-```bash
-docker compose up -d --build
-```
-
-Open **http://localhost:4000**.
-
-### 3. Useful commands
-
-```bash
-# View logs
-docker compose logs -f mission-control
-
-# Stop containers
-docker compose down
-
-# Stop and remove volumes (deletes SQLite/workspace data)
-docker compose down -v
-```
-
-### Data persistence
-
-Compose uses named volumes:
-- `mission-control-data` for SQLite (`/app/data`)
-- `mission-control-workspace` for workspace files (`/app/workspace`)
-
----
-
-## 🎯 How It Works
-
-```
- CREATE          PLAN            ASSIGN          EXECUTE         DELIVER
-┌────────┐    ┌────────┐    ┌────────────┐    ┌──────────┐    ┌────────┐
-│  New   │───►│  AI    │───►│   Agent    │───►│  Agent   │───►│  Done  │
-│  Task  │    │  Q&A   │    │  Created   │    │  Works   │    │  ✓     │
-└────────┘    └────────┘    └────────────┘    └──────────┘    └────────┘
-```
-
-1. **Create a Task** — Give it a title and description
-2. **AI Plans It** — The AI asks you clarifying questions to understand exactly what you need
-3. **Agent Assigned** — A specialized agent is auto-created based on your answers
-4. **Work Happens** — The agent writes code, browses the web, creates files — whatever's needed
-5. **Delivery** — Completed work shows up in Mission Control with deliverables
-
-### Task Flow
-
-```
-PLANNING → INBOX → ASSIGNED → IN PROGRESS → TESTING → REVIEW → DONE
-```
-
-Drag tasks between columns or let the system auto-advance them.
-
-Operational notes:
-- `TASK_COMPLETE: ...` from an agent moves active work to `REVIEW`.
-- `DONE` is an approval/closure state and should be retained for audit history.
-- Delete tasks only for test data, duplicates, or accidental noise entries.
-
----
-
-## ⚙️ Configuration
+- Node.js 18+
+- OpenClaw running and accessible
+- Discord bot configured in OpenClaw with a relay channel
 
 ### Environment Variables
 
-| Variable | Required | Default | Description |
-|:---------|:--------:|:--------|:------------|
-| `OPENCLAW_GATEWAY_URL` | ✅ | `ws://127.0.0.1:18789` | WebSocket URL to OpenClaw Gateway |
-| `OPENCLAW_GATEWAY_TOKEN` | ✅ | — | Authentication token for OpenClaw |
-| `MC_API_TOKEN` | — | — | API auth token (enables auth middleware) |
-| `WEBHOOK_SECRET` | — | — | HMAC secret for webhook validation |
-| `DATABASE_PATH` | — | `./mission-control.db` | SQLite database location |
-| `WORKSPACE_BASE_PATH` | — | `~/Documents/Shared` | Base directory for workspace files |
-| `PROJECTS_PATH` | — | `~/Documents/Shared/projects` | Directory for project folders |
+```env
+# OpenClaw connection
+OPENCLAW_GATEWAY_URL=http://localhost:3001
+OPENCLAW_API_KEY=your-api-key
 
-### Security (Production)
+# Discord relay — the OpenClaw session key for the Discord channel
+DISCORD_RELAY_SESSION_KEY=agent:main:discord:channel:<channel-id>
 
-Generate secure tokens:
+# Discord task command ingestion
+DISCORD_TASK_COMMAND_ENABLED=true
+DISCORD_TASK_COMMAND_ALLOWLIST=user-id-1,user-id-2
+
+# File paths
+PROJECTS_PATH=~/projects
+NEXT_PUBLIC_PROJECTS_PATH=~/projects
+
+# App
+NODE_ENV=production
+PORT=4000
+```
+
+### Local Development
 
 ```bash
-# API authentication token
-openssl rand -hex 32
-
-# Webhook signature secret
-openssl rand -hex 32
+git clone https://github.com/your-org/mission-claw
+cd mission-claw
+npm install
+cp .env.example .env.local  # fill in your values
+npm run dev
 ```
 
-Add to `.env.local`:
+App runs at `http://localhost:3000`.
 
-```env
-MC_API_TOKEN=your-64-char-hex-token
-WEBHOOK_SECRET=your-64-char-hex-token
-```
-
-When `MC_API_TOKEN` is set:
-- External API calls require `Authorization: Bearer <token>`
-- Browser UI works automatically (same-origin requests are allowed)
-- SSE streams accept token as query param
-
-See [PRODUCTION_SETUP.md](PRODUCTION_SETUP.md) for the full production guide.
-
----
-
-## 🌐 Multi-Machine Setup
-
-Run Mission Control on one machine and OpenClaw on another:
-
-```env
-# Point to the remote machine
-OPENCLAW_GATEWAY_URL=ws://YOUR_SERVER_IP:18789
-OPENCLAW_GATEWAY_TOKEN=your-shared-token
-```
-
-### With Tailscale (Recommended)
-
-```env
-OPENCLAW_GATEWAY_URL=wss://your-machine.tailnet-name.ts.net
-OPENCLAW_GATEWAY_TOKEN=your-shared-token
-```
-
----
-
-## 🗄 Database
-
-SQLite database auto-created at `./mission-control.db`.
+### Docker (Production)
 
 ```bash
-# Reset (start fresh)
-rm mission-control.db
-
-# Inspect
-sqlite3 mission-control.db ".tables"
+docker-compose up -d
 ```
 
----
+Default port: `4000`. MC dashboard: `http://<host>:4000/workspace/default`.
 
-## 📁 Project Structure
-
-```
-mission-control/
-├── src/
-│   ├── app/                    # Next.js pages & API routes
-│   │   ├── api/
-│   │   │   ├── tasks/          # Task CRUD + planning + dispatch
-│   │   │   ├── agents/         # Agent management
-│   │   │   ├── openclaw/       # Gateway proxy endpoints
-│   │   │   └── webhooks/       # Agent completion webhooks
-│   │   ├── settings/           # Settings page
-│   │   └── workspace/[slug]/   # Workspace dashboard
-│   ├── components/             # React components
-│   │   ├── MissionQueue.tsx    # Kanban board
-│   │   ├── PlanningTab.tsx     # AI planning interface
-│   │   ├── AgentsSidebar.tsx   # Agent panel
-│   │   ├── LiveFeed.tsx        # Real-time events
-│   │   └── TaskModal.tsx       # Task create/edit
-│   └── lib/
-│       ├── db/                 # SQLite + migrations
-│       ├── openclaw/           # Gateway client + device identity
-│       ├── validation.ts       # Zod schemas
-│       └── types.ts            # TypeScript types
-├── scripts/                    # Bridge & hook scripts
-├── src/middleware.ts            # Auth middleware
-├── .env.example                # Environment template
-└── CHANGELOG.md                # Version history
-```
-
----
-
-## 🔧 Troubleshooting
-
-<details>
-<summary><strong>Can't connect to OpenClaw Gateway</strong></summary>
-
-1. Check OpenClaw is running: `openclaw gateway status`
-2. Verify URL and token in `.env.local`
-3. Check firewall isn't blocking port 18789
-</details>
-
-<details>
-<summary><strong>Planning questions not loading</strong></summary>
-
-1. Check OpenClaw logs: `openclaw gateway logs`
-2. Verify your AI API key is valid
-3. Refresh and click the task again
-</details>
-
-<details>
-<summary><strong>Port 4000 already in use</strong></summary>
+### PM2
 
 ```bash
-lsof -i :4000
-kill -9 <PID>
+npm run build
+pm2 start ecosystem.config.cjs
+pm2 save
 ```
-</details>
 
 ---
 
-## 🤝 Contributing
+## API Reference (Quick)
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'feat: add amazing feature'`
-4. Push: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
----
-
-## 👏 Contributors
-
-Mission Control is built by a growing community. Thank you to everyone who has contributed!
-
-<table>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/superlowburn">
-        <img src="https://github.com/superlowburn.png?size=80" width="80" height="80" style="border-radius:50%" alt="Steve" /><br />
-        <sub><b>Steve</b></sub>
-      </a><br />
-      <sub>Device Identity</sub>
-    </td>
-    <td align="center">
-      <a href="https://github.com/rchristman89">
-        <img src="https://github.com/rchristman89.png?size=80" width="80" height="80" style="border-radius:50%" alt="Ryan Christman" /><br />
-        <sub><b>Ryan Christman</b></sub>
-      </a><br />
-      <sub>Port Configuration</sub>
-    </td>
-    <td align="center">
-      <a href="https://github.com/nicozefrench">
-        <img src="https://github.com/nicozefrench.png?size=80" width="80" height="80" style="border-radius:50%" alt="nicozefrench" /><br />
-        <sub><b>nicozefrench</b></sub>
-      </a><br />
-      <sub>ARIA Hooks</sub>
-    </td>
-    <td align="center">
-      <a href="https://github.com/misterdas">
-        <img src="https://github.com/misterdas.png?size=80" width="80" height="80" style="border-radius:50%" alt="GOPAL" /><br />
-        <sub><b>GOPAL</b></sub>
-      </a><br />
-      <sub>Node v25 Support</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/joralemarti">
-        <img src="https://github.com/joralemarti.png?size=80" width="80" height="80" style="border-radius:50%" alt="Jorge Martinez" /><br />
-        <sub><b>Jorge Martinez</b></sub>
-      </a><br />
-      <sub>Orchestration</sub>
-    </td>
-    <td align="center">
-      <a href="https://github.com/niks918">
-        <img src="https://github.com/niks918.png?size=80" width="80" height="80" style="border-radius:50%" alt="Nik" /><br />
-        <sub><b>Nik</b></sub>
-      </a><br />
-      <sub>Planning & Dispatch</sub>
-    </td>
-    <td align="center">
-      <a href="https://github.com/gmb9000">
-        <img src="https://github.com/gmb9000.png?size=80" width="80" height="80" style="border-radius:50%" alt="Michael G" /><br />
-        <sub><b>Michael G</b></sub>
-      </a><br />
-      <sub>Usage Dashboard</sub>
-    </td>
-    <td align="center">
-      <a href="https://github.com/Z8Medina">
-        <img src="https://github.com/Z8Medina.png?size=80" width="80" height="80" style="border-radius:50%" alt="Z8Medina" /><br />
-        <sub><b>Z8Medina</b></sub>
-      </a><br />
-      <sub>Metabase Integration</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/markphelps">
-        <img src="https://github.com/markphelps.png?size=80" width="80" height="80" style="border-radius:50%" alt="Mark Phelps" /><br />
-        <sub><b>Mark Phelps</b></sub>
-      </a><br />
-      <sub>Gateway Agent Discovery 💡</sub>
-    </td>
-    <td align="center">
-      <a href="https://github.com/muneale">
-        <img src="https://github.com/muneale.png?size=80" width="80" height="80" style="border-radius:50%" alt="Alessio" /><br />
-        <sub><b>Alessio</b></sub>
-      </a><br />
-      <sub>Docker Support</sub>
-    </td>
-    <td align="center">
-      <a href="https://github.com/JamesTsetsekas">
-        <img src="https://github.com/JamesTsetsekas.png?size=80" width="80" height="80" style="border-radius:50%" alt="James Tsetsekas" /><br />
-        <sub><b>James Tsetsekas</b></sub>
-      </a><br />
-      <sub>Planning Flow Fixes</sub>
-    </td>
-    <td align="center">
-      <a href="https://github.com/nice-and-precise">
-        <img src="https://github.com/nice-and-precise.png?size=80" width="80" height="80" style="border-radius:50%" alt="nice-and-precise" /><br />
-        <sub><b>nice-and-precise</b></sub>
-      </a><br />
-      <sub>Agent Protocol Docs</sub>
-    </td>
-  </tr>
-</table>
+| Method | Path | Description |
+|---|---|---|
+| `GET/POST` | `/api/tasks` | List / create tasks |
+| `PATCH` | `/api/tasks/:id` | Update task status/fields |
+| `POST` | `/api/tasks/:id/activities` | Log activity |
+| `POST` | `/api/tasks/:id/deliverables` | Log deliverable |
+| `POST` | `/api/tasks/:id/dispatch` | Dispatch task to agent |
+| `GET` | `/api/events/stream` | SSE event stream |
+| `POST` | `/api/webhooks/agent-completion` | Agent completion webhook (called by OpenClaw) |
+| `GET` | `/api/openclaw/status` | OpenClaw connection status |
+| `GET` | `/api/openclaw/diagnostics` | Integration diagnostics log |
 
 ---
 
-## ⭐ Star History
+## Credits
 
-<a href="https://www.star-history.com/#crshdn/mission-control&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=crshdn/mission-control&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=crshdn/mission-control&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=crshdn/mission-control&type=Date" width="600" />
-  </picture>
-</a>
+Mission-Claw is built on top of **[Mission-Control](https://github.com/crshdn/mission-control)** by [@crshdn](https://github.com/crshdn) and contributors. The core architecture, UI design, and agent orchestration patterns are their work. We've extended it for our specific Discord-first, OpenClaw-integrated workflow — but none of this exists without the foundation they built.
+
+If you're looking for a clean, standalone agent orchestration dashboard without the GearSwitchr-specific integrations, check out the upstream project.
 
 ---
 
-## 📜 License
+## License
 
-MIT License — see [LICENSE](LICENSE) for details.
-
----
-
-## 🙏 Acknowledgments
-
-- Powered by [OpenClaw](https://github.com/openclaw/openclaw) — the AI agent runtime
-- Built with [Next.js](https://nextjs.org/), [Tailwind CSS](https://tailwindcss.com/), and [SQLite](https://www.sqlite.org/)
-- AI by [Anthropic](https://anthropic.com/), [OpenAI](https://openai.com/), and others
-
----
-
-<p align="center">
-  <strong>Happy orchestrating!</strong> 🚀
-</p>
+MIT — same as upstream Mission-Control.
