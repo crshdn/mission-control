@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryAll, run } from '@/lib/db';
+import { broadcast } from '@/lib/events';
 import type { Event } from '@/lib/types';
 
 // GET /api/events - List events (live feed)
@@ -80,7 +81,20 @@ export async function POST(request: NextRequest) {
       ]
     );
 
-    return NextResponse.json({ id, type: body.type, message: body.message, created_at: now }, { status: 201 });
+    const event = {
+      id,
+      type: body.type,
+      payload: body.payload ?? {},
+      message: body.message,
+      created_at: now,
+    };
+
+    broadcast({
+      type: event.type,
+      payload: event.payload ?? {},
+    });
+
+    return NextResponse.json(event, { status: 201 });
   } catch (error) {
     console.error('Failed to create event:', error);
     return NextResponse.json({ error: 'Failed to create event' }, { status: 500 });

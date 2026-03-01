@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { createHmac } from 'crypto';
 import { queryOne, queryAll, run } from '@/lib/db';
+import { broadcast } from '@/lib/events';
 import type { Task, Agent, OpenClawSession } from '@/lib/types';
 
 /**
@@ -109,6 +110,15 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      broadcast({
+        type: 'task_updated',
+        payload: {
+          ...task,
+          status: 'review',
+          updated_at: now,
+        },
+      });
+
       return NextResponse.json({
         success: true,
         task_id: task.id,
@@ -190,6 +200,15 @@ export async function POST(request: NextRequest) {
         'UPDATE agents SET status = ?, updated_at = ? WHERE id = ?',
         ['standby', now, session.agent_id]
       );
+
+      broadcast({
+        type: 'task_updated',
+        payload: {
+          ...task,
+          status: 'review',
+          updated_at: now,
+        },
+      });
 
       return NextResponse.json({
         success: true,

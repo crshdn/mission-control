@@ -125,7 +125,8 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
           if (selectedBoilerplate) {
             const baseSlug = form.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
             const projectSlug = baseSlug || `task-${savedTask.id.slice(0, 8)}`;
-            const targetPath = `~/Documents/Shared/projects/${projectSlug}`;
+            const projectsBasePath = process.env.NEXT_PUBLIC_PROJECTS_PATH || process.env.PROJECTS_PATH || '~/projects';
+            const targetPath = `${projectsBasePath}/${projectSlug}`;
             
             try {
               const copyRes = await fetch('/api/boilerplates/copy', {

@@ -306,6 +306,7 @@ export type SSEEventType =
   | 'task_updated'
   | 'task_created'
   | 'task_deleted'
+  | 'task_completed'
   | 'activity_logged'
   | 'deliverable_added'
   | 'agent_spawned'

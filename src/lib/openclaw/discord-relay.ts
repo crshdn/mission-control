@@ -9,6 +9,7 @@ const RELAYABLE_EVENT_TYPES = new Set([
   'activity_logged',
   'deliverable_added',
   'task_deleted',
+  'task_completed',
 ]);
 
 function summarizeEvent(event: SSEEvent): string | null {
@@ -37,6 +38,11 @@ function summarizeEvent(event: SSEEvent): string | null {
   if (event.type === 'task_deleted') {
     const payload = event.payload as { id?: string };
     return `🗑️ Task deleted: ${payload.id || 'unknown'}`;
+  }
+
+  if (event.type === 'task_completed') {
+    const payload = event.payload as { title?: string; id?: string };
+    return `✅ Task completed: ${payload.title || '(untitled)'} (id: ${payload.id || 'unknown'})`;
   }
 
   return null;
