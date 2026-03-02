@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiLimiter, webhookLimiter } from '@/lib/rate-limit';
 
 // Log warning at startup if auth is disabled
 const MC_API_TOKEN = process.env.MC_API_TOKEN;
 if (!MC_API_TOKEN) {
   console.warn('[SECURITY WARNING] MC_API_TOKEN not set - API authentication is DISABLED (local dev mode)');
+}
+
+/**
+ * Extract client IP from request headers (respects proxies).
+ * Falls back to 'unknown' to ensure rate limiter still works.
+ */
+function getClientIp(request: NextRequest): string {
+  return (
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    request.ip ||
+    'unknown'
+  );
 }
 
 /**
@@ -67,7 +81,26 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Demo mode: block all write operations
+  // ── Rate Limiting ────────────────────────────────────────────────
+  const ip = getClientIp(request);
+  const isWebhook = pathname.startsWith('/api/webhooks/');
+  const limiter = isWebhook ? webhookLimiter : apiLimiter;
+  const { allowed, remaining, resetMs } = limiter.check(ip);
+
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil(resetMs / 1000)),
+          'X-RateLimit-Remaining': '0',
+        },
+      }
+    );
+  }
+
+  // ── Demo Mode ────────────────────────────────────────────────────
   if (DEMO_MODE) {
     const method = request.method.toUpperCase();
     if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
@@ -76,24 +109,25 @@ export function middleware(request: NextRequest) {
         { status: 403 }
       );
     }
-    return NextResponse.next();
+    return addRateLimitHeaders(NextResponse.next(), remaining);
   }
 
+  // ── Auth ─────────────────────────────────────────────────────────
   // If MC_API_TOKEN is not set, auth is disabled (dev mode)
   if (!MC_API_TOKEN) {
-    return NextResponse.next();
+    return addRateLimitHeaders(NextResponse.next(), remaining);
   }
 
   // Allow same-origin browser requests (UI fetching its own API)
   if (isSameOriginRequest(request)) {
-    return NextResponse.next();
+    return addRateLimitHeaders(NextResponse.next(), remaining);
   }
 
   // Special case: /api/events/stream (SSE) - allow token as query param
   if (pathname === '/api/events/stream') {
     const queryToken = request.nextUrl.searchParams.get('token');
     if (queryToken && queryToken === MC_API_TOKEN) {
-      return NextResponse.next();
+      return addRateLimitHeaders(NextResponse.next(), remaining);
     }
     // Fall through to header check below
   }
@@ -117,7 +151,13 @@ export function middleware(request: NextRequest) {
     );
   }
 
-  return NextResponse.next();
+  return addRateLimitHeaders(NextResponse.next(), remaining);
+}
+
+/** Attach rate-limit headers to a successful response. */
+function addRateLimitHeaders(response: NextResponse, remaining: number): NextResponse {
+  response.headers.set('X-RateLimit-Remaining', String(remaining));
+  return response;
 }
 
 export const config = {

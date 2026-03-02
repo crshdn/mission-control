@@ -185,7 +185,7 @@ Respond with ONLY valid JSON in this format:
     });
   } catch (error) {
     console.error('Failed to start planning:', error);
-    return NextResponse.json({ error: 'Failed to start planning: ' + (error as Error).message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to start planning' }, { status: 500 });
   }
 }
 
@@ -236,6 +236,6 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to cancel planning:', error);
-    return NextResponse.json({ error: 'Failed to cancel planning: ' + (error as Error).message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to cancel planning' }, { status: 500 });
   }
 }

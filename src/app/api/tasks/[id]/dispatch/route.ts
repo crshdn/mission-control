@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { queryOne, queryAll, run } from '@/lib/db';
+import { queryOne, queryAll, run, transaction } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
 import { getProjectsPath, getMissionControlUrl } from '@/lib/config';
@@ -227,13 +227,39 @@ If you need help or clarification, ask the orchestrator.`;
         idempotencyKey: `dispatch-${task.id}-${Date.now()}`
       });
 
-      // Update task status to in_progress
-      run(
-        'UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?',
-        ['in_progress', now, id]
-      );
+      // Wrap all post-dispatch DB writes in a transaction for atomicity.
+      // If any step fails, everything rolls back — no partial state.
+      transaction(() => {
+        // Update task status to in_progress
+        run(
+          'UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?',
+          ['in_progress', now, id]
+        );
 
-      // Broadcast task update
+        // Update agent status to working
+        run(
+          'UPDATE agents SET status = ?, updated_at = ? WHERE id = ?',
+          ['working', now, agent.id]
+        );
+
+        // Log dispatch event to events table
+        const eventId = uuidv4();
+        run(
+          `INSERT INTO events (id, type, agent_id, task_id, message, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [eventId, 'task_dispatched', agent.id, task.id, `Task "${task.title}" dispatched to ${agent.name}`, now]
+        );
+
+        // Log dispatch activity to task_activities table (for Activity tab)
+        const activityId = crypto.randomUUID();
+        run(
+          `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [activityId, task.id, agent.id, 'status_changed', `Task dispatched to ${agent.name} - Agent is now working on this task`, now]
+        );
+      });
+
+      // Broadcast task update (outside transaction — non-critical)
       const updatedTask = queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [id]);
       if (updatedTask) {
         broadcast({
@@ -241,28 +267,6 @@ If you need help or clarification, ask the orchestrator.`;
           payload: updatedTask,
         });
       }
-
-      // Update agent status to working
-      run(
-        'UPDATE agents SET status = ?, updated_at = ? WHERE id = ?',
-        ['working', now, agent.id]
-      );
-
-      // Log dispatch event to events table
-      const eventId = uuidv4();
-      run(
-        `INSERT INTO events (id, type, agent_id, task_id, message, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [eventId, 'task_dispatched', agent.id, task.id, `Task "${task.title}" dispatched to ${agent.name}`, now]
-      );
-
-      // Log dispatch activity to task_activities table (for Activity tab)
-      const activityId = crypto.randomUUID();
-      run(
-        `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [activityId, task.id, agent.id, 'status_changed', `Task dispatched to ${agent.name} - Agent is now working on this task`, now]
-      );
 
       return NextResponse.json({
         success: true,

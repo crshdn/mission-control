@@ -118,8 +118,7 @@ export async function POST(
     `, [`Retry error: ${errorMessage}`, `Retry error: ${errorMessage}`, taskId]);
 
     return NextResponse.json({ 
-      error: 'Failed to retry dispatch', 
-      details: errorMessage 
+      error: 'Failed to retry dispatch'
     }, { status: 500 });
   }
 }

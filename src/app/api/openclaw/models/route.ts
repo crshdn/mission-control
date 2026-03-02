@@ -209,7 +209,7 @@ export async function GET() {
       defaultModel: undefined,
       availableModels: FALLBACK_MODELS,
       source: 'fallback',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: 'Model discovery failed',
     }, { status: 500 });
   }
 }
