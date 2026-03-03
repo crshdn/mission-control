@@ -8,6 +8,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { FileText, Link as LinkIcon, Package, ExternalLink, Eye } from 'lucide-react';
 import { debug } from '@/lib/debug';
+import { toast } from '@/lib/toast-store';
 import type { TaskDeliverable } from '@/lib/types';
 
 interface DeliverablesListProps {
@@ -75,9 +76,9 @@ export function DeliverablesList({ taskId }: DeliverablesListProps) {
         debug.file('Failed to open', error);
 
         if (res.status === 404) {
-          alert(`File not found:\n${deliverable.path}\n\nThe file may have been moved or deleted.`);
+          toast.error(`File not found: ${deliverable.path}`);
         } else if (res.status === 403) {
-          alert(`Cannot open this location:\n${deliverable.path}\n\nPath is outside allowed directories.`);
+          toast.error(`Cannot open: path is outside allowed directories`);
         } else {
           throw new Error(error.error || 'Unknown error');
         }
@@ -86,9 +87,9 @@ export function DeliverablesList({ taskId }: DeliverablesListProps) {
         // Fallback: copy path to clipboard
         try {
           await navigator.clipboard.writeText(deliverable.path);
-          alert(`Could not open Finder. Path copied to clipboard:\n${deliverable.path}`);
+          toast.info(`Path copied to clipboard: ${deliverable.path}`);
         } catch {
-          alert(`File path:\n${deliverable.path}`);
+          toast.info(`File path: ${deliverable.path}`);
         }
       }
     }

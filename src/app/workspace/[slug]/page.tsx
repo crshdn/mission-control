@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, useCallback, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, ListTodo, Users, Activity, Settings as SettingsIcon, ExternalLink, Home, BarChart3 } from 'lucide-react';
@@ -11,6 +11,7 @@ import { LiveFeed } from '@/components/LiveFeed';
 import { SSEDebugPanel } from '@/components/SSEDebugPanel';
 import { useMissionControl } from '@/lib/store';
 import { useSSE } from '@/hooks/useSSE';
+import { useVisibleInterval } from '@/hooks/useVisibility';
 import { debug } from '@/lib/debug';
 import type { Task, Workspace } from '@/lib/types';
 
@@ -121,59 +122,58 @@ export default function WorkspacePage() {
     loadData();
     checkOpenClaw();
 
-    const eventPoll = setInterval(async () => {
-      try {
-        const res = await fetch('/api/events?limit=20');
-        if (res.ok) {
-          setEvents(await res.json());
-        }
-      } catch (error) {
-        console.error('Failed to poll events:', error);
-      }
-    }, 30000);
-
-    const taskPoll = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/tasks?workspace_id=${workspaceId}`);
-        if (res.ok) {
-          const newTasks: Task[] = await res.json();
-          const currentTasks = useMissionControl.getState().tasks;
-
-          const hasChanges =
-            newTasks.length !== currentTasks.length ||
-            newTasks.some((t) => {
-              const current = currentTasks.find((ct) => ct.id === t.id);
-              return !current || current.updated_at !== t.updated_at;
-            });
-
-          if (hasChanges) {
-            debug.api('[FALLBACK] Task changes detected via polling, updating store');
-            setTasks(newTasks);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to poll tasks:', error);
-      }
-    }, 60000);
-
-    const connectionCheck = setInterval(async () => {
-      try {
-        const res = await fetch('/api/openclaw/status');
-        if (res.ok) {
-          const status = await res.json();
-          setIsOnline(status.connected);
-        }
-      } catch {
-        setIsOnline(false);
-      }
-    }, 30000);
-
-    return () => {
-      clearInterval(eventPoll);
-      clearInterval(connectionCheck);
-      clearInterval(taskPoll);
-    };
+    // Polling is now handled by useVisibleInterval below (pauses when tab is hidden)
   }, [workspace, setAgents, setTasks, setEvents, setIsOnline, setIsLoading]);
+
+  // Poll events every 30s (only when tab is visible)
+  const pollEvents = useCallback(async () => {
+    try {
+      const res = await fetch('/api/events?limit=20');
+      if (res.ok) setEvents(await res.json());
+    } catch (error) {
+      console.error('Failed to poll events:', error);
+    }
+  }, [setEvents]);
+  useVisibleInterval(pollEvents, 30000, !!workspace);
+
+  // Poll tasks every 60s (only when tab is visible)
+  const pollTasks = useCallback(async () => {
+    if (!workspace) return;
+    try {
+      const res = await fetch(`/api/tasks?workspace_id=${workspace.id}`);
+      if (res.ok) {
+        const newTasks: Task[] = await res.json();
+        const currentTasks = useMissionControl.getState().tasks;
+        const hasChanges =
+          newTasks.length !== currentTasks.length ||
+          newTasks.some((t) => {
+            const current = currentTasks.find((ct) => ct.id === t.id);
+            return !current || current.updated_at !== t.updated_at;
+          });
+        if (hasChanges) {
+          debug.api('[FALLBACK] Task changes detected via polling, updating store');
+          setTasks(newTasks);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to poll tasks:', error);
+    }
+  }, [workspace, setTasks]);
+  useVisibleInterval(pollTasks, 60000, !!workspace);
+
+  // Check OpenClaw connection every 30s (only when tab is visible)
+  const checkConnection = useCallback(async () => {
+    try {
+      const res = await fetch('/api/openclaw/status');
+      if (res.ok) {
+        const status = await res.json();
+        setIsOnline(status.connected);
+      }
+    } catch {
+      setIsOnline(false);
+    }
+  }, [setIsOnline]);
+  useVisibleInterval(checkConnection, 30000, !!workspace);
 
   if (notFound) {
     return (

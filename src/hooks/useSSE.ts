@@ -13,6 +13,8 @@ import type { SSEEvent, Task } from '@/lib/types';
 export function useSSE() {
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const reconnectAttemptsRef = useRef(0);
+  const MAX_RECONNECT_DELAY = 60000; // 60 seconds max
   // Use ref to track selectedTask ID without causing re-renders
   const selectedTaskIdRef = useRef<string | undefined>();
   const {
@@ -47,6 +49,7 @@ export function useSSE() {
         debug.sse('Connected');
         setIsOnline(true);
         isConnecting = false;
+        reconnectAttemptsRef.current = 0; // Reset backoff on successful connection
         // Clear any pending reconnect
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
@@ -129,11 +132,16 @@ export function useSSE() {
         eventSource.close();
         eventSourceRef.current = null;
 
-        // Attempt reconnection after 5 seconds
+        // Exponential backoff: 5s, 10s, 20s, 40s, 60s max (with jitter)
+        reconnectAttemptsRef.current++;
+        const baseDelay = Math.min(5000 * Math.pow(2, reconnectAttemptsRef.current - 1), MAX_RECONNECT_DELAY);
+        const jitter = Math.random() * 1000; // 0-1s jitter to prevent thundering herd
+        const delay = baseDelay + jitter;
+        debug.sse(`Reconnecting in ${Math.round(delay / 1000)}s (attempt ${reconnectAttemptsRef.current})`);
+
         reconnectTimeoutRef.current = setTimeout(() => {
-          debug.sse('Attempting to reconnect...');
           connect();
-        }, 5000);
+        }, delay);
       };
     };
 

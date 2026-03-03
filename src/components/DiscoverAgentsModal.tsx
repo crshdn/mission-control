@@ -121,12 +121,12 @@ export function DiscoverAgentsModal({ onClose, workspaceId }: DiscoverAgentsModa
   const availableCount = agents.filter((a) => !a.already_imported).length;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-3 sm:p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-3 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="discover-modal-title">
       <div className="bg-mc-bg-secondary border border-mc-border rounded-t-xl sm:rounded-lg w-full max-w-2xl max-h-[88vh] sm:max-h-[80vh] flex flex-col pb-[env(safe-area-inset-bottom)] sm:pb-0">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-mc-border">
           <div>
-            <h2 className="text-lg font-semibold flex items-center gap-2">
+            <h2 id="discover-modal-title" className="text-lg font-semibold flex items-center gap-2">
               <Search className="w-5 h-5 text-mc-accent" />
               Discover Gateway Agents
             </h2>
@@ -137,6 +137,7 @@ export function DiscoverAgentsModal({ onClose, workspaceId }: DiscoverAgentsModa
           <button
             onClick={onClose}
             className="p-1 hover:bg-mc-bg-tertiary rounded"
+            aria-label="Close modal"
           >
             <X className="w-5 h-5" />
           </button>

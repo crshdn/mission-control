@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, ArrowRight, Folder, Users, CheckSquare, Trash2, AlertTriangle, Activity } from 'lucide-react';
+import { toast } from '@/lib/toast-store';
 import Link from 'next/link';
 import type { WorkspaceStats } from '@/lib/types';
 
@@ -144,10 +145,10 @@ function WorkspaceCard({ workspace, onDelete }: { workspace: WorkspaceStats; onD
         onDelete(workspace.id);
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to delete workspace');
+        toast.error(data.error || 'Failed to delete workspace');
       }
     } catch {
-      alert('Failed to delete workspace');
+      toast.error('Failed to delete workspace');
     } finally {
       setDeleting(false);
       setShowDeleteConfirm(false);

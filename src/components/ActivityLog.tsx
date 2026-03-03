@@ -7,6 +7,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { useVisibleInterval } from '@/hooks/useVisibility';
 import type { TaskActivity } from '@/lib/types';
 
 interface ActivityLogProps {
@@ -59,18 +60,8 @@ export function ActivityLog({ taskId }: ActivityLogProps) {
     }
   }, [taskId]); // setActivities is stable from React, no need to include
 
-  // Poll for new activities every 5 seconds when task is in progress
-  useEffect(() => {
-    const pollInterval = setInterval(pollForActivities, 5000);
-
-    pollingRef.current = pollInterval;
-
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-      }
-    };
-  }, [taskId, pollForActivities]);
+  // Poll for new activities every 5 seconds (only when tab is visible)
+  useVisibleInterval(pollForActivities, 5000);
 
   const getActivityIcon = (type: string) => {
     switch (type) {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { CheckCircle, Circle, Lock, AlertCircle, Loader2, X } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 interface PlanningOption {
   id: string;
@@ -347,11 +348,9 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
   };
 
   // Cancel planning
-  const cancelPlanning = async () => {
-    if (!confirm('Are you sure you want to cancel planning? This will reset the planning state.')) {
-      return;
-    }
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
+  const cancelPlanning = async () => {
     setCanceling(true);
     setError(null);
     setIsSubmittingAnswer(false); // Clear submitting state when canceling
@@ -537,7 +536,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
           <span>Planning in progress...</span>
         </div>
         <button
-          onClick={cancelPlanning}
+          onClick={() => setShowCancelConfirm(true)}
           disabled={canceling}
           className="flex items-center gap-2 px-3 py-2 text-sm text-mc-accent-red hover:bg-mc-accent-red/10 rounded disabled:opacity-50"
         >
@@ -686,6 +685,20 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
             ))}
           </div>
         </details>
+      )}
+
+      {showCancelConfirm && (
+        <ConfirmDialog
+          title="Cancel Planning"
+          message="Are you sure you want to cancel planning? This will reset the planning state."
+          confirmLabel="Cancel Planning"
+          onConfirm={() => {
+            setShowCancelConfirm(false);
+            cancelPlanning();
+          }}
+          onCancel={() => setShowCancelConfirm(false)}
+          destructive
+        />
       )}
     </div>
   );

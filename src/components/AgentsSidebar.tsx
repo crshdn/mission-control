@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, ChevronRight, ChevronLeft, Zap, ZapOff, Loader2, Search } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { useVisibleInterval } from '@/hooks/useVisibility';
+import { toast } from '@/lib/toast-store';
 import type { Agent, AgentStatus, OpenClawSession } from '@/lib/types';
 import { AgentModal } from './AgentModal';
 import { DiscoverAgentsModal } from './DiscoverAgentsModal';
@@ -89,7 +90,7 @@ export function AgentsSidebar({ workspaceId, mobileMode = false, isPortrait = tr
         } else {
           const error = await res.json();
           console.error('Failed to connect to OpenClaw:', error);
-          alert(`Failed to connect: ${error.error || 'Unknown error'}`);
+          toast.error(`Failed to connect: ${error.error || 'Unknown error'}`);
         }
       }
     } catch (error) {

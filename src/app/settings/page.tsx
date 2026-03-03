@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Settings, Save, RotateCcw, Home, FolderOpen, Link as LinkIcon } from 'lucide-react';
 import { getConfig, updateConfig, resetConfig, type MissionControlConfig } from '@/lib/config';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -39,13 +40,13 @@ export default function SettingsPage() {
     }
   };
 
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
   const handleReset = () => {
-    if (confirm('Reset all settings to defaults? This cannot be undone.')) {
-      resetConfig();
-      setConfig(getConfig());
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    }
+    resetConfig();
+    setConfig(getConfig());
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
   };
 
   const handleChange = (field: keyof MissionControlConfig, value: string) => {
@@ -80,7 +81,7 @@ export default function SettingsPage() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleReset}
+              onClick={() => setShowResetConfirm(true)}
               className="px-4 py-2 border border-mc-border rounded hover:bg-mc-bg-tertiary text-mc-text-secondary flex items-center gap-2"
             >
               <RotateCcw className="w-4 h-4" />
@@ -224,6 +225,20 @@ export default function SettingsPage() {
           </p>
         </section>
       </div>
+
+      {showResetConfirm && (
+        <ConfirmDialog
+          title="Reset Settings"
+          message="Reset all settings to defaults? This cannot be undone."
+          confirmLabel="Reset"
+          onConfirm={() => {
+            setShowResetConfirm(false);
+            handleReset();
+          }}
+          onCancel={() => setShowResetConfirm(false)}
+          destructive
+        />
+      )}
     </div>
   );
 }

@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, ChevronRight, GripVertical, ArrowRightLeft } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { triggerAutoDispatch, shouldTriggerAutoDispatch } from '@/lib/auto-dispatch';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import type { Task, TaskStatus } from '@/lib/types';
 import { TaskModal } from './TaskModal';
+import { EmptyState } from './EmptyState';
 import { formatDistanceToNow } from 'date-fns';
 
 interface MissionQueueProps {
@@ -31,6 +33,17 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [mobileStatus, setMobileStatus] = useState<TaskStatus>('planning');
   const [statusMoveTask, setStatusMoveTask] = useState<Task | null>(null);
+
+  // Keyboard shortcuts: N = new task, Escape = close modals
+  const shortcuts = useMemo(() => [
+    { key: 'n', handler: () => { if (!showCreateModal && !editingTask) setShowCreateModal(true); }, description: 'New task' },
+    { key: 'Escape', handler: () => {
+      if (statusMoveTask) setStatusMoveTask(null);
+      else if (editingTask) setEditingTask(null);
+      else if (showCreateModal) setShowCreateModal(false);
+    }, description: 'Close modal' },
+  ], [showCreateModal, editingTask, statusMoveTask]);
+  useKeyboardShortcuts(shortcuts);
 
   const getTasksByStatus = (status: TaskStatus) => tasks.filter((task) => task.status === status);
 
@@ -182,8 +195,13 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
 
           <div className={`min-w-0 ${isPortrait ? 'space-y-3' : 'space-y-2'}`}>
             {mobileTasks.length === 0 ? (
-              <div className="text-sm text-mc-text-secondary bg-mc-bg-secondary border border-mc-border rounded-lg p-4">
-                No tasks in this status.
+              <div className="bg-mc-bg-secondary border border-mc-border rounded-lg">
+                <EmptyState
+                  icon="📋"
+                  title="No tasks here"
+                  description={`No tasks in ${mobileStatus.replace('_', ' ')} status`}
+                  action={{ label: 'New Task', onClick: () => setShowCreateModal(true) }}
+                />
               </div>
             ) : (
               mobileTasks.map((task) => (

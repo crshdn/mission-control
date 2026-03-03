@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { X, Save, Trash2 } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
+import { toast } from '@/lib/toast-store';
+import { ConfirmDialog } from './ConfirmDialog';
 import type { Agent, AgentStatus } from '@/lib/types';
 
 interface AgentModalProps {
@@ -21,6 +23,8 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [defaultModel, setDefaultModel] = useState<string>('');
   const [modelsLoading, setModelsLoading] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState({
     name: agent?.name || '',
@@ -58,8 +62,26 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
     loadModels();
   }, [agent]);
 
+  // Close on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !showDeleteConfirm) onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, showDeleteConfirm]);
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!form.name.trim()) newErrors.name = 'Name is required';
+    if (!form.role.trim()) newErrors.role = 'Role is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
     setIsSubmitting(true);
 
     try {
@@ -79,37 +101,46 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
         const savedAgent = await res.json();
         if (agent) {
           updateAgent(savedAgent);
+          toast.success(`Agent "${savedAgent.name}" updated`);
         } else {
           addAgent(savedAgent);
-          // Notify parent if callback provided (e.g., for inline agent creation)
+          toast.success(`Agent "${savedAgent.name}" created`);
           if (onAgentCreated) {
             onAgentCreated(savedAgent.id);
           }
         }
         onClose();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || 'Failed to save agent');
       }
     } catch (error) {
       console.error('Failed to save agent:', error);
+      toast.error('Failed to save agent');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!agent || !confirm(`Delete ${agent.name}?`)) return;
+    if (!agent) return;
+    setShowDeleteConfirm(false);
 
     try {
       const res = await fetch(`/api/agents/${agent.id}`, { method: 'DELETE' });
       if (res.ok) {
-        // Remove from store
         useMissionControl.setState((state) => ({
           agents: state.agents.filter((a) => a.id !== agent.id),
           selectedAgent: state.selectedAgent?.id === agent.id ? null : state.selectedAgent,
         }));
+        toast.success(`Agent "${agent.name}" deleted`);
         onClose();
+      } else {
+        toast.error('Failed to delete agent');
       }
     } catch (error) {
       console.error('Failed to delete agent:', error);
+      toast.error('Failed to delete agent');
     }
   };
 
@@ -121,26 +152,29 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
   ] as const;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-3 sm:p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-3 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="agent-modal-title">
       <div className="bg-mc-bg-secondary border border-mc-border rounded-t-xl sm:rounded-lg w-full max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col pb-[env(safe-area-inset-bottom)] sm:pb-0">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-mc-border">
-          <h2 className="text-lg font-semibold">
+          <h2 id="agent-modal-title" className="text-lg font-semibold">
             {agent ? `Edit ${agent.name}` : 'Create New Agent'}
           </h2>
           <button
             onClick={onClose}
             className="p-1 hover:bg-mc-bg-tertiary rounded"
+            aria-label="Close modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-mc-border overflow-x-auto">
+        <div className="flex border-b border-mc-border overflow-x-auto" role="tablist">
           {tabs.map((tab) => (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 min-h-11 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.id
@@ -184,11 +218,14 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
                 <input
                   type="text"
                   value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  onChange={(e) => { setForm({ ...form, name: e.target.value }); setErrors(prev => ({ ...prev, name: '' })); }}
                   required
-                  className="w-full min-h-11 bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
+                  className={`w-full min-h-11 bg-mc-bg border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent ${errors.name ? 'border-mc-accent-red' : 'border-mc-border'}`}
                   placeholder="Agent name"
+                  aria-invalid={!!errors.name}
+                  aria-describedby={errors.name ? 'name-error' : undefined}
                 />
+                {errors.name && <p id="name-error" className="text-xs text-mc-accent-red mt-1">{errors.name}</p>}
               </div>
 
               {/* Role */}
@@ -197,11 +234,14 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
                 <input
                   type="text"
                   value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
+                  onChange={(e) => { setForm({ ...form, role: e.target.value }); setErrors(prev => ({ ...prev, role: '' })); }}
                   required
-                  className="w-full min-h-11 bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
+                  className={`w-full min-h-11 bg-mc-bg border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent ${errors.role ? 'border-mc-accent-red' : 'border-mc-border'}`}
                   placeholder="e.g., Code & Automation"
+                  aria-invalid={!!errors.role}
+                  aria-describedby={errors.role ? 'role-error' : undefined}
                 />
+                {errors.role && <p id="role-error" className="text-xs text-mc-accent-red mt-1">{errors.role}</p>}
               </div>
 
               {/* Description */}
@@ -327,7 +367,7 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
             {agent && (
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => setShowDeleteConfirm(true)}
                 className="min-h-11 flex items-center gap-2 px-3 py-2 text-mc-accent-red hover:bg-mc-accent-red/10 rounded text-sm"
               >
                 <Trash2 className="w-4 h-4" />
@@ -354,6 +394,17 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
           </div>
         </div>
       </div>
+
+      {showDeleteConfirm && agent && (
+        <ConfirmDialog
+          title={`Delete ${agent.name}?`}
+          message="This agent will be permanently removed. Any tasks assigned to this agent will be unassigned."
+          confirmLabel="Delete Agent"
+          destructive
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
     </div>
   );
 }
