@@ -213,6 +213,19 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
             </div>
           )}
 
+          {/* Brief Content Display - Show when present */}
+          {task?.brief_content && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-medium text-blue-700 dark:text-blue-300">Brief Content</h3>
+              </div>
+              <div className="text-sm text-gray-700 dark:text-gray-200 whitespace-pre-wrap bg-white dark:bg-gray-800 p-3 rounded max-h-64 overflow-y-auto">
+                {task.brief_content}
+              </div>
+            </div>
+          )}
+
           {/* Title */}
           <div>
             <label className="block text-sm font-medium mb-1">Title</label>

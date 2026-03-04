@@ -67,6 +67,7 @@ export interface Task {
   result?: string;
   result_captured_at?: string;
   planning_spec?: string;
+  brief_content?: string;
   created_at: string;
   updated_at: string;
   // Joined fields
@@ -261,6 +262,7 @@ export interface CreateTaskRequest {
   created_by_agent_id?: string;
   business_id?: string;
   due_date?: string;
+  brief_path?: string;
 }
 
 export interface UpdateTaskRequest extends Partial<CreateTaskRequest> {
@@ -363,6 +365,7 @@ export interface WebhookEvent {
     priority?: TaskPriority;
     description?: string;
     planning_spec?: string;
+  brief_content?: string;
     stuck_duration?: string;
     agent_id?: string;
     agent_name?: string;

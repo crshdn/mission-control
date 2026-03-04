@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
+import { readFileSync } from 'fs';
 import { queryAll, queryOne, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { CreateTaskSchema } from '@/lib/validation';
@@ -98,9 +99,21 @@ export async function POST(request: NextRequest) {
     const workspaceId = validatedData.workspace_id || 'default';
     const status = validatedData.status || 'inbox';
     
+    // Handle brief_path if provided
+    let briefContent = null;
+    if (body.brief_path) {
+      try {
+        briefContent = readFileSync(body.brief_path, 'utf-8');
+        console.log(`[POST /api/tasks] Successfully read brief from ${body.brief_path}`);
+      } catch (error) {
+        console.warn(`[POST /api/tasks] Failed to read brief file ${body.brief_path}:`, error);
+        // Don't fail task creation, just skip the brief content
+      }
+    }
+    
     run(
-      `INSERT INTO tasks (id, title, description, status, priority, assigned_agent_id, created_by_agent_id, workspace_id, business_id, due_date, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tasks (id, title, description, status, priority, assigned_agent_id, created_by_agent_id, workspace_id, business_id, due_date, brief_content, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         validatedData.title,
@@ -112,6 +125,7 @@ export async function POST(request: NextRequest) {
         workspaceId,
         validatedData.business_id || 'default',
         validatedData.due_date || null,
+        briefContent,
         now,
         now,
       ]

@@ -26,23 +26,36 @@ export function unregisterClient(controller: ReadableStreamDefaultController): v
  * Broadcast an event to all connected SSE clients
  */
 export function broadcast(event: SSEEvent): void {
+  if (clients.size === 0) {
+    return; // No clients to broadcast to
+  }
+
   const encoder = new TextEncoder();
-  const data = `data: ${JSON.stringify(event)}\n\n`;
+  let data: string;
+  try {
+    data = `data: ${JSON.stringify(event)}\n\n`;
+  } catch (error) {
+    console.error('[SSE] Failed to serialize event:', error);
+    return;
+  }
   const encoded = encoder.encode(data);
 
   // Send to all connected clients
   const clientsArray = Array.from(clients);
+  let successCount = 0;
   for (const client of clientsArray) {
     try {
       client.enqueue(encoded);
+      successCount++;
     } catch (error) {
-      // Client disconnected, remove it
-      console.error('Failed to send SSE event to client:', error);
+      // Client disconnected, remove it silently
       clients.delete(client);
     }
   }
 
-  console.log(`[SSE] Broadcast ${event.type} to ${clients.size} client(s)`);
+  if (successCount > 0) {
+    console.log(`[SSE] Broadcast ${event.type} to ${successCount}/${clientsArray.length} client(s)`);
+  }
 }
 
 /**

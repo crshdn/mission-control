@@ -5,8 +5,22 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { Header } from '@/components/Header';
-import { AgentsSidebar } from '@/components/AgentsSidebar';
+import { Sidebar } from '@/components/Sidebar';
 import { MissionQueue } from '@/components/MissionQueue';
+import { AgentsDashboard } from '@/components/AgentsDashboard';
+import { SLAMonitor } from '@/components/SLAMonitor';
+import { CronCalendar } from '@/components/CronCalendar';
+import { QCDashboard } from '@/components/QCDashboard';
+import { APIMonitor } from '@/components/APIMonitor';
+import { BugReports } from '@/components/BugReports';
+import { DocsLibrary } from '@/components/DocsLibrary';
+import { ProjectTracker } from '@/components/ProjectTracker';
+import { TeamScreen } from '@/components/TeamScreen';
+import { AgentWorkloadBalance } from '@/components/AgentWorkloadBalance';
+import { SelfHealingTracker } from '@/components/SelfHealingTracker';
+import { GitHubActivity } from '@/components/GitHubActivity';
+import { UnreadPending } from '@/components/UnreadPending';
+import { Deployments } from '@/components/Deployments';
 import { LiveFeed } from '@/components/LiveFeed';
 import { SSEDebugPanel } from '@/components/SSEDebugPanel';
 import { useMissionControl } from '@/lib/store';
@@ -29,9 +43,34 @@ export default function WorkspacePage() {
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [activeTab, setActiveTab] = useState('tasks');
 
   // Connect to SSE for real-time updates
   useSSE();
+
+  // Render active component based on tab
+  const renderActiveComponent = () => {
+    const commonProps = { workspaceId: workspace!.id };
+    
+    switch (activeTab) {
+      case 'tasks': return <MissionQueue {...commonProps} />;
+      case 'agents': return <AgentsDashboard {...commonProps} />;
+      case 'sla': return <SLAMonitor {...commonProps} />;
+      case 'cron': return <CronCalendar {...commonProps} />;
+      case 'qc': return <QCDashboard {...commonProps} />;
+      case 'api': return <APIMonitor {...commonProps} />;
+      case 'bugs': return <BugReports {...commonProps} />;
+      case 'docs': return <DocsLibrary {...commonProps} />;
+      case 'projects': return <ProjectTracker {...commonProps} />;
+      case 'team': return <TeamScreen {...commonProps} />;
+      case 'workload': return <AgentWorkloadBalance {...commonProps} />;
+      case 'healing': return <SelfHealingTracker {...commonProps} />;
+      case 'github': return <GitHubActivity />;
+      case 'unread': return <UnreadPending />;
+      case 'deployments': return <Deployments />;
+      default: return <MissionQueue {...commonProps} />;
+    }
+  };
 
   // Load workspace data
   useEffect(() => {
@@ -205,11 +244,17 @@ export default function WorkspacePage() {
       <Header workspace={workspace} />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Agents Sidebar */}
-        <AgentsSidebar workspaceId={workspace.id} />
+        {/* Left Sidebar Navigation */}
+        <Sidebar 
+          workspaceId={workspace.id} 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab} 
+        />
 
         {/* Main Content Area */}
-        <MissionQueue workspaceId={workspace.id} />
+        <div className="flex-1 flex overflow-hidden">
+          {renderActiveComponent()}
+        </div>
 
         {/* Live Feed */}
         <LiveFeed />

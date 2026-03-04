@@ -223,6 +223,21 @@ const migrations: Migration[] = [
         console.log('[Migration 008] Added result_captured_at to tasks');
       }
     }
+  },
+  {
+    id: '010',
+    name: 'add_brief_content_field',
+    up: (db) => {
+      console.log('[Migration 010] Adding brief_content field to tasks...');
+
+      const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
+
+      // Add brief_content column to store brief file content
+      if (!tasksInfo.some(col => col.name === 'brief_content')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN brief_content TEXT`);
+        console.log('[Migration 010] Added brief_content to tasks');
+      }
+    }
   }
 ];
 

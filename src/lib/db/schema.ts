@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   planning_dispatch_error TEXT,
   result TEXT,
   result_captured_at TEXT,
+  brief_content TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );

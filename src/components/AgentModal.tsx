@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Save, Trash2 } from 'lucide-react';
+import { X, Save, Trash2, FileText, RefreshCw } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { useMissionControl } from '@/lib/store';
 import type { Agent, AgentStatus } from '@/lib/types';
 
@@ -10,6 +11,14 @@ interface AgentModalProps {
   onClose: () => void;
   workspaceId?: string;
   onAgentCreated?: (agentId: string) => void;
+}
+
+interface WorkspaceFile {
+  content: string | null;
+  filename: string;
+  agentName: string;
+  error?: string;
+  loading?: boolean;
 }
 
 const EMOJI_OPTIONS = ['🤖', '🦞', '💻', '🔍', '✍️', '🎨', '📊', '🧠', '⚡', '🚀', '🎯', '🔧'];
@@ -22,6 +31,18 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
   const [defaultModel, setDefaultModel] = useState<string>('');
   const [modelsLoading, setModelsLoading] = useState(true);
 
+  // Workspace files state
+  const [workspaceFiles, setWorkspaceFiles] = useState<{
+    'SOUL.md': WorkspaceFile;
+    'USER.md': WorkspaceFile;
+    'AGENTS.md': WorkspaceFile;
+  }>({
+    'SOUL.md': { content: null, filename: 'SOUL.md', agentName: '', loading: true },
+    'USER.md': { content: null, filename: 'USER.md', agentName: '', loading: true },
+    'AGENTS.md': { content: null, filename: 'AGENTS.md', agentName: '', loading: true },
+  });
+
+  // Form state (only for editable fields in Info tab)
   const [form, setForm] = useState({
     name: agent?.name || '',
     role: agent?.role || '',
@@ -29,11 +50,51 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
     avatar_emoji: agent?.avatar_emoji || '🤖',
     status: agent?.status || 'standby' as AgentStatus,
     is_master: agent?.is_master || false,
-    soul_md: agent?.soul_md || '',
-    user_md: agent?.user_md || '',
-    agents_md: agent?.agents_md || '',
     model: agent?.model || '',
   });
+
+  // Load workspace files when agent is available
+  useEffect(() => {
+    if (!agent) return;
+
+    const loadWorkspaceFile = async (filename: 'SOUL.md' | 'USER.md' | 'AGENTS.md') => {
+      setWorkspaceFiles(prev => ({
+        ...prev,
+        [filename]: { ...prev[filename], loading: true }
+      }));
+
+      try {
+        const res = await fetch(`/api/agents/${agent.id}/workspace-file/${filename}`);
+        const data = await res.json();
+        
+        setWorkspaceFiles(prev => ({
+          ...prev,
+          [filename]: {
+            content: data.content,
+            filename: data.filename,
+            agentName: data.agentName,
+            error: res.ok ? undefined : data.error,
+            loading: false
+          }
+        }));
+      } catch (error) {
+        console.error(`Failed to load ${filename}:`, error);
+        setWorkspaceFiles(prev => ({
+          ...prev,
+          [filename]: {
+            ...prev[filename],
+            error: 'Failed to load file',
+            loading: false
+          }
+        }));
+      }
+    };
+
+    // Load all workspace files
+    loadWorkspaceFile('SOUL.md');
+    loadWorkspaceFile('USER.md');
+    loadWorkspaceFile('AGENTS.md');
+  }, [agent]);
 
   // Load available models from OpenClaw config
   useEffect(() => {
@@ -66,6 +127,7 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
       const url = agent ? `/api/agents/${agent.id}` : '/api/agents';
       const method = agent ? 'PATCH' : 'POST';
 
+      // Only submit form fields, not markdown content (now read-only)
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -113,6 +175,41 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
     }
   };
 
+  const handleRefreshFile = (filename: 'SOUL.md' | 'USER.md' | 'AGENTS.md') => {
+    if (!agent) return;
+
+    setWorkspaceFiles(prev => ({
+      ...prev,
+      [filename]: { ...prev[filename], loading: true, error: undefined }
+    }));
+
+    fetch(`/api/agents/${agent.id}/workspace-file/${filename}`)
+      .then(res => res.json())
+      .then(data => {
+        setWorkspaceFiles(prev => ({
+          ...prev,
+          [filename]: {
+            content: data.content,
+            filename: data.filename,
+            agentName: data.agentName,
+            error: data.error,
+            loading: false
+          }
+        }));
+      })
+      .catch(error => {
+        console.error(`Failed to refresh ${filename}:`, error);
+        setWorkspaceFiles(prev => ({
+          ...prev,
+          [filename]: {
+            ...prev[filename],
+            error: 'Failed to load file',
+            loading: false
+          }
+        }));
+      });
+  };
+
   const tabs = [
     { id: 'info', label: 'Info' },
     { id: 'soul', label: 'SOUL.md' },
@@ -120,13 +217,68 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
     { id: 'agents', label: 'AGENTS.md' },
   ] as const;
 
+  const renderMarkdownTab = (filename: 'SOUL.md' | 'USER.md' | 'AGENTS.md') => {
+    const file = workspaceFiles[filename];
+
+    return (
+      <div className="h-full flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-medium">
+              {filename} {agent && `(${agent.name.toLowerCase()})`}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleRefreshFile(filename)}
+            disabled={file.loading}
+            className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+          >
+            <RefreshCw className={`w-3 h-3 ${file.loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
+          {file.loading ? (
+            <div className="flex items-center justify-center h-32 text-gray-500">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Loading {filename}...
+              </div>
+            </div>
+          ) : file.error || !file.content ? (
+            <div className="flex items-center justify-center h-32 text-gray-500">
+              <div className="text-center">
+                <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">
+                  {file.error || `${filename} not found`}
+                </p>
+                <p className="text-xs mt-1 opacity-75">
+                  Expected: /Users/lilly/clawd/agents/{agent?.name.toLowerCase()}/{filename}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown>{file.content}</ReactMarkdown>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold">
-            {agent ? `Edit ${agent.name}` : 'Create New Agent'}
+            {agent ? `${agent.name} Profile` : 'Create New Agent'}
           </h2>
           <button
             onClick={onClose}
@@ -154,9 +306,9 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
         </div>
 
         {/* Content */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 bg-white dark:bg-gray-900">
-          {activeTab === 'info' && (
-            <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 bg-white dark:bg-gray-900">
+          {activeTab === 'info' ? (
+            <form onSubmit={handleSubmit} className="space-y-4">
               {/* Avatar Selection */}
               <div>
                 <label className="block text-sm font-medium mb-2">Avatar</label>
@@ -189,6 +341,9 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
                   className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
                   placeholder="Agent name"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  This determines the workspace directory: /Users/lilly/clawd/agents/{form.name.toLowerCase()}/
+                </p>
               </div>
 
               {/* Role */}
@@ -272,54 +427,15 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
                   AI model used by this agent. Leave empty to use OpenClaw default.
                 </p>
               </div>
-            </div>
-          )}
-
-          {activeTab === 'soul' && (
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                SOUL.md - Agent Personality & Identity
-              </label>
-              <textarea
-                value={form.soul_md}
-                onChange={(e) => setForm({ ...form, soul_md: e.target.value })}
-                rows={15}
-                className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500 resize-none"
-                placeholder="# Agent Name&#10;&#10;Define this agent's personality, values, and communication style..."
-              />
-            </div>
-          )}
-
-          {activeTab === 'user' && (
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                USER.md - Context About the Human
-              </label>
-              <textarea
-                value={form.user_md}
-                onChange={(e) => setForm({ ...form, user_md: e.target.value })}
-                rows={15}
-                className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500 resize-none"
-                placeholder="# User Context&#10;&#10;Information about the human this agent works with..."
-              />
-            </div>
-          )}
-
-          {activeTab === 'agents' && (
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                AGENTS.md - Team Awareness
-              </label>
-              <textarea
-                value={form.agents_md}
-                onChange={(e) => setForm({ ...form, agents_md: e.target.value })}
-                rows={15}
-                className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500 resize-none"
-                placeholder="# Team Roster&#10;&#10;Information about other agents this agent works with..."
-              />
-            </div>
-          )}
-        </form>
+            </form>
+          ) : activeTab === 'soul' ? (
+            renderMarkdownTab('SOUL.md')
+          ) : activeTab === 'user' ? (
+            renderMarkdownTab('USER.md')
+          ) : activeTab === 'agents' ? (
+            renderMarkdownTab('AGENTS.md')
+          ) : null}
+        </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
@@ -343,14 +459,16 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
             >
               Cancel
             </button>
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              {isSubmitting ? 'Saving...' : 'Save'}
-            </button>
+            {activeTab === 'info' && (
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                {isSubmitting ? 'Saving...' : 'Save'}
+              </button>
+            )}
           </div>
         </div>
       </div>

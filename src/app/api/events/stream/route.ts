@@ -7,9 +7,12 @@ import { NextRequest } from 'next/server';
 import { registerClient, unregisterClient } from '@/lib/events';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   const encoder = new TextEncoder();
+  let keepAliveInterval: NodeJS.Timeout | null = null;
+  let isControllerClosed = false;
 
   // Create a readable stream for SSE
   const stream = new ReadableStream({
@@ -18,29 +21,55 @@ export async function GET(request: NextRequest) {
       registerClient(controller);
 
       // Send initial connection message
-      const connectMsg = encoder.encode(`: connected\n\n`);
-      controller.enqueue(connectMsg);
+      try {
+        controller.enqueue(encoder.encode(`: connected\n\n`));
+      } catch (error) {
+        console.error('[SSE] Failed to send initial message:', error);
+        isControllerClosed = true;
+        return;
+      }
 
       // Set up keep-alive ping every 30 seconds
-      const keepAliveInterval = setInterval(() => {
+      keepAliveInterval = setInterval(() => {
+        if (isControllerClosed) {
+          if (keepAliveInterval) clearInterval(keepAliveInterval);
+          return;
+        }
         try {
           controller.enqueue(encoder.encode(`: keep-alive\n\n`));
         } catch (error) {
           // Client disconnected
-          clearInterval(keepAliveInterval);
+          console.log('[SSE] Keep-alive failed, client likely disconnected');
+          isControllerClosed = true;
+          if (keepAliveInterval) clearInterval(keepAliveInterval);
+          unregisterClient(controller);
         }
       }, 30000);
 
       // Handle client disconnect
       request.signal.addEventListener('abort', () => {
-        clearInterval(keepAliveInterval);
+        console.log('[SSE] Client disconnected (abort signal)');
+        isControllerClosed = true;
+        if (keepAliveInterval) {
+          clearInterval(keepAliveInterval);
+          keepAliveInterval = null;
+        }
         unregisterClient(controller);
         try {
           controller.close();
         } catch (error) {
-          // Controller may already be closed
+          // Controller may already be closed - this is expected
         }
       });
+    },
+    cancel() {
+      // Called when the stream is cancelled
+      console.log('[SSE] Stream cancelled');
+      isControllerClosed = true;
+      if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+        keepAliveInterval = null;
+      }
     },
   });
 

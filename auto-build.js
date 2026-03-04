@@ -55,8 +55,8 @@ async function createTask(tool) {
 ${tool.desc}
 
 ## Requirements:
-- Standalone HTML/JS/CSS tool (NOT React) in /Users/lilly/clawd/squad/max/pipeline/builds/${slug}/
-- Look at existing tools in /Users/lilly/clawd/squad/max/pipeline/builds/ for the pattern
+- Standalone HTML/JS/CSS tool (NOT React) in /Users/lilly/clawd/projects/ateliertools-com/builds/${slug}/
+- Look at existing tools in /Users/lilly/clawd/projects/ateliertools-com/builds/ for the pattern
 - Must include: index.html, app.js, style.css
 - Works entirely in browser (no backend)
 - Match the Atelier design system (see existing tools for nav, hero, styling)
@@ -191,7 +191,7 @@ const fs = require('fs');
 // Check if a tool directory already exists
 function toolExists(toolName) {
   const slug = toolName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '');
-  const toolDir = `/Users/lilly/clawd/squad/max/pipeline/builds/${slug}`;
+  const toolDir = `/Users/lilly/clawd/projects/ateliertools-com/builds/${slug}`;
   try {
     // Check if index.html exists (the key deliverable)
     fs.statSync(`${toolDir}/index.html`);
