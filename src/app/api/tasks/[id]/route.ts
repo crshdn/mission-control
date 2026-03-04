@@ -84,6 +84,20 @@ export async function PATCH(
       }
     }
 
+    // VERIFICATION ENFORCEMENT: Agents must provide verification_output when marking for review
+    // This prevents phantom deliverables - agents must prove their work before QC
+    if (validatedData.status === 'review' && existing.status !== 'review') {
+      if (!validatedData.verification_output || validatedData.verification_output.trim().length < 50) {
+        return NextResponse.json(
+          { 
+            error: 'Verification required', 
+            details: 'Cannot mark task for review without verification_output. Include: build output, runtime test results, and confirmation that features work. Minimum 50 characters.' 
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     if (validatedData.title !== undefined) {
       updates.push('title = ?');
       values.push(validatedData.title);
@@ -107,6 +121,12 @@ export async function PATCH(
       values.push(validatedData.result);
       updates.push('result_captured_at = ?');
       values.push(now);
+    }
+
+    // Handle verification_output field update
+    if (validatedData.verification_output !== undefined) {
+      updates.push('verification_output = ?');
+      values.push(validatedData.verification_output);
     }
 
     // Track if we need to dispatch task

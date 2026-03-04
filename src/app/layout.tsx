@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Inter } from 'next/font/google';
 import DemoBanner from '@/components/DemoBanner';
+import Providers from '@/components/Providers';
 
 // Inter is the closest web font to SF Pro
 const inter = Inter({
@@ -42,8 +43,10 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} font-apple bg-apple-bg text-apple-text min-h-screen transition-colors duration-200`}>
-        <DemoBanner />
-        {children}
+        <Providers>
+          <DemoBanner />
+          {children}
+        </Providers>
       </body>
     </html>
   );

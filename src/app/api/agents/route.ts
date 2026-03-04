@@ -4,18 +4,38 @@ import { queryAll, queryOne, run } from '@/lib/db';
 import type { Agent, CreateAgentRequest } from '@/lib/types';
 
 // GET /api/agents - List all agents
+// Status is COMPUTED from active sessions, not stored in the agents table
 export async function GET(request: NextRequest) {
   try {
     const workspaceId = request.nextUrl.searchParams.get('workspace_id');
     
+    // Compute status: 'working' if agent has an active session, 'standby' otherwise
+    const baseQuery = `
+      SELECT a.*,
+        CASE 
+          WHEN s.id IS NOT NULL THEN 'working'
+          ELSE 'standby'
+        END as status
+      FROM agents a
+      LEFT JOIN openclaw_sessions s 
+        ON s.agent_id = a.id 
+        AND s.status = 'active'
+        AND s.ended_at IS NULL
+    `;
+    
     let agents: Agent[];
     if (workspaceId) {
       agents = queryAll<Agent>(`
-        SELECT * FROM agents WHERE workspace_id = ? ORDER BY is_master DESC, name ASC
+        ${baseQuery}
+        WHERE a.workspace_id = ?
+        GROUP BY a.id
+        ORDER BY a.is_master DESC, a.name ASC
       `, [workspaceId]);
     } else {
       agents = queryAll<Agent>(`
-        SELECT * FROM agents ORDER BY is_master DESC, name ASC
+        ${baseQuery}
+        GROUP BY a.id
+        ORDER BY a.is_master DESC, a.name ASC
       `);
     }
     return NextResponse.json(agents);

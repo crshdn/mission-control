@@ -201,14 +201,14 @@ export function DocsLibrary({ workspaceId }: DocsLibraryProps) {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {Object.entries(CATEGORY_LABELS).map(([category, label]) => (
-                <div key={category} className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4">
+                <div key={category} className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4 min-w-0 overflow-hidden">
                   <div className="flex items-center gap-3">
-                    <Folder className={`w-5 h-5 ${CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS].split(' ')[1]}`} />
-                    <div>
+                    <Folder className={`w-5 h-5 flex-shrink-0 ${CATEGORY_COLORS[category as keyof typeof CATEGORY_COLORS].split(' ')[1]}`} />
+                    <div className="min-w-0">
                       <p className="text-2xl font-bold text-mc-text">{categoryCounts[category] || 0}</p>
-                      <p className="text-sm text-mc-text-secondary">{label}</p>
+                      <p className="text-sm text-mc-text-secondary truncate">{label}</p>
                     </div>
                   </div>
                 </div>

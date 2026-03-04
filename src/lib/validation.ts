@@ -45,6 +45,7 @@ export const UpdateTaskSchema = z.object({
   due_date: z.string().optional().nullable(),
   updated_by_agent_id: z.string().uuid().optional(),
   result: z.string().max(50000).optional(),
+  verification_output: z.string().max(50000).optional(),
 });
 
 // Activity validation schema

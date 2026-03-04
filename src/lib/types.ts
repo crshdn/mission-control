@@ -66,6 +66,7 @@ export interface Task {
   due_date?: string;
   result?: string;
   result_captured_at?: string;
+  verification_output?: string;
   planning_spec?: string;
   brief_content?: string;
   created_at: string;

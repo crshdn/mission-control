@@ -18,7 +18,9 @@ import {
   Wrench,
   Github,
   Inbox,
-  Rocket
+  Rocket,
+  HeartPulse,
+  Building2
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -47,6 +49,9 @@ const navigationItems = [
   { id: 'github', label: 'GitHub', icon: Github },
   { id: 'unread', label: 'Unread/Pending', icon: Inbox },
   { id: 'deployments', label: 'Deployments', icon: Rocket },
+  { id: 'tools-health', label: 'Tools Health', icon: HeartPulse },
+  // Phase 5
+  { id: 'office', label: 'Office', icon: Building2 },
 ];
 
 export function Sidebar({ workspaceId, activeTab, onTabChange }: SidebarProps) {

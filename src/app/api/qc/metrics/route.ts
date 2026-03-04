@@ -23,9 +23,9 @@ export async function GET(request: NextRequest) {
 
     const todayDecisions = db.prepare(`
       SELECT 
-        SUM(CASE WHEN result LIKE '%APPROVED%' THEN 1 ELSE 0 END) as approved,
-        SUM(CASE WHEN result LIKE '%REJECTED%' THEN 1 ELSE 0 END) as rejected,
-        SUM(CASE WHEN result LIKE '%ESCALAT%' THEN 1 ELSE 0 END) as escalated
+        SUM(CASE WHEN message LIKE '%APPROVED%' THEN 1 ELSE 0 END) as approved,
+        SUM(CASE WHEN message LIKE '%REJECTED%' OR message LIKE '%REVISION_NEEDED%' THEN 1 ELSE 0 END) as rejected,
+        SUM(CASE WHEN message LIKE '%ESCALAT%' THEN 1 ELSE 0 END) as escalated
       FROM task_activities 
       WHERE activity_type = 'qc_decision' 
       AND created_at >= ?
@@ -44,14 +44,14 @@ export async function GET(request: NextRequest) {
     const avgReviewTime = db.prepare(`
       SELECT AVG(
         CASE 
-          WHEN completed_at IS NOT NULL AND status_changed_at IS NOT NULL 
-          THEN (strftime('%s', completed_at) - strftime('%s', status_changed_at)) / 60.0
+          WHEN updated_at IS NOT NULL AND created_at IS NOT NULL 
+          THEN (strftime('%s', updated_at) - strftime('%s', created_at)) / 60.0
           ELSE NULL
         END
       ) as avg_minutes
       FROM tasks 
       WHERE status = 'done' 
-      AND completed_at >= ?
+      AND updated_at >= ?
       ${workspaceId ? 'AND workspace_id = ?' : ''}
     `).get(workspaceId ? [weekAgoISO, workspaceId] : [weekAgoISO]) as { avg_minutes: number | null };
 

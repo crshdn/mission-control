@@ -23,6 +23,7 @@ export function SelfHealingTracker({ workspaceId }: SelfHealingTrackerProps) {
   const [improvements, setImprovements] = useState<SystemImprovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     loadImprovements();
@@ -192,7 +193,7 @@ export function SelfHealingTracker({ workspaceId }: SelfHealingTrackerProps) {
                       <p className="text-sm text-mc-text-secondary">{improvement.gapDetected}</p>
                     </div>
 
-                    {improvement.rootCause.length > 0 && (
+                    {improvement.rootCause.length > 0 && improvement.rootCause[0] !== 'See details' && (
                       <div className="mb-3">
                         <div className="text-sm font-medium text-mc-accent-yellow mb-1">Root Cause</div>
                         <ul className="text-sm text-mc-text-secondary space-y-1">
@@ -206,7 +207,7 @@ export function SelfHealingTracker({ workspaceId }: SelfHealingTrackerProps) {
                       </div>
                     )}
 
-                    {improvement.actions.length > 0 && (
+                    {improvement.actions.length > 0 && improvement.actions[0] !== 'See details' && (
                       <div className="mb-3">
                         <div className="text-sm font-medium text-mc-accent-green mb-1">Auto-Fix Actions</div>
                         <ul className="text-sm text-mc-text-secondary space-y-1">
@@ -246,19 +247,51 @@ export function SelfHealingTracker({ workspaceId }: SelfHealingTrackerProps) {
                       'border-mc-accent-green bg-mc-accent-green'
                     }`} />
                     {index < improvements.slice(0, 10).length - 1 && (
-                      <div className="w-px h-8 bg-mc-border mt-2" />
+                      <div className={`w-px bg-mc-border mt-2 ${expandedId === improvement.id ? 'h-auto min-h-[2rem]' : 'h-8'}`} />
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div 
+                    className="flex-1 min-w-0 cursor-pointer hover:bg-mc-bg-tertiary rounded-lg p-2 -m-2 transition-colors"
+                    onClick={() => setExpandedId(expandedId === improvement.id ? null : improvement.id)}
+                  >
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-mc-text">{improvement.title}</span>
                       <span className="text-xs text-mc-text-secondary">
                         {formatTimeAgo(improvement.timestamp)}
                       </span>
                     </div>
-                    <p className="text-sm text-mc-text-secondary line-clamp-2">
+                    <p className={`text-sm text-mc-text-secondary ${expandedId === improvement.id ? '' : 'line-clamp-2'}`}>
                       {improvement.gapDetected}
                     </p>
+                    {expandedId === improvement.id && (
+                      <div className="mt-3 space-y-3 text-sm">
+                        {improvement.rootCause.length > 0 && improvement.rootCause[0] !== 'See details' && (
+                          <div>
+                            <p className="font-medium text-mc-text mb-1">Root Cause:</p>
+                            <ul className="list-disc list-inside text-mc-text-secondary space-y-1">
+                              {improvement.rootCause.map((cause, i) => (
+                                <li key={i}>{cause}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {improvement.actions.length > 0 && improvement.actions[0] !== 'See details' && (
+                          <div>
+                            <p className="font-medium text-mc-text mb-1">Actions Taken:</p>
+                            <ul className="list-disc list-inside text-mc-text-secondary space-y-1">
+                              {improvement.actions.map((action, i) => (
+                                <li key={i}>{action}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {improvement.outcome && (
+                          <p className="text-mc-text-secondary">
+                            <span className="font-medium text-mc-text">Outcome:</span> {improvement.outcome}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

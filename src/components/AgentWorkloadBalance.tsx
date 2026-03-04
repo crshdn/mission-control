@@ -41,7 +41,7 @@ export function AgentWorkloadBalance({ workspaceId }: AgentWorkloadBalanceProps)
       const response = await fetch('/api/agent-workload');
       if (response.ok) {
         const workloadData = await response.json();
-        setWorkloads(workloadData);
+        setWorkloads(workloadData.agents || []);
         setLastUpdated(new Date());
       }
     } catch (error) {

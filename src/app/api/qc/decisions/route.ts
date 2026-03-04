@@ -13,25 +13,25 @@ export async function GET(request: NextRequest) {
     const decisions = db.prepare(`
       SELECT 
         a.id,
-        a.task_id,
-        t.title as task_title,
+        a.task_id as taskId,
+        t.title as taskTitle,
         CASE 
           WHEN a.message LIKE '%APPROVED%' THEN 'approved'
-          WHEN a.message LIKE '%REJECTED%' THEN 'rejected'
+          WHEN a.message LIKE '%REJECTED%' OR a.message LIKE '%REVISION_NEEDED%' THEN 'rejected'
           WHEN a.message LIKE '%ESCALAT%' THEN 'escalated'
           ELSE 'unknown'
         END as decision,
         a.message as reason,
-        a.created_at as reviewed_at,
+        a.created_at as reviewedAt,
         CASE 
-          WHEN t.status_changed_at IS NOT NULL 
-          THEN (strftime('%s', a.created_at) - strftime('%s', t.status_changed_at)) / 60.0
+          WHEN t.updated_at IS NOT NULL 
+          THEN (strftime('%s', a.created_at) - strftime('%s', t.updated_at)) / 60.0
           ELSE 0
-        END as review_time
+        END as reviewTime
       FROM task_activities a
       JOIN tasks t ON a.task_id = t.id
       WHERE a.activity_type IN ('qc_decision', 'status_changed')
-      AND (a.message LIKE '%APPROVED%' OR a.message LIKE '%REJECTED%' OR a.message LIKE '%ESCALAT%')
+      AND (a.message LIKE '%APPROVED%' OR a.message LIKE '%REJECTED%' OR a.message LIKE '%REVISION_NEEDED%' OR a.message LIKE '%ESCALAT%')
       ${workspaceId ? 'AND t.workspace_id = ?' : ''}
       ORDER BY a.created_at DESC
       LIMIT ?

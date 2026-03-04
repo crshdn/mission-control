@@ -21,6 +21,8 @@ import { SelfHealingTracker } from '@/components/SelfHealingTracker';
 import { GitHubActivity } from '@/components/GitHubActivity';
 import { UnreadPending } from '@/components/UnreadPending';
 import { Deployments } from '@/components/Deployments';
+import { ToolsHealthMonitor } from '@/components/ToolsHealthMonitor';
+import { OfficeVisualization } from '@/components/OfficeVisualization';
 import { LiveFeed } from '@/components/LiveFeed';
 import { SSEDebugPanel } from '@/components/SSEDebugPanel';
 import { useMissionControl } from '@/lib/store';
@@ -68,6 +70,8 @@ export default function WorkspacePage() {
       case 'github': return <GitHubActivity />;
       case 'unread': return <UnreadPending />;
       case 'deployments': return <Deployments />;
+      case 'tools-health': return <ToolsHealthMonitor {...commonProps} />;
+      case 'office': return <OfficeVisualization {...commonProps} />;
       default: return <MissionQueue {...commonProps} />;
     }
   };
@@ -252,7 +256,7 @@ export default function WorkspacePage() {
         />
 
         {/* Main Content Area */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 overflow-auto">
           {renderActiveComponent()}
         </div>
 

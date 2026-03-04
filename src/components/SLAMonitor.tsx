@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, AlertCircle, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { Clock, AlertCircle, CheckCircle, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 
 interface SLAMonitorProps {
   workspaceId: string;
@@ -13,145 +13,89 @@ interface SLAMetric {
   currentValue: number;
   target: number;
   unit: string;
-  trend: 'up' | 'down' | 'stable';
   status: 'success' | 'warning' | 'danger';
+  violations?: number;
+}
+
+interface SLAViolation {
+  id: string;
+  title: string;
+  status: string;
+  wait_time: number;
+  created_at: string;
+}
+
+interface SLAData {
+  inbox_dispatch_time: {
+    current: number;
+    target: number;
+    unit: string;
+    status: 'success' | 'warning' | 'danger';
+    violations: number;
+  };
+  completion_rate: {
+    current: number;
+    target: number;
+    unit: string;
+    status: 'success' | 'warning' | 'danger';
+  };
+  queue_wait_time: {
+    current: number;
+    target: number;
+    unit: string;
+    status: 'success' | 'warning' | 'danger';
+    violations: number;
+  };
+  avg_completion_time: {
+    current: number;
+    target: number;
+    unit: string;
+    status: 'success' | 'warning' | 'danger';
+  };
+  error_rate: {
+    current: number;
+    target: number;
+    unit: string;
+    status: 'success' | 'warning' | 'danger';
+  };
+  sla_violations: {
+    total: number;
+    tasks: SLAViolation[];
+  };
 }
 
 export function SLAMonitor({ workspaceId }: SLAMonitorProps) {
   const [loading, setLoading] = useState(true);
-  const [metrics, setMetrics] = useState<SLAMetric[]>([]);
+  const [slaData, setSlaData] = useState<SLAData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchSLAMetrics() {
       try {
         setLoading(true);
+        setError(null);
         
-        // Fetch tasks to calculate real inbox timing metrics
-        const response = await fetch(`/api/tasks?workspace_id=${workspaceId}&limit=100`);
+        const response = await fetch(`/api/sla?workspace_id=${workspaceId}`);
         if (!response.ok) {
-          throw new Error('Failed to fetch tasks');
+          throw new Error('Failed to fetch SLA metrics');
         }
         
-        const tasks = await response.json();
-        const now = new Date();
-        const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        
-        // Calculate metrics from real task data
-        const recentTasks = tasks.filter((task: any) => 
-          new Date(task.created_at) > last24Hours
-        );
-        
-        // Inbox time tracking - time from creation to first dispatch
-        const inboxTimes = recentTasks
-          .filter((task: any) => task.assigned_agent_id && task.updated_at !== task.created_at)
-          .map((task: any) => {
-            const created = new Date(task.created_at);
-            const dispatched = new Date(task.updated_at);
-            return (dispatched.getTime() - created.getTime()) / 1000; // seconds
-          });
-        
-        const avgInboxTime = inboxTimes.length > 0 
-          ? inboxTimes.reduce((a: number, b: number) => a + b, 0) / inboxTimes.length 
-          : 0;
-        
-        // Task completion rate
-        const completedTasks = recentTasks.filter((task: any) => 
-          task.status === 'completed' || task.status === 'review'
-        );
-        const completionRate = recentTasks.length > 0 
-          ? (completedTasks.length / recentTasks.length) * 100 
-          : 0;
-        
-        // Failed task rate
-        const failedTasks = recentTasks.filter((task: any) => 
-          task.status === 'failed' || task.status === 'error'
-        );
-        const errorRate = recentTasks.length > 0 
-          ? (failedTasks.length / recentTasks.length) * 100 
-          : 0;
-        
-        // Current queue wait time (tasks in inbox)
-        const queuedTasks = tasks.filter((task: any) => 
-          task.status === 'pending' && !task.assigned_agent_id
-        );
-        const currentQueueTimes = queuedTasks.map((task: any) => {
-          const created = new Date(task.created_at);
-          return (now.getTime() - created.getTime()) / 1000; // seconds
-        });
-        const avgQueueTime = currentQueueTimes.length > 0 
-          ? currentQueueTimes.reduce((a: number, b: number) => a + b, 0) / currentQueueTimes.length 
-          : 0;
-        
-        // Average task completion time
-        const taskCompletionTimes = completedTasks
-          .filter((task: any) => task.result_captured_at)
-          .map((task: any) => {
-            const created = new Date(task.created_at);
-            const completed = new Date(task.result_captured_at);
-            return (completed.getTime() - created.getTime()) / (1000 * 60); // minutes
-          });
-        const avgCompletionTime = taskCompletionTimes.length > 0 
-          ? taskCompletionTimes.reduce((a: number, b: number) => a + b, 0) / taskCompletionTimes.length 
-          : 0;
-        
-        const calculatedMetrics: SLAMetric[] = [
-          {
-            id: 'inbox_dispatch_time',
-            name: 'Inbox Dispatch Time',
-            currentValue: Math.round(avgInboxTime),
-            target: 60,
-            unit: 'seconds',
-            trend: avgInboxTime > 60 ? 'up' : avgInboxTime < 30 ? 'down' : 'stable',
-            status: avgInboxTime > 120 ? 'danger' : avgInboxTime > 60 ? 'warning' : 'success'
-          },
-          {
-            id: 'task_completion_rate',
-            name: 'Task Completion Rate',
-            currentValue: Math.round(completionRate * 10) / 10,
-            target: 95.0,
-            unit: '%',
-            trend: completionRate > 95 ? 'up' : completionRate < 85 ? 'down' : 'stable',
-            status: completionRate < 85 ? 'danger' : completionRate < 95 ? 'warning' : 'success'
-          },
-          {
-            id: 'avg_completion_time',
-            name: 'Average Completion Time',
-            currentValue: Math.round(avgCompletionTime),
-            target: 30,
-            unit: 'minutes',
-            trend: avgCompletionTime > 30 ? 'up' : avgCompletionTime < 15 ? 'down' : 'stable',
-            status: avgCompletionTime > 60 ? 'danger' : avgCompletionTime > 30 ? 'warning' : 'success'
-          },
-          {
-            id: 'error_rate',
-            name: 'Task Error Rate',
-            currentValue: Math.round(errorRate * 10) / 10,
-            target: 5.0,
-            unit: '%',
-            trend: errorRate > 5 ? 'up' : errorRate < 2 ? 'down' : 'stable',
-            status: errorRate > 10 ? 'danger' : errorRate > 5 ? 'warning' : 'success'
-          },
-          {
-            id: 'queue_wait_time',
-            name: 'Current Queue Wait',
-            currentValue: Math.round(avgQueueTime / 60), // convert to minutes
-            target: 5,
-            unit: 'minutes',
-            trend: avgQueueTime > 300 ? 'up' : avgQueueTime < 120 ? 'down' : 'stable',
-            status: avgQueueTime > 600 ? 'danger' : avgQueueTime > 300 ? 'warning' : 'success'
-          }
-        ];
-
-        setMetrics(calculatedMetrics);
+        const data = await response.json();
+        setSlaData(data);
       } catch (error) {
         console.error('Error fetching SLA metrics:', error);
-        setMetrics([]);
+        setError(error instanceof Error ? error.message : 'Unknown error');
+        setSlaData(null);
       } finally {
         setLoading(false);
       }
     }
 
     fetchSLAMetrics();
+    
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchSLAMetrics, 30000);
+    return () => clearInterval(interval);
   }, [workspaceId]);
 
   const getStatusColor = (status: string) => {
@@ -172,12 +116,19 @@ export function SLAMonitor({ workspaceId }: SLAMonitorProps) {
     }
   };
 
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case 'up': return <TrendingUp className="w-4 h-4" />;
-      case 'down': return <TrendingDown className="w-4 h-4" />;
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'success': return <CheckCircle className="w-4 h-4" />;
+      case 'warning': return <AlertTriangle className="w-4 h-4" />;
+      case 'danger': return <AlertCircle className="w-4 h-4" />;
       default: return <Clock className="w-4 h-4" />;
     }
+  };
+
+  const formatTime = (seconds: number): string => {
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+    return `${Math.round(seconds / 3600)}h`;
   };
 
   if (loading) {
@@ -191,13 +142,83 @@ export function SLAMonitor({ workspaceId }: SLAMonitorProps) {
     );
   }
 
+  if (error || !slaData) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-mc-accent-red mx-auto mb-4" />
+          <p className="text-mc-text mb-2">Failed to load SLA metrics</p>
+          <p className="text-mc-text-secondary text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Convert SLA data to metrics format for display
+  const metrics: SLAMetric[] = [
+    {
+      id: 'inbox_dispatch_time',
+      name: 'Inbox Dispatch Time',
+      currentValue: slaData.inbox_dispatch_time.current,
+      target: slaData.inbox_dispatch_time.target,
+      unit: slaData.inbox_dispatch_time.unit,
+      status: slaData.inbox_dispatch_time.status,
+      violations: slaData.inbox_dispatch_time.violations
+    },
+    {
+      id: 'completion_rate',
+      name: 'Task Completion Rate',
+      currentValue: slaData.completion_rate.current,
+      target: slaData.completion_rate.target,
+      unit: slaData.completion_rate.unit,
+      status: slaData.completion_rate.status
+    },
+    {
+      id: 'queue_wait_time',
+      name: 'Current Queue Wait',
+      currentValue: slaData.queue_wait_time.current,
+      target: slaData.queue_wait_time.target,
+      unit: slaData.queue_wait_time.unit,
+      status: slaData.queue_wait_time.status,
+      violations: slaData.queue_wait_time.violations
+    },
+    {
+      id: 'avg_completion_time',
+      name: 'Average Completion Time',
+      currentValue: slaData.avg_completion_time.current,
+      target: slaData.avg_completion_time.target,
+      unit: slaData.avg_completion_time.unit,
+      status: slaData.avg_completion_time.status
+    },
+    {
+      id: 'error_rate',
+      name: 'Task Error Rate',
+      currentValue: slaData.error_rate.current,
+      target: slaData.error_rate.target,
+      unit: slaData.error_rate.unit,
+      status: slaData.error_rate.status
+    }
+  ];
+
   return (
     <div className="h-full bg-mc-bg overflow-auto">
       <div className="p-6">
         {/* Header */}
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-mc-text mb-2">SLA Monitor</h2>
-          <p className="text-mc-text-secondary">Service level agreement compliance tracking</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-mc-text mb-2">SLA Monitor</h2>
+              <p className="text-mc-text-secondary">Service level agreement compliance tracking</p>
+            </div>
+            {slaData.sla_violations.total > 0 && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-mc-accent-red/10 border border-mc-accent-red/20 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-mc-accent-red" />
+                <span className="text-mc-accent-red font-medium">
+                  {slaData.sla_violations.total} SLA Violation{slaData.sla_violations.total !== 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* SLA Overview */}
@@ -207,7 +228,7 @@ export function SLAMonitor({ workspaceId }: SLAMonitorProps) {
               <div className="flex items-start justify-between mb-2">
                 <h3 className="font-medium text-mc-text">{metric.name}</h3>
                 <div className={getStatusColor(metric.status)}>
-                  {getTrendIcon(metric.trend)}
+                  {getStatusIcon(metric.status)}
                 </div>
               </div>
               
@@ -215,6 +236,11 @@ export function SLAMonitor({ workspaceId }: SLAMonitorProps) {
                 <span className="text-2xl font-bold text-mc-text">
                   {metric.currentValue}{metric.unit}
                 </span>
+                {metric.violations !== undefined && metric.violations > 0 && (
+                  <div className="text-sm text-mc-accent-red mt-1">
+                    {metric.violations} violation{metric.violations !== 1 ? 's' : ''}
+                  </div>
+                )}
               </div>
               
               <div className="flex items-center justify-between text-sm">
@@ -222,9 +248,9 @@ export function SLAMonitor({ workspaceId }: SLAMonitorProps) {
                   Target: {metric.target}{metric.unit}
                 </span>
                 <span className={getStatusColor(metric.status)}>
-                  {metric.status === 'success' && <CheckCircle className="w-4 h-4" />}
-                  {metric.status === 'warning' && <AlertCircle className="w-4 h-4" />}
-                  {metric.status === 'danger' && <AlertCircle className="w-4 h-4" />}
+                  {metric.status === 'success' && 'Within SLA'}
+                  {metric.status === 'warning' && 'At Risk'}
+                  {metric.status === 'danger' && 'Breached'}
                 </span>
               </div>
 
@@ -245,30 +271,66 @@ export function SLAMonitor({ workspaceId }: SLAMonitorProps) {
           ))}
         </div>
 
-        {/* Recent Alerts */}
+        {/* SLA Violations */}
+        {slaData.sla_violations.total > 0 && (
+          <div className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4 mb-6">
+            <h3 className="font-medium text-mc-text mb-4 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-mc-accent-red" />
+              Current SLA Violations ({slaData.sla_violations.total})
+            </h3>
+            <div className="space-y-3">
+              {slaData.sla_violations.tasks.map((task) => (
+                <div key={task.id} className="flex items-center justify-between p-3 bg-mc-accent-red/5 border border-mc-accent-red/20 rounded-lg">
+                  <div>
+                    <div className="font-medium text-mc-text">{task.title}</div>
+                    <div className="text-sm text-mc-text-secondary">
+                      Status: {task.status} • Created: {new Date(task.created_at).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-mc-accent-red font-medium">
+                      {task.wait_time}m overdue
+                    </div>
+                    <div className="text-sm text-mc-text-secondary">
+                      SLA: 5m
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Status */}
         <div className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4">
-          <h3 className="font-medium text-mc-text mb-4">Recent SLA Events</h3>
-          <div className="space-y-3">
-            <div className="flex items-start gap-3 text-sm">
-              <AlertCircle className="w-4 h-4 text-mc-accent-yellow mt-0.5" />
-              <div>
-                <span className="text-mc-text">Task completion rate dropped below target</span>
-                <div className="text-mc-text-secondary">2 minutes ago</div>
+          <h3 className="font-medium text-mc-text mb-4">System Status</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className={`text-2xl font-bold ${getStatusColor(
+                metrics.find(m => m.id === 'inbox_dispatch_time')?.status || 'success'
+              )}`}>
+                {metrics.find(m => m.id === 'inbox_dispatch_time')?.status === 'success' ? 'GREEN' : 
+                 metrics.find(m => m.id === 'inbox_dispatch_time')?.status === 'warning' ? 'YELLOW' : 'RED'}
               </div>
+              <div className="text-sm text-mc-text-secondary">Dispatch SLA</div>
             </div>
-            <div className="flex items-start gap-3 text-sm">
-              <CheckCircle className="w-4 h-4 text-mc-accent-green mt-0.5" />
-              <div>
-                <span className="text-mc-text">Response time improved to 2.3s</span>
-                <div className="text-mc-text-secondary">15 minutes ago</div>
+            <div className="text-center">
+              <div className={`text-2xl font-bold ${getStatusColor(
+                metrics.find(m => m.id === 'completion_rate')?.status || 'success'
+              )}`}>
+                {metrics.find(m => m.id === 'completion_rate')?.status === 'success' ? 'GREEN' : 
+                 metrics.find(m => m.id === 'completion_rate')?.status === 'warning' ? 'YELLOW' : 'RED'}
               </div>
+              <div className="text-sm text-mc-text-secondary">Completion Rate</div>
             </div>
-            <div className="flex items-start gap-3 text-sm">
-              <AlertCircle className="w-4 h-4 text-mc-accent-red mt-0.5" />
-              <div>
-                <span className="text-mc-text">System experienced brief outage</span>
-                <div className="text-mc-text-secondary">1 hour ago</div>
+            <div className="text-center">
+              <div className={`text-2xl font-bold ${getStatusColor(
+                metrics.find(m => m.id === 'queue_wait_time')?.status || 'success'
+              )}`}>
+                {metrics.find(m => m.id === 'queue_wait_time')?.status === 'success' ? 'GREEN' : 
+                 metrics.find(m => m.id === 'queue_wait_time')?.status === 'warning' ? 'YELLOW' : 'RED'}
               </div>
+              <div className="text-sm text-mc-text-secondary">Queue SLA</div>
             </div>
           </div>
         </div>

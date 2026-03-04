@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckSquare, Activity, AlertTriangle, BookOpen } from 'lucide-react';
+import { CheckSquare, Activity, AlertTriangle, BookOpen, Server, Monitor } from 'lucide-react';
 import { MissionQueue } from './MissionQueue';
 import { QCDashboard } from './QCDashboard';
 import { APIMonitor } from './APIMonitor';
 import { BugReports } from './BugReports';
 import { DocsLibrary } from './DocsLibrary';
+import { ToolsHealthMonitor } from './ToolsHealthMonitor';
+import { OfficeVisualization } from './OfficeVisualization';
 
 interface DashboardTabsProps {
   workspaceId: string;
@@ -16,8 +18,10 @@ const tabs = [
   { id: 'tasks', label: 'Tasks', icon: CheckSquare, component: MissionQueue },
   { id: 'qc', label: 'QC Process', icon: Activity, component: QCDashboard },
   { id: 'api', label: 'API Monitor', icon: Activity, component: APIMonitor },
+  { id: 'tools-health', label: 'Tools Health', icon: Server, component: ToolsHealthMonitor },
   { id: 'bugs', label: 'Bug Reports', icon: AlertTriangle, component: BugReports },
   { id: 'docs', label: 'Docs Library', icon: BookOpen, component: DocsLibrary },
+  { id: 'office', label: 'Office View', icon: Monitor, component: OfficeVisualization },
 ];
 
 export function DashboardTabs({ workspaceId }: DashboardTabsProps) {
