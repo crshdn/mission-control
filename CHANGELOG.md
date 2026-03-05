@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.1] - 2026-03-05
+
+### Added
+- **Reconciler Loop** — Background reconciliation loop (`src/lib/reconciler.ts`) runs every 30 seconds to retry failed dispatches, detect stalled tasks, clean up orphaned OpenClaw sessions, and drain queued tasks. Inspired by Symphony's poll-and-reconcile pattern.
+- **WORKFLOW.md Config** — File-based workflow configuration with YAML front matter and hot-reload (`src/lib/workflow-loader.ts`). Define stages, roles, fail targets, reconciler settings, and concurrency limits in a single versioned file. Falls back to DB-stored templates when no file exists.
+- **Atomic Dispatch** — `dispatch_lock` column on tasks provides check-and-set mutual exclusion, preventing double-dispatch race conditions. Agent assignment + activity logging wrapped in SQLite transactions.
+- **Retry with Exponential Backoff** — Failed dispatches auto-schedule retries via `retry_count` and `next_retry_at` columns. Backoff: 10s, 20s, 40s, 80s, 160s (capped at 5 min). Max 5 retries before permanent error.
+- **Bounded Concurrency** — `max_concurrent_tasks` setting (default 3, configurable in WORKFLOW.md) limits how many tasks can be dispatched simultaneously per workspace. Excess tasks wait until a slot opens.
+- **Migration 014** — Adds `retry_count`, `next_retry_at`, and `dispatch_lock` columns to the tasks table.
+
+### Changed
+- **Validation limits** — Task description max raised from 10,000 to 50,000 characters.
+- **Workflow resolution order** — `getTaskWorkflow()` now checks: task-specific template → WORKFLOW.md file → workspace default → global default.
+- **Dispatch error handling** — All dispatch error paths (workflow engine + PATCH route) now use `scheduleRetry()` instead of bare error recording.
+
+### Fixed
+- **drainQueue() TOCTOU** — Fixed time-of-check/time-of-use race in queue draining with optimistic lock (`UPDATE WHERE status = ?`).
+- **handleStageFailure() race** — Status update now uses optimistic lock and resets retry state atomically.
+- **Circular dependency crash** — Reconciler startup caused `c.zf is not a function` in minified production build due to `db/index.ts → reconciler.ts → @/lib/db` import cycle. Fixed by starting reconciler from SSE stream route.
+
+---
+
 ## [1.4.0] - 2026-03-03
 
 ### Added
@@ -192,6 +214,9 @@ This is the first stable, tested, and working release of Mission Control.
 - [x] Multiple workspaces
 - [x] Webhook integrations
 - [x] API authentication & security hardening
+- [x] Durable execution (atomic dispatch, retry, reconciliation)
+- [x] File-based workflow config (WORKFLOW.md)
+- [x] Bounded concurrency
 - [ ] Team collaboration
 - [ ] Task dependencies
 - [ ] Agent performance metrics
@@ -200,6 +225,7 @@ This is the first stable, tested, and working release of Mission Control.
 
 ---
 
+[1.4.1]: https://github.com/crshdn/mission-control/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/crshdn/mission-control/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/crshdn/mission-control/releases/tag/v1.3.1
 [1.3.0]: https://github.com/crshdn/mission-control/compare/v1.2.0...v1.3.0

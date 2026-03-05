@@ -32,14 +32,16 @@
 
 ---
 
-## 🆕 What's New in v1.4.0
+## 🆕 What's New in v1.4.1 — Symphony Reliability Core
 
-- **Multi-Agent Pipeline** — End-to-end lifecycle now runs as **Planning → Inbox → Assigned → In Progress → Testing → Review → Verification → Done**
-- **Core Team Bootstrap** — New workspaces auto-bootstrap a 4-agent core team: **Builder (🛠️), Tester (🧪), Reviewer (🔍), Learner (📚)**
-- **Workflow Engine Upgrades** — Queue-aware review handling, automatic stage handoffs, and fail-loopback routing with detailed reasons
-- **Learner Knowledge Loop** — Learner now captures transition outcomes and injects relevant lessons into future dispatches
-- **New Workflow APIs** — Added routes for stage failure reporting, role visibility, workspace knowledge writes, and workflow template listing
-- **Migration 013 (Fresh Start)** — Resets task/agent runtime data, sets Strict as default template, and bootstraps default workspace agents
+Inspired by [OpenAI's Symphony](https://github.com/openai/symphony), this release adds a durable execution layer under the existing UI:
+
+- **Atomic Dispatch** — `dispatch_lock` prevents double-dispatch race conditions; optimistic locking on all status transitions
+- **Retry with Backoff** — Failed dispatches auto-retry with exponential backoff (10s → 5min, max 5 attempts)
+- **Reconciler Loop** — Background loop (30s) detects stalled tasks, retries failed dispatches, cleans up orphaned sessions, and drains queues
+- **WORKFLOW.md** — File-based workflow config with YAML front matter and hot-reload (Symphony's best idea). Define stages, fail targets, reconciler settings, and concurrency limits in a single versioned file
+- **Bounded Concurrency** — `max_concurrent_tasks` (default 3) prevents overwhelming the agent gateway
+- **Validation Limits** — Description field limit raised to 50,000 characters
 
 See the full [CHANGELOG](CHANGELOG.md) for details.
 
@@ -333,10 +335,14 @@ mission-control/
 │   └── lib/
 │       ├── db/                 # SQLite + migrations
 │       ├── openclaw/           # Gateway client + device identity
+│       ├── reconciler.ts       # Background reconciliation loop
+│       ├── workflow-engine.ts  # Stage transitions + atomic dispatch
+│       ├── workflow-loader.ts  # WORKFLOW.md parser + hot-reload
 │       ├── validation.ts       # Zod schemas
 │       └── types.ts            # TypeScript types
 ├── scripts/                    # Bridge & hook scripts
 ├── src/middleware.ts            # Auth middleware
+├── WORKFLOW.md                 # Workflow config (stages, reconciler, concurrency)
 ├── .env.example                # Environment template
 └── CHANGELOG.md                # Version history
 ```

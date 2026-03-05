@@ -1,6 +1,6 @@
 {
   "name": "mission-control",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "private": true,
   "scripts": {
     "dev": "next dev -p 4000",
