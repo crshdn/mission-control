@@ -46,6 +46,9 @@ export const UpdateTaskSchema = z.object({
   updated_by_agent_id: z.string().uuid().optional(),
   result: z.string().max(50000).optional(),
   verification_output: z.string().max(50000).optional(),
+  // Manual override for status gates (requires reason for audit trail)
+  manual_override: z.boolean().optional(),
+  override_reason: z.string().min(10, 'Override reason must be at least 10 characters').max(500).optional(),
 });
 
 // Activity validation schema

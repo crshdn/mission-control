@@ -84,6 +84,71 @@ export async function PATCH(
       }
     }
 
+    // MANUAL OVERRIDE VALIDATION: If overriding, must provide reason
+    if (validatedData.manual_override && !validatedData.override_reason) {
+      return NextResponse.json(
+        { error: 'Manual override requires override_reason (min 10 characters)' },
+        { status: 400 }
+      );
+    }
+
+    // STATUS GATE 1: in_progress requires active agent session
+    // Prevents phantom progress - tasks can't be "in progress" without someone working on them
+    if (validatedData.status === 'in_progress' && existing.status !== 'in_progress') {
+      const activeSession = queryOne<{ id: string }>(
+        'SELECT id FROM openclaw_sessions WHERE task_id = ? AND status = ?',
+        [id, 'active']
+      );
+
+      if (!activeSession && !validatedData.manual_override) {
+        return NextResponse.json(
+          {
+            error: 'Cannot move to in_progress without active agent session',
+            details: 'Use /api/tasks/{id}/dispatch to spawn an agent, or provide manual_override: true with override_reason'
+          },
+          { status: 400 }
+        );
+      }
+
+      // Log override if used
+      if (!activeSession && validatedData.manual_override) {
+        run(
+          `INSERT INTO task_activities (id, task_id, activity_type, message, created_at)
+           VALUES (?, ?, ?, ?, ?)`,
+          [uuidv4(), id, 'status_changed', `[MANUAL OVERRIDE] Moved to in_progress without session. Reason: ${validatedData.override_reason}`, now]
+        );
+      }
+    }
+
+    // STATUS GATE 2: done requires evidence of completion
+    // Prevents marking tasks done without proof they were actually built
+    if (validatedData.status === 'done') {
+      const hasEvidence = existing.result || existing.verification_output || validatedData.result || validatedData.verification_output;
+
+      if (!hasEvidence && !validatedData.manual_override) {
+        return NextResponse.json(
+          {
+            error: 'Cannot mark done without evidence',
+            details: 'Task requires result or verification_output before completion, or provide manual_override: true with override_reason'
+          },
+          { status: 400 }
+        );
+      }
+
+      // Log override if used
+      if (!hasEvidence && validatedData.manual_override) {
+        run(
+          `INSERT INTO task_activities (id, task_id, activity_type, message, created_at)
+           VALUES (?, ?, ?, ?, ?)`,
+          [uuidv4(), id, 'status_changed', `[MANUAL OVERRIDE] Marked done without evidence. Reason: ${validatedData.override_reason}`, now]
+        );
+      }
+
+      // Set verified_at timestamp
+      updates.push('verified_at = ?');
+      values.push(now);
+    }
+
     // VERIFICATION ENFORCEMENT: Agents must provide verification_output when marking for review
     // This prevents phantom deliverables - agents must prove their work before QC
     if (validatedData.status === 'review' && existing.status !== 'review') {
