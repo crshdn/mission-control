@@ -352,6 +352,14 @@ export async function PATCH(
       drainQueue(id, existing.workspace_id).catch(err =>
         console.error('[Workflow] drainQueue after done failed:', err)
       );
+
+      // Reset agent status to standby when task is completed
+      if (existing.assigned_agent_id) {
+        run(
+          'UPDATE agents SET status = ?, updated_at = ? WHERE id = ?',
+          ['standby', now, existing.assigned_agent_id]
+        );
+      }
     }
 
     return NextResponse.json(task);
