@@ -20,6 +20,9 @@ export interface MissionControlConfig {
   
   // Project defaults
   defaultProjectName: string; // 'mission-control' or custom
+
+  // UX preferences
+  kanbanCompactEmptyColumns: boolean; // shrink empty columns to fit header text
 }
 
 const DEFAULT_CONFIG: MissionControlConfig = {
@@ -27,6 +30,7 @@ const DEFAULT_CONFIG: MissionControlConfig = {
   projectsPath: '~/Documents/Shared/projects',
   missionControlUrl: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4000',
   defaultProjectName: 'mission-control',
+  kanbanCompactEmptyColumns: true,
 };
 
 const CONFIG_KEY = 'mission-control-config';

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, ChevronRight, GripVertical, ArrowRightLeft } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { triggerAutoDispatch, shouldTriggerAutoDispatch } from '@/lib/auto-dispatch';
+import { getConfig } from '@/lib/config';
 import type { Task, TaskStatus } from '@/lib/types';
 import { TaskModal } from './TaskModal';
 import { formatDistanceToNow } from 'date-fns';
@@ -27,6 +28,20 @@ const COLUMNS: { id: TaskStatus; label: string; color: string }[] = [
 
 export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = true }: MissionQueueProps) {
   const { tasks, updateTaskStatus, addEvent } = useMissionControl();
+  const [compactEmptyColumns, setCompactEmptyColumns] = useState(true);
+
+  useEffect(() => {
+    const cfg = getConfig();
+    setCompactEmptyColumns(cfg.kanbanCompactEmptyColumns ?? true);
+  }, []);
+
+  const getDesktopColumnWidth = (taskCount: number): string => {
+    if (!compactEmptyColumns) return '280px';
+    if (taskCount === 0) return 'fit-content';
+    // Slightly grow busy columns while keeping a sane cap
+    const widthPx = Math.min(380, 250 + taskCount * 14);
+    return `${widthPx}px`;
+  };
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
@@ -119,22 +134,24 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
       </div>
 
       {!mobileMode ? (
-        <div className="flex-1 flex gap-3 p-3 overflow-x-auto">
+        <div className="mission-queue-scroll-x flex-1 flex gap-3 p-3 overflow-x-auto">
           {COLUMNS.map((column) => {
             const columnTasks = getTasksByStatus(column.id);
+            const hasTasks = columnTasks.length > 0;
             return (
               <div
                 key={column.id}
-                className={`flex-1 min-w-[220px] max-w-[300px] flex flex-col bg-mc-bg rounded-lg border border-mc-border/50 border-t-2 ${column.color}`}
+                style={{ width: getDesktopColumnWidth(columnTasks.length) }}
+                className={`flex-none ${compactEmptyColumns ? (hasTasks ? 'min-w-[240px]' : 'min-w-[110px] max-w-[180px]') : 'min-w-[250px] max-w-[320px]'} flex flex-col bg-mc-bg rounded-lg border border-mc-border/50 border-t-2 transition-[width] duration-200 ${column.color}`}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, column.id)}
               >
-                <div className="p-2 border-b border-mc-border flex items-center justify-between">
-                  <span className="text-xs font-medium uppercase text-mc-text-secondary">{column.label}</span>
+                <div className="p-2 border-b border-mc-border flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium uppercase text-mc-text-secondary whitespace-nowrap">{column.label}</span>
                   <span className="text-xs bg-mc-bg-tertiary px-2 py-0.5 rounded text-mc-text-secondary">{columnTasks.length}</span>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                <div className={`flex-1 overflow-y-auto p-2 ${hasTasks ? 'space-y-2' : ''}`}>
                   {columnTasks.map((task) => (
                     <TaskCard
                       key={task.id}
