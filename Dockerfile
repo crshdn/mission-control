@@ -26,9 +26,9 @@ WORKDIR /app
 ENV NODE_ENV=production \
   NEXT_TELEMETRY_DISABLED=1 \
   PORT=4000 \
-  DATABASE_PATH=/app/data/mission-control.db \
-  WORKSPACE_BASE_PATH=/app/workspace \
-  PROJECTS_PATH=/app/workspace/projects
+  DATABASE_PATH=/data/mission-control.db \
+  WORKSPACE_BASE_PATH=/data/workspace \
+  PROJECTS_PATH=/data/workspace/projects
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends dumb-init \
@@ -40,14 +40,12 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.mjs ./next.config.mjs
 
-RUN mkdir -p /app/data /app/workspace/projects \
+RUN mkdir -p /data/workspace/projects \
   && chown -R node:node /app
 
-USER node
 EXPOSE 4000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:4000/api/events').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["npm", "run", "start"]
+ENTRYPOINT ["dumb-init", "--", "sh", "-lc", "mkdir -p /data /data/workspace /data/workspace/projects && chown -R node:node /data || true && exec su node -s /bin/sh -c 'npm run start'"]
