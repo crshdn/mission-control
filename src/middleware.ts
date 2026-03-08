@@ -79,6 +79,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Webhook endpoints handle authentication via WEBHOOK_SECRET signatures.
+  // Skip MC_API_TOKEN middleware checks so OpenClaw callbacks can complete.
+  if (pathname.startsWith('/api/webhooks/')) {
+    return NextResponse.next();
+  }
+
   // If MC_API_TOKEN is not set, auth is disabled (dev mode)
   if (!MC_API_TOKEN) {
     return NextResponse.next();
