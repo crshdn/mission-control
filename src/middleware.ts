@@ -68,17 +68,6 @@ export function middleware(request: NextRequest) {
 
   // ===== 分支 1：API 路由（完全跳过 next-intl） / Branch 1: API routes (skip next-intl entirely) =====
   if (pathname.startsWith('/api/')) {
-    // Only protect /api/* routes / 仅保护 /api/* 路由
-    if (!pathname.startsWith('/api/')) {
-      // Add demo mode header for UI detection / 在非 API 路由上附加 demo 头
-      if (DEMO_MODE) {
-        const response = NextResponse.next();
-        response.headers.set('X-Demo-Mode', 'true');
-        return response;
-      }
-      return NextResponse.next();
-    }
-
     // Demo mode: block all write operations / Demo 模式：阻止所有写操作请求
     if (DEMO_MODE) {
       const method = request.method.toUpperCase();

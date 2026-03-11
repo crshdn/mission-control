@@ -3,7 +3,7 @@
 import {useState, useEffect} from 'react';
 import {Plus, ArrowRight, Folder, Users, CheckSquare, Trash2, AlertTriangle, Activity} from 'lucide-react';
 import {useLocale, useTranslations} from 'next-intl';
-import {Link, usePathname, useRouter} from '@/i18n/routing'; // 带语言前缀的导航，保证活动看板等页与当前语言一致 / Locale-aware nav so activity dashboard respects current locale
+import {Link, usePathname, useRouter} from '@/i18n/navigation'; // 带语言前缀的导航，保证活动看板等页与当前语言一致 / Locale-aware nav so activity dashboard respects current locale
 import type {WorkspaceStats} from '@/lib/types';
 
 export function WorkspaceDashboard() {
@@ -297,9 +297,7 @@ function WorkspaceCard({workspace, onDelete}: {workspace: WorkspaceStats; onDele
               disabled={deleting || workspace.taskCounts.total > 0 || workspace.agentCount > 0}
               className="px-4 py-2 bg-mc-accent-red text-white rounded-lg font-medium hover:bg-mc-accent-red/90 disabled:opacity-50"
             >
-              {deleting
-                ? t('deleteConfirmButton') /* 删除进行中文案 / Deleting label (reused) */
-                : t('deleteConfirmButton') /* 删除按钮文案 / Delete button label */}
+              {deleting ? t('deleteSubmitting') : t('deleteConfirmButton')}
             </button>
           </div>
         </div>

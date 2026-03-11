@@ -1,7 +1,7 @@
 'use client';
 
 import {useState, useEffect} from 'react';
-import {Link, usePathname, useRouter} from '@/i18n/routing'; // 使用共享导航工具 / Shared navigation helpers
+import {Link, usePathname, useRouter} from '@/i18n/navigation'; // 使用共享导航工具 / Shared navigation helpers
 import {Zap, Settings, ChevronLeft, LayoutGrid} from 'lucide-react';
 import {useMissionControl} from '@/lib/store';
 import {format} from 'date-fns';

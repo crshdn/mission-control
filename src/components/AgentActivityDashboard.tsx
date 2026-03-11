@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from '@/i18n/routing'; // 带语言前缀的返回链接，保持与当前语言一致 / Locale-aware back link
+import { Link } from '@/i18n/navigation'; // 带语言前缀的返回链接，保持与当前语言一致 / Locale-aware back link
 import { ArrowLeft, AlertTriangle, Activity, Clock, Filter, RefreshCw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';

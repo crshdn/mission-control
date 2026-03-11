@@ -125,6 +125,7 @@
     "deleteHasTasks": "⚠️ 该工作区下仍有 {count} 个任务，请先删除这些任务。",
     "deleteCancel": "取消",
     "deleteConfirmButton": "删除工作区",
+    "deleteSubmitting": "正在删除...",
     "deleteFailed": "删除工作区失败",
     "createModalTitle": "创建新工作区",
     "createIconLabel": "图标",

@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/workspaces/[id]/workflows
- * List workflow templates for a workspace (includes global defaults)
+ * List workflow templates for the given workspace only (no global default templates).
  */
 export async function GET(
   request: NextRequest,

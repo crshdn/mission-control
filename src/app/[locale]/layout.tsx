@@ -1,6 +1,7 @@
 import {NextIntlClientProvider} from 'next-intl'; // 客户端国际化提供器 / Client i18n provider
 import {notFound} from 'next/navigation'; // 404 辅助方法 / 404 helper
 import {routing} from '@/i18n/routing'; // 语言路由配置 / Locale routing configuration
+import SetDocumentLang from '@/components/SetDocumentLang'; // 按 locale 同步 <html lang> / Sync <html lang> with locale
 
 type Props = {
   children: React.ReactNode; // 子节点内容 / Children content
@@ -25,8 +26,13 @@ export default async function LocaleLayout({children, params}: Props) {
     notFound(); // 若加载失败则视为该语言不存在 / Treat missing file as not found
   }
 
-  // 使用 NextIntlClientProvider 包裹应用，提供多语言上下文（在根 layout 的 <body> 内部）
-  // Wrap the app with NextIntlClientProvider inside root layout's <body> to provide i18n context
-  return <NextIntlClientProvider locale={locale} messages={messages}>{children}</NextIntlClientProvider>;
+  // 使用 NextIntlClientProvider 包裹应用，提供多语言上下文；SetDocumentLang 同步 <html lang> 以利 SEO/读屏
+  // Wrap with NextIntlClientProvider; SetDocumentLang syncs <html lang> for SEO and screen readers
+  return (
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      <SetDocumentLang />
+      {children}
+    </NextIntlClientProvider>
+  );
 }
 

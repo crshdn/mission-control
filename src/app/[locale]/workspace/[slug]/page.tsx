@@ -2,7 +2,7 @@
 
 import {useEffect, useState, type ReactNode} from 'react';
 import {useParams} from 'next/navigation';
-import {Link} from '@/i18n/routing';
+import {Link} from '@/i18n/navigation';
 import {useTranslations} from 'next-intl';
 import {ChevronLeft, ListTodo, Users, Activity, Settings as SettingsIcon, ExternalLink, Home, BarChart3} from 'lucide-react';
 import {Header} from '@/components/Header';

@@ -125,6 +125,7 @@
     "deleteHasTasks": "⚠️ This workspace has {count} task(s). Delete them first.",
     "deleteCancel": "Cancel",
     "deleteConfirmButton": "Delete Workspace",
+    "deleteSubmitting": "Deleting...",
     "deleteFailed": "Failed to delete workspace",
     "createModalTitle": "Create New Workspace",
     "createIconLabel": "Icon",

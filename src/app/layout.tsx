@@ -24,9 +24,10 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // 根布局负责提供全局 <html>/<body> 结构 / Root layout provides global <html>/<body> structure
+  // 根布局负责提供全局 <html>/<body> 结构；lang 由 SetDocumentLang 按 locale 同步，此处为 SSR 默认值
+  // Root layout provides <html>/<body>; lang is synced by SetDocumentLang per locale, this is SSR default
   return (
-    <html lang="en" className={jetbrainsMono.variable}>
+    <html lang="en" className={jetbrainsMono.variable} suppressHydrationWarning>
       <body className={`${jetbrainsMono.className} bg-mc-bg text-mc-text min-h-screen`}>
         <DemoBanner /> {/* 全局 Demo 横幅 / Global demo banner */}
         {children}
