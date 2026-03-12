@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, ArrowRight, Folder, Users, CheckSquare, Trash2, AlertTriangle, Activity } from 'lucide-react';
 import Link from 'next/link';
+import pkg from '../../package.json';
 import type { WorkspaceStats } from '@/lib/types';
 
 export function WorkspaceDashboard() {
@@ -48,6 +49,9 @@ export function WorkspaceDashboard() {
             <div className="flex items-center gap-3">
               <span className="text-2xl">🦞</span>
               <h1 className="text-xl font-bold">Mission Control</h1>
+              <span className="text-xs px-2 py-0.5 rounded border border-mc-border text-mc-text-secondary bg-mc-bg-tertiary">
+                v{pkg.version}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <Link
