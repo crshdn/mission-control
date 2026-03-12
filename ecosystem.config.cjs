@@ -3,7 +3,7 @@ module.exports = {
     name: 'mission-control',
     script: '/opt/homebrew/bin/npx',
     args: 'next start -p 4000',
-    cwd: '/Users/charlie/projects/mc-security-fix',
+    cwd: '/Users/nomames/projects/mc-security-fix',
     env: {
       NODE_ENV: 'production',
       PORT: '4000'

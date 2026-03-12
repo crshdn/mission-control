@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.5.0] - 2026-03-10
+
+### Added
+- **Task Image Attachments** — Upload reference images (UI mockups, screenshots, etc.) to tasks. Images are included in agent dispatch context so AI agents can see what they're building. New Images tab in Task Modal with grid view, upload, and delete. (fixes #60)
+
+### Fixed
+- **PORT env var** — Dev and start scripts now respect `PORT` env var instead of hardcoding 4000. Config fallback URL also uses `process.env.PORT`. (fixes #68)
+- **Webhook auth bypass** — Webhook routes (`/api/webhooks/*`) now bypass `MC_API_TOKEN` middleware, relying on their own HMAC signature validation. Fixes broken callbacks in split-service deployments. (fixes #64)
+- **Agent "Working" status** — Agents now correctly reset to standby when they have no remaining active tasks. Previously the Working tag persisted after task completion/deletion. (fixes #61)
+
+---
+
+## [1.4.1] - 2026-03-10
+
+### Added
+- **Kanban UX Improvements** — Improved horizontal scrollbar visibility and hit area. Added optional compact empty columns mode (off by default, toggleable via Settings → Kanban UX). (PR #66)
+- **Docker CI Workflow** — GitHub Actions workflow to automatically build the Dockerfile on push. (PR #69)
+- **Pipeline Documentation** — Added `docs/HOW-THE-PIPELINE-WORKS.md` explaining the full multi-agent pipeline lifecycle, stages, loop-back mechanics, and Learner knowledge injection.
+
+### Fixed
+- **Workspace Deletion** — Fixed `SQLITE_CONSTRAINT_FOREIGNKEY` error when deleting workspaces that have auto-created workflow templates or knowledge entries. Cascade deletion now properly cleans up dependent records. (PR #71, fixes #70)
+
+---
+
 ## [1.4.0] - 2026-03-03
 
 ### Added

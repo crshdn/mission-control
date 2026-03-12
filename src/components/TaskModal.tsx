@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus, Users } from 'lucide-react';
+import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus, Users, ImageIcon } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { apiUrl } from '@/lib/api';
 import { triggerAutoDispatch, shouldTriggerAutoDispatch } from '@/lib/auto-dispatch';
@@ -11,9 +11,10 @@ import { SessionsList } from './SessionsList';
 import { PlanningTab } from './PlanningTab';
 import { TeamTab } from './TeamTab';
 import { AgentModal } from './AgentModal';
+import { TaskImages } from './TaskImages';
 import type { Task, TaskPriority, TaskStatus } from '@/lib/types';
 
-type TabType = 'overview' | 'planning' | 'team' | 'activity' | 'deliverables' | 'sessions';
+type TabType = 'overview' | 'planning' | 'team' | 'activity' | 'deliverables' | 'images' | 'sessions';
 
 interface TaskModalProps {
   task?: Task;
@@ -187,6 +188,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
     { id: 'team' as TabType, label: 'Team', icon: <Users className="w-4 h-4" /> },
     { id: 'activity' as TabType, label: 'Activity', icon: <Activity className="w-4 h-4" /> },
     { id: 'deliverables' as TabType, label: 'Deliverables', icon: <Package className="w-4 h-4" /> },
+    { id: 'images' as TabType, label: 'Images', icon: <ImageIcon className="w-4 h-4" /> },
     { id: 'sessions' as TabType, label: 'Sessions', icon: <Bot className="w-4 h-4" /> },
   ];
 
@@ -365,6 +367,11 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
           {/* Deliverables Tab */}
           {activeTab === 'deliverables' && task && (
             <DeliverablesList taskId={task.id} />
+          )}
+
+          {/* Images Tab */}
+          {activeTab === 'images' && task && (
+            <TaskImages taskId={task.id} />
           )}
 
           {/* Sessions Tab */}

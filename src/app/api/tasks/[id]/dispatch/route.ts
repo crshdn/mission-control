@@ -6,7 +6,7 @@ import { broadcast } from '@/lib/events';
 import { getProjectsPath, getMissionControlUrl } from '@/lib/config';
 import { getRelevantKnowledge, formatKnowledgeForDispatch } from '@/lib/learner';
 import { getTaskWorkflow } from '@/lib/workflow-engine';
-import type { Task, Agent, OpenClawSession, WorkflowStage } from '@/lib/types';
+import type { Task, Agent, OpenClawSession, WorkflowStage, TaskImage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 interface RouteParams {
@@ -275,6 +275,22 @@ Reply with: \`VERIFY_PASS: [summary]\` or \`VERIFY_FAIL: [what failed]\``;
    Body: {"status": "${nextStatus}"}`;
     }
 
+    // Build image references section
+    let imagesSection = '';
+    if (task.images) {
+      try {
+        const images: TaskImage[] = JSON.parse(task.images);
+        if (images.length > 0) {
+          const imageList = images
+            .map(img => `- ${img.original_name}: ${missionControlUrl}/api/task-images/${task.id}/${img.filename}`)
+            .join('\n');
+          imagesSection = `\n**Reference Images:**\n${imageList}\n`;
+        }
+      } catch {
+        // Ignore malformed images JSON
+      }
+    }
+
     const roleLabel = currentStage?.label || 'Task';
     const taskMessage = `${priorityEmoji} **${isBuilder ? 'NEW TASK ASSIGNED' : `${roleLabel.toUpperCase()} STAGE — ${task.title}`}**
 
@@ -283,7 +299,7 @@ ${task.description ? `**Description:** ${task.description}\n` : ''}
 **Priority:** ${task.priority.toUpperCase()}
 ${task.due_date ? `**Due:** ${task.due_date}\n` : ''}
 **Task ID:** ${task.id}
-${planningSpecSection}${agentInstructionsSection}${knowledgeSection}
+${planningSpecSection}${agentInstructionsSection}${knowledgeSection}${imagesSection}
 ${isBuilder ? `**OUTPUT DIRECTORY:** ${taskProjectDir}\nCreate this directory and save all deliverables there.\n` : `**OUTPUT DIRECTORY:** ${taskProjectDir}\n`}
 ${completionInstructions}
 

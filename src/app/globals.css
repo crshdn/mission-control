@@ -55,6 +55,30 @@ body {
   background: var(--mc-text-secondary);
 }
 
+/* Mission Queue center pane: make horizontal scrollbar easier to grab */
+.mission-queue-scroll-x {
+  scrollbar-gutter: stable both-edges;
+}
+
+.mission-queue-scroll-x::-webkit-scrollbar {
+  height: 16px;
+}
+
+.mission-queue-scroll-x::-webkit-scrollbar-track {
+  background: var(--mc-bg-tertiary);
+  border-radius: 999px;
+}
+
+.mission-queue-scroll-x::-webkit-scrollbar-thumb {
+  background: var(--mc-text-secondary);
+  border-radius: 999px;
+  border: 3px solid var(--mc-bg-tertiary);
+}
+
+.mission-queue-scroll-x::-webkit-scrollbar-thumb:hover {
+  background: var(--mc-text);
+}
+
 /* Status badge styles */
 .status-standby {
   @apply bg-mc-bg-tertiary text-mc-text-secondary border border-mc-border;

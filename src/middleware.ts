@@ -79,6 +79,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Webhook routes use their own HMAC signature validation — bypass token auth
+  if (pathname.startsWith('/api/webhooks/')) {
+    return NextResponse.next();
+  }
+
   // If MC_API_TOKEN is not set, auth is disabled (dev mode)
   if (!MC_API_TOKEN) {
     return NextResponse.next();

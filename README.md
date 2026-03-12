@@ -30,16 +30,20 @@
   <a href="#-contributors">Contributors</a>
 </p>
 
+<p align="center">
+
+https://github.com/user-attachments/assets/76af060c-fdb1-40cb-b575-46c7a807845d
+
+</p>
+
 ---
 
-## 🆕 What's New in v1.4.0
+## 🆕 What's New in v1.5.0
 
-- **Multi-Agent Pipeline** — End-to-end lifecycle now runs as **Planning → Inbox → Assigned → In Progress → Testing → Review → Verification → Done**
-- **Core Team Bootstrap** — New workspaces auto-bootstrap a 4-agent core team: **Builder (🛠️), Tester (🧪), Reviewer (🔍), Learner (📚)**
-- **Workflow Engine Upgrades** — Queue-aware review handling, automatic stage handoffs, and fail-loopback routing with detailed reasons
-- **Learner Knowledge Loop** — Learner now captures transition outcomes and injects relevant lessons into future dispatches
-- **New Workflow APIs** — Added routes for stage failure reporting, role visibility, workspace knowledge writes, and workflow template listing
-- **Migration 013 (Fresh Start)** — Resets task/agent runtime data, sets Strict as default template, and bootstraps default workspace agents
+- **Task Image Attachments** — Upload reference images to tasks. AI agents see them during dispatch — perfect for UI mockups, screenshots, and visual specs.
+- **PORT env var support** — Set `PORT` in `.env.local` and it actually works now.
+- **Webhook auth fix** — Split-service deployments no longer have completion callbacks blocked by API token middleware.
+- **Agent status fix** — Agents correctly show standby when idle instead of stuck on "Working".
 
 See the full [CHANGELOG](CHANGELOG.md) for details.
 
@@ -580,6 +584,36 @@ Mission Control is built by a growing community. Thank you to everyone who has c
       <sub>Security Audit</sub>
     </td>
   </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/YitingOU">
+        <img src="https://github.com/YitingOU.png?size=80" width="80" height="80" style="border-radius:50%" alt="YITING OU" /><br />
+        <sub><b>YITING OU</b></sub>
+      </a><br />
+      <sub>Cascade Delete Fix</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/brandonros">
+        <img src="https://github.com/brandonros.png?size=80" width="80" height="80" style="border-radius:50%" alt="Brandon Ros" /><br />
+        <sub><b>Brandon Ros</b></sub>
+      </a><br />
+      <sub>Docker CI Workflow</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/nano-lgtm">
+        <img src="https://github.com/nano-lgtm.png?size=80" width="80" height="80" style="border-radius:50%" alt="nano-lgtm" /><br />
+        <sub><b>nano-lgtm</b></sub>
+      </a><br />
+      <sub>Kanban UX Improvements</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/cammybot1313-collab">
+        <img src="https://github.com/cammybot1313-collab.png?size=80" width="80" height="80" style="border-radius:50%" alt="cammybot1313-collab" /><br />
+        <sub><b>cammybot1313-collab</b></sub>
+      </a><br />
+      <sub>Docs Typo Fix</sub>
+    </td>
+  </tr>
 </table>
 
 ---
@@ -609,6 +643,16 @@ MIT License — see [LICENSE](LICENSE) for details.
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 [![Anthropic](https://img.shields.io/badge/Anthropic-Claude-orange?style=for-the-badge)](https://www.anthropic.com/)
+
+---
+
+## ☕ Support
+
+If Mission Control has been useful to you, consider buying me a coffee!
+
+<a href="https://buymeacoffee.com/crshdn" target="_blank">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />
+</a>
 
 ---
 

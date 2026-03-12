@@ -20,13 +20,17 @@ export interface MissionControlConfig {
   
   // Project defaults
   defaultProjectName: string; // 'mission-control' or custom
+
+  // UX preferences
+  kanbanCompactEmptyColumns: boolean; // shrink empty columns to fit header text
 }
 
 const DEFAULT_CONFIG: MissionControlConfig = {
   workspaceBasePath: '~/Documents/Shared',
   projectsPath: '~/Documents/Shared/projects',
-  missionControlUrl: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4000',
+  missionControlUrl: typeof window !== 'undefined' ? window.location.origin : `http://localhost:${process.env.PORT || '4000'}`,
   defaultProjectName: 'mission-control',
+  kanbanCompactEmptyColumns: false,
 };
 
 const CONFIG_KEY = 'mission-control-config';
@@ -122,6 +126,7 @@ export function getMissionControlUrl(): string {
     const base = (process.env.MISSION_CONTROL_URL || 'http://localhost:4000').replace(/\/$/, '');
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
     return `${base}${basePath}`;
+    return process.env.MISSION_CONTROL_URL || `http://localhost:${process.env.PORT || '4000'}`;
   }
 
   // Client-side: use config (origin already includes basePath context)

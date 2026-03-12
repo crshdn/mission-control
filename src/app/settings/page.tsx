@@ -48,7 +48,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleChange = (field: keyof MissionControlConfig, value: string) => {
+  const handleChange = <K extends keyof MissionControlConfig>(field: K, value: MissionControlConfig[K]) => {
     if (!config) return;
     setConfig({ ...config, [field]: value });
   };
@@ -202,6 +202,32 @@ export default function SettingsPage() {
               </p>
             </div>
           </div>
+        </section>
+
+        {/* Kanban UX */}
+        <section className="mb-8 p-6 bg-mc-bg-secondary border border-mc-border rounded-lg">
+          <div className="flex items-center gap-2 mb-4">
+            <Home className="w-5 h-5 text-mc-accent" />
+            <h2 className="text-xl font-semibold text-mc-text">Kanban UX</h2>
+          </div>
+          <p className="text-sm text-mc-text-secondary mb-4">
+            Tune board density and lane sizing behavior.
+          </p>
+
+          <label className="flex items-start gap-3 p-3 bg-mc-bg border border-mc-border rounded cursor-pointer">
+            <input
+              type="checkbox"
+              checked={config.kanbanCompactEmptyColumns}
+              onChange={(e) => handleChange('kanbanCompactEmptyColumns', e.target.checked)}
+              className="mt-1 h-4 w-4 accent-[var(--mc-accent)]"
+            />
+            <div>
+              <div className="text-sm font-medium text-mc-text">Compact empty columns</div>
+              <div className="text-xs text-mc-text-secondary mt-1">
+                When enabled, empty Kanban columns shrink to header width while columns with tasks keep a wider, dynamic width.
+              </div>
+            </div>
+          </label>
         </section>
 
         {/* Environment Variables Note */}

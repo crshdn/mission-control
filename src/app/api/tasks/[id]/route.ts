@@ -335,6 +335,35 @@ export async function PATCH(
       if (refreshed) broadcast({ type: 'task_updated', payload: refreshed });
     }
 
+    // Reset agent status to standby when they have no more active tasks
+    if (nextStatus && nextStatus !== existing.status) {
+      // When a task moves to done, or transitions away from the current agent
+      const agentToCheck = existing.assigned_agent_id;
+      if (agentToCheck) {
+        // Check if this agent still has any active (working) tasks
+        const activeTasks = queryOne<{ count: number }>(
+          `SELECT COUNT(*) as count FROM tasks
+           WHERE assigned_agent_id = ?
+             AND status IN ('assigned', 'in_progress', 'testing', 'verification')
+             AND id != ?`,
+          [agentToCheck, id]
+        );
+        // Also check if the current task is still actively assigned to this agent
+        const currentTaskStillActive = (
+          validatedData.assigned_agent_id !== undefined
+            ? validatedData.assigned_agent_id === agentToCheck
+            : true
+        ) && ['assigned', 'in_progress', 'testing', 'verification'].includes(nextStatus);
+
+        if (!currentTaskStillActive && (!activeTasks || activeTasks.count === 0)) {
+          run(
+            'UPDATE agents SET status = ?, updated_at = ? WHERE id = ? AND status = ?',
+            ['standby', now, agentToCheck, 'working']
+          );
+        }
+      }
+    }
+
     // Notify learner on stage transitions (non-blocking)
     if (nextStatus && nextStatus !== existing.status) {
       const isForwardMove = !['inbox', 'assigned', 'planning', 'pending_dispatch'].includes(nextStatus);
@@ -372,6 +401,23 @@ export async function DELETE(
 
     if (!existing) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
+
+    // Reset agent status if this was their only active task
+    if (existing.assigned_agent_id) {
+      const otherActive = queryOne<{ count: number }>(
+        `SELECT COUNT(*) as count FROM tasks
+         WHERE assigned_agent_id = ?
+           AND status IN ('assigned', 'in_progress', 'testing', 'verification')
+           AND id != ?`,
+        [existing.assigned_agent_id, id]
+      );
+      if (!otherActive || otherActive.count === 0) {
+        run(
+          'UPDATE agents SET status = ?, updated_at = ? WHERE id = ? AND status = ?',
+          ['standby', new Date().toISOString(), existing.assigned_agent_id, 'working']
+        );
+      }
     }
 
     // Delete or nullify related records first (foreign key constraints)

@@ -621,6 +621,20 @@ const migrations: Migration[] = [
 
       console.log('[Migration 013] Fresh start complete');
     }
+  },
+  {
+    id: '014',
+    name: 'add_task_images_column',
+    up: (db) => {
+      console.log('[Migration 014] Adding images column to tasks...');
+
+      const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
+
+      if (!tasksInfo.some(col => col.name === 'images')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN images TEXT`);
+        console.log('[Migration 014] Added images column to tasks');
+      }
+    }
   }
 ];
 

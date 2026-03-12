@@ -51,3 +51,7 @@ next-env.d.ts
 *.backup
 *.bak
 *.db.backup
+
+# Uploaded task images (user data)
+/data/task-images/*
+!/data/task-images/.gitkeep

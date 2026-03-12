@@ -71,11 +71,18 @@ export interface Task {
   planning_complete?: number;
   planning_dispatch_error?: string;
   planning_session_key?: string;
+  images?: string; // JSON array of TaskImage objects
   created_at: string;
   updated_at: string;
   // Joined fields
   assigned_agent?: Agent;
   created_by_agent?: Agent;
+}
+
+export interface TaskImage {
+  filename: string;
+  original_name: string;
+  uploaded_at: string;
 }
 
 export interface Conversation {
