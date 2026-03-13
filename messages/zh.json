@@ -142,6 +142,16 @@
     "cardTasksLabel": "任务",
     "cardAgentsLabel": "智能体"
   },
+  "notFoundPage": {
+    "title": "页面不存在",
+    "description": "你访问的页面不存在或已被移动。",
+    "backToHome": "返回首页"
+  },
+  "workspacePage": {
+    "notFoundTitle": "工作区不存在",
+    "notFoundDescription": "工作区「{slug}」不存在或已被删除。",
+    "backToDashboard": "返回控制中心"
+  },
   "missionQueue": {
     "title": "任务队列",
     "newTask": "新建任务",
@@ -195,6 +205,10 @@
     "taskDispatchedTo": "任务「{title}」已派发给{agent}",
     "taskAssignedTo": "「{title}」已分配给{agent}",
     "agentJoinedTeam": "{name} 加入团队",
+    "agentCatalogSyncCompleted": "智能体目录同步完成（{reason}）",
+    "agentCatalogReasonAutomatic": "自动",
+    "agentCatalogReasonScheduled": "定时任务",
+    "agentCatalogReasonStartup": "启动时",
     "statusDone": "完成",
     "statusReview": "审核",
     "statusTesting": "测试",

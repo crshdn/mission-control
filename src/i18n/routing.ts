@@ -5,6 +5,6 @@ import {defineRouting} from 'next-intl/routing'; // 路由配置工具 / Routing
 export const routing = defineRouting({
   locales: ['en', 'zh'], // 支持的语言列表 / Supported locale list
   defaultLocale: 'en', // 默认语言配置 / Default locale configuration
-  localePrefix: 'always', // 所有路径都带语言前缀 / Always prefix paths with locale
+  localePrefix: 'as-needed', // 仅在非默认语言时添加前缀 / Only prefix paths for non-default locales
 });
 

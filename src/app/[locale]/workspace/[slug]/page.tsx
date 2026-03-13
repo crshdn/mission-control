@@ -21,6 +21,7 @@ export default function WorkspacePage() {
   const params = useParams(); // 读取动态路由参数 / Read dynamic route params
   const slug = params.slug as string; // 工作区标识符 / Workspace identifier
   const {setAgents, setTasks, setEvents, setIsOnline, setIsLoading, isLoading} = useMissionControl(); // 全局状态操作 / Global store operations
+  const tWorkspace = useTranslations('workspacePage'); // 工作区页面文案 / Workspace page copy
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null); // 当前工作区数据 / Current workspace data
   const [notFound, setNotFound] = useState(false); // 404 状态 / Not-found state
@@ -181,14 +182,14 @@ export default function WorkspacePage() {
       <div className="min-h-screen bg-mc-bg flex items-center justify-center">
         <div className="text-center">
           <div className="text-6xl mb-4">🔍</div>
-          <h1 className="text-2xl font-bold mb-2">Workspace Not Found</h1>
-          <p className="text-mc-text-secondary mb-6">The workspace &ldquo;{slug}&rdquo; doesn&apos;t exist.</p>
+          <h1 className="text-2xl font-bold mb-2">{tWorkspace('notFoundTitle')}</h1>
+          <p className="text-mc-text-secondary mb-6">{tWorkspace('notFoundDescription', {slug})}</p>
           <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-mc-accent text-mc-bg rounded-lg font-medium hover:bg-mc-accent/90"
           >
             <ChevronLeft className="w-4 h-4" />
-            Back to Dashboard
+            {tWorkspace('backToDashboard')}
           </Link>
         </div>
       </div>

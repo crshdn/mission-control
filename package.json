@@ -1,6 +1,6 @@
 {
   "name": "mission-control",
-  "version": "1.5.1",
+  "version": "1.4.1",
   "private": true,
   "scripts": {
     "dev": "next dev --turbo -p ${PORT:-4000}",

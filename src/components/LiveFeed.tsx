@@ -163,6 +163,27 @@ function EventItem({ event, dateLocale }: { event: Event; dateLocale?: Locale })
       if (out.startsWith('liveFeed.')) return msg;
       return out;
     }
+    const catalogMatch = msg.match(/^Agent catalog sync completed \(([^)]+)\)/);
+    if (catalogMatch) {
+      const rawReason = (catalogMatch[1] || '').trim();
+      let reasonKey: string;
+      switch (rawReason) {
+        case 'scheduled':
+          reasonKey = 'agentCatalogReasonScheduled';
+          break;
+        case 'startup':
+          reasonKey = 'agentCatalogReasonStartup';
+          break;
+        case 'automatic':
+        default:
+          reasonKey = 'agentCatalogReasonAutomatic';
+          break;
+      }
+      const reasonLabel = t(reasonKey as any);
+      const out = t('agentCatalogSyncCompleted', { reason: String(reasonLabel) });
+      if (out.startsWith('liveFeed.')) return msg;
+      return out;
+    }
     return msg;
   };
 

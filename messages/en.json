@@ -142,6 +142,16 @@
     "cardTasksLabel": "tasks",
     "cardAgentsLabel": "agents"
   },
+  "notFoundPage": {
+    "title": "Page Not Found",
+    "description": "The page you’re looking for doesn’t exist or has moved.",
+    "backToHome": "Back to Home"
+  },
+  "workspacePage": {
+    "notFoundTitle": "Workspace Not Found",
+    "notFoundDescription": "The workspace \"{slug}\" doesn\u0027t exist or has been removed.",
+    "backToDashboard": "Back to Dashboard"
+  },
   "missionQueue": {
     "title": "Mission Queue",
     "newTask": "New Task",
@@ -195,6 +205,10 @@
     "taskDispatchedTo": "Task {title} dispatched to {agent}",
     "taskAssignedTo": "{title} assigned to {agent}",
     "agentJoinedTeam": "{name} joined the team",
+    "agentCatalogSyncCompleted": "Agent catalog sync completed ({reason})",
+    "agentCatalogReasonAutomatic": "automatic",
+    "agentCatalogReasonScheduled": "scheduled",
+    "agentCatalogReasonStartup": "startup",
     "statusDone": "done",
     "statusReview": "review",
     "statusTesting": "testing",

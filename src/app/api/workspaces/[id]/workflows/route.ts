@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/workspaces/[id]/workflows
- * List workflow templates for the given workspace only (no global default templates).
+ * List workflow templates for the given workspace, including global default templates.
  */
 export async function GET(
   request: NextRequest,
@@ -20,7 +20,7 @@ export async function GET(
       created_at: string; updated_at: string;
     }>(
       `SELECT * FROM workflow_templates
-       WHERE workspace_id = ?
+       WHERE workspace_id = ? OR workspace_id = 'default'
        ORDER BY is_default DESC, name ASC`,
       [workspaceId]
     );
