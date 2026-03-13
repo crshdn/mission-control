@@ -161,6 +161,23 @@ npm run build
 npx next start -p 4000
 ```
 
+### PM2 (recommended for long-running hosts)
+
+Use **production mode** (`npm run start`), not `npm run dev`, to avoid dev-server runtime overlays/reload errors in persistent deployments.
+
+```bash
+pm2 delete mission-control
+pm2 start "npm run start" --name mission-control --cwd /absolute/path/to/mission-control
+pm2 save
+```
+
+For boot persistence:
+
+```bash
+pm2 startup
+pm2 save
+```
+
 ---
 
 ## 🐳 Docker
