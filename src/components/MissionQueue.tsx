@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Plus, ChevronRight, GripVertical, ArrowRightLeft } from 'lucide-react';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { Plus, ChevronRight, GripVertical, ArrowRightLeft, GripHorizontal, CheckCircle } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { triggerAutoDispatch, shouldTriggerAutoDispatch } from '@/lib/auto-dispatch';
 import { getConfig } from '@/lib/config';
@@ -13,6 +13,8 @@ interface MissionQueueProps {
   workspaceId?: string;
   mobileMode?: boolean;
   isPortrait?: boolean;
+  onOpenCreateModal?: () => void;
+  externalShowCreateModal?: boolean;
 }
 
 const COLUMNS: { id: TaskStatus; label: string; color: string }[] = [
@@ -26,16 +28,57 @@ const COLUMNS: { id: TaskStatus; label: string; color: string }[] = [
   { id: 'done', label: 'Done', color: 'border-t-mc-accent-green' },
 ];
 
-export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = true }: MissionQueueProps) {
+export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = true, onOpenCreateModal, externalShowCreateModal }: MissionQueueProps) {
   const { tasks, updateTaskStatus, addEvent } = useMissionControl();
   const [compactEmptyColumns, setCompactEmptyColumns] = useState(true);
+  const [compactMode, setCompactMode] = useState(false);
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  const [resizingColumn, setResizingColumn] = useState<string | null>(null);
+  const resizeStartRef = useRef<{ columnId: string; startX: number; startWidth: number } | null>(null);
 
   useEffect(() => {
     const cfg = getConfig();
     setCompactEmptyColumns(cfg.kanbanCompactEmptyColumns ?? true);
+    setCompactMode(cfg.kanbanCompactMode ?? false);
   }, []);
 
-  const getDesktopColumnWidth = (taskCount: number): string => {
+  const handleResizeStart = useCallback((e: React.MouseEvent, columnId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const currentWidth = columnWidths[columnId] || 280;
+    setResizingColumn(columnId);
+    resizeStartRef.current = {
+      columnId,
+      startX: e.clientX,
+      startWidth: currentWidth,
+    };
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!resizeStartRef.current) return;
+      const delta = moveEvent.clientX - resizeStartRef.current.startX;
+      const newWidth = Math.max(120, resizeStartRef.current.startWidth + delta);
+      setColumnWidths(prev => ({
+        ...prev,
+        [resizeStartRef.current!.columnId]: newWidth,
+      }));
+    };
+
+    const handleMouseUp = () => {
+      setResizingColumn(null);
+      resizeStartRef.current = null;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [columnWidths]);
+
+  const getDesktopColumnWidth = (taskCount: number, columnId: string): string => {
+    // Use custom width if set
+    if (columnWidths[columnId]) {
+      return `${columnWidths[columnId]}px`;
+    }
     if (!compactEmptyColumns) return '280px';
     if (taskCount === 0) return 'fit-content';
     // Slightly grow busy columns while keeping a sane cap
@@ -44,6 +87,14 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
   };
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  // Sync external showCreateModal to local state
+  useEffect(() => {
+    if (externalShowCreateModal !== undefined) {
+      setShowCreateModal(externalShowCreateModal);
+    }
+  }, [externalShowCreateModal]);
+
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [mobileStatus, setMobileStatus] = useState<TaskStatus>('planning');
   const [statusMoveTask, setStatusMoveTask] = useState<Task | null>(null);
@@ -124,13 +175,16 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
           <ChevronRight className="w-4 h-4 text-mc-text-secondary" />
           <span className="text-sm font-medium uppercase tracking-wider">Mission Queue</span>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 min-h-11 bg-mc-accent-pink text-mc-bg rounded text-sm font-medium hover:bg-mc-accent-pink/90"
-        >
-          <Plus className="w-4 h-4" />
-          New Task
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => { setShowCreateModal(true); onOpenCreateModal?.(); }}
+            className="flex items-center gap-2 px-4 min-h-11 bg-mc-accent-pink text-mc-bg rounded text-sm font-medium hover:bg-mc-accent-pink/90"
+          >
+            <Plus className="w-4 h-4" />
+            New Task
+          </button>
+          <span className="text-[10px] text-mc-text-secondary border border-mc-border bg-mc-bg rounded px-1.5 py-0.5">⌘K</span>
+        </div>
       </div>
 
       {!mobileMode ? (
@@ -138,14 +192,27 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
           {COLUMNS.map((column) => {
             const columnTasks = getTasksByStatus(column.id);
             const hasTasks = columnTasks.length > 0;
+            const baseWidth = getDesktopColumnWidth(columnTasks.length, column.id);
+            const compactWidth = compactMode 
+              ? `${parseFloat(baseWidth) * 0.7}px` 
+              : baseWidth;
             return (
               <div
                 key={column.id}
-                style={{ width: getDesktopColumnWidth(columnTasks.length) }}
-                className={`flex-none ${compactEmptyColumns ? (hasTasks ? 'min-w-[240px]' : 'min-w-[110px] max-w-[180px]') : 'min-w-[250px] max-w-[320px]'} flex flex-col bg-mc-bg rounded-lg border border-mc-border/50 border-t-2 transition-[width] duration-200 ${column.color}`}
+                style={{ width: compactWidth }}
+                className={`flex-none relative group ${compactEmptyColumns ? (hasTasks ? 'min-w-[240px]' : 'min-w-[110px] max-w-[180px]') : 'min-w-[250px] max-w-[320px]'} flex flex-col bg-mc-bg rounded-lg border border-mc-border/50 border-t-2 transition-[width] duration-200 ${column.color}`}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, column.id)}
               >
+                {/* Resize handle */}
+                <div
+                  className={`absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 hover:bg-mc-accent/30 transition-opacity z-10 flex items-center justify-center ${resizingColumn === column.id ? 'opacity-100' : ''}`}
+                  onMouseDown={(e) => handleResizeStart(e, column.id)}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <GripHorizontal className="w-3 h-3 text-mc-text-secondary" />
+                </div>
+                
                 <div className="p-2 border-b border-mc-border flex items-center justify-between gap-2">
                   <span className="text-xs font-medium uppercase text-mc-text-secondary whitespace-nowrap">{column.label}</span>
                   <span className="text-xs bg-mc-bg-tertiary px-2 py-0.5 rounded text-mc-text-secondary">{columnTasks.length}</span>
@@ -162,6 +229,7 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
                       isDragging={draggedTask?.id === task.id}
                       mobileMode={false}
                       portraitMode={false}
+                      compactMode={compactMode}
                     />
                   ))}
                 </div>
@@ -255,9 +323,10 @@ interface TaskCardProps {
   isDragging: boolean;
   mobileMode: boolean;
   portraitMode?: boolean;
+  compactMode?: boolean;
 }
 
-function TaskCard({ task, onDragStart, onClick, onMoveStatus, isDragging, mobileMode, portraitMode = true }: TaskCardProps) {
+function TaskCard({ task, onDragStart, onClick, onMoveStatus, isDragging, mobileMode, portraitMode = true, compactMode = false }: TaskCardProps) {
   const priorityStyles = {
     low: 'text-mc-text-secondary',
     normal: 'text-mc-accent',
@@ -283,7 +352,7 @@ function TaskCard({ task, onDragStart, onClick, onMoveStatus, isDragging, mobile
       onClick={onClick}
       className={`group bg-mc-bg-secondary border rounded-lg cursor-pointer transition-all hover:shadow-lg hover:shadow-black/20 ${
         isDragging ? 'opacity-50 scale-95' : ''
-      } ${isPlanning ? 'border-purple-500/40 hover:border-purple-500' : 'border-mc-border/50 hover:border-mc-accent/40'}`}
+      } ${compactMode ? 'scale-70 origin-top-left' : ''} ${isPlanning ? 'border-purple-500/40 hover:border-purple-500' : 'border-mc-border/50 hover:border-mc-accent/40'}`}
     >
       {!mobileMode && (
         <div className="flex items-center justify-center py-1.5 border-b border-mc-border/30 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -347,6 +416,12 @@ function TaskCard({ task, onDragStart, onClick, onMoveStatus, isDragging, mobile
           <div className="flex items-center gap-1.5">
             <div className={`w-1.5 h-1.5 rounded-full ${priorityDots[task.priority]}`} />
             <span className={`text-xs capitalize ${priorityStyles[task.priority]}`}>{task.priority}</span>
+            {task.is_verified === 1 && (
+              <span className="flex items-center gap-1 ml-1 px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded-full">
+                <CheckCircle className="w-3 h-3" />
+                Verified
+              </span>
+            )}
           </div>
           <span className="text-[10px] text-mc-text-secondary/60">{formatDistanceToNow(new Date(task.created_at), { addSuffix: true })}</span>
         </div>

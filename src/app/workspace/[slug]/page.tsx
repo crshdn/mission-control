@@ -26,6 +26,19 @@ export default function WorkspacePage() {
   const [notFound, setNotFound] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>('queue');
   const [isPortrait, setIsPortrait] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Cmd+K shortcut to open new task modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowCreateModal(true);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useSSE();
 
@@ -210,7 +223,7 @@ export default function WorkspacePage() {
 
       <div className="hidden lg:flex flex-1 overflow-hidden">
         <AgentsSidebar workspaceId={workspace.id} />
-        <MissionQueue workspaceId={workspace.id} />
+        <MissionQueue workspaceId={workspace.id} onOpenCreateModal={() => setShowCreateModal(true)} externalShowCreateModal={showCreateModal} />
         <LiveFeed />
       </div>
 
@@ -221,7 +234,7 @@ export default function WorkspacePage() {
       >
         {isPortrait ? (
           <>
-            {mobileTab === 'queue' && <MissionQueue workspaceId={workspace.id} mobileMode isPortrait />}
+            {mobileTab === 'queue' && <MissionQueue workspaceId={workspace.id} mobileMode isPortrait onOpenCreateModal={() => setShowCreateModal(true)} externalShowCreateModal={showCreateModal} />}
             {mobileTab === 'agents' && (
               <div className="h-full p-3 overflow-y-auto">
                 <AgentsSidebar workspaceId={workspace.id} mobileMode isPortrait />
@@ -236,7 +249,7 @@ export default function WorkspacePage() {
           </>
         ) : (
           <div className="h-full p-3 grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-3">
-            <MissionQueue workspaceId={workspace.id} mobileMode isPortrait={false} />
+            <MissionQueue workspaceId={workspace.id} mobileMode isPortrait={false} onOpenCreateModal={() => setShowCreateModal(true)} externalShowCreateModal={showCreateModal} />
             <div className="min-w-0 h-full flex flex-col gap-3">
               <div className="grid grid-cols-3 gap-2">
                 <button

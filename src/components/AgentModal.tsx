@@ -107,9 +107,13 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
           selectedAgent: state.selectedAgent?.id === agent.id ? null : state.selectedAgent,
         }));
         onClose();
+      } else {
+        const error = await res.json();
+        alert(`Failed to delete agent: ${error.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Failed to delete agent:', error);
+      alert('Failed to delete agent. Check console for details.');
     }
   };
 

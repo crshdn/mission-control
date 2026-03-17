@@ -77,6 +77,10 @@ export interface Task {
   // Joined fields
   assigned_agent?: Agent;
   created_by_agent?: Agent;
+  // Verification fields
+  is_verified?: number;
+  verified_at?: string;
+  verified_by?: string;
 }
 
 export interface TaskImage {
@@ -239,6 +243,22 @@ export interface TaskDeliverable {
   path?: string;
   description?: string;
   created_at: string;
+}
+
+// Comment types for review rejection feedback
+export interface TaskComment {
+  id: string;
+  task_id: string;
+  author_agent_id?: string;
+  parent_comment_id?: string;
+  content: string;
+  is_rejection: boolean;
+  created_at: string;
+  updated_at: string;
+  // Joined fields
+  author?: Agent;
+  // Nested replies
+  replies?: TaskComment[];
 }
 
 // Planning types

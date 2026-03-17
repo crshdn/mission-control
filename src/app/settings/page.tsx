@@ -214,20 +214,37 @@ export default function SettingsPage() {
             Tune board density and lane sizing behavior.
           </p>
 
-          <label className="flex items-start gap-3 p-3 bg-mc-bg border border-mc-border rounded cursor-pointer">
-            <input
-              type="checkbox"
-              checked={config.kanbanCompactEmptyColumns}
-              onChange={(e) => handleChange('kanbanCompactEmptyColumns', e.target.checked)}
-              className="mt-1 h-4 w-4 accent-[var(--mc-accent)]"
-            />
-            <div>
-              <div className="text-sm font-medium text-mc-text">Compact empty columns</div>
-              <div className="text-xs text-mc-text-secondary mt-1">
-                When enabled, empty Kanban columns shrink to header width while columns with tasks keep a wider, dynamic width.
+          <div className="space-y-4">
+            <label className="flex items-start gap-3 p-3 bg-mc-bg border border-mc-border rounded cursor-pointer">
+              <input
+                type="checkbox"
+                checked={config.kanbanCompactEmptyColumns}
+                onChange={(e) => handleChange('kanbanCompactEmptyColumns', e.target.checked)}
+                className="mt-1 h-4 w-4 accent-[var(--mc-accent)]"
+              />
+              <div>
+                <div className="text-sm font-medium text-mc-text">Compact empty columns</div>
+                <div className="text-xs text-mc-text-secondary mt-1">
+                  When enabled, empty Kanban columns shrink to header width while columns with tasks keep a wider, dynamic width.
+                </div>
               </div>
-            </div>
-          </label>
+            </label>
+
+            <label className="flex items-start gap-3 p-3 bg-mc-bg border border-mc-border rounded cursor-pointer">
+              <input
+                type="checkbox"
+                checked={config.kanbanCompactMode}
+                onChange={(e) => handleChange('kanbanCompactMode', e.target.checked)}
+                className="mt-1 h-4 w-4 accent-[var(--mc-accent)]"
+              />
+              <div>
+                <div className="text-sm font-medium text-mc-text">Compact Mode</div>
+                <div className="text-xs text-mc-text-secondary mt-1">
+                  When enabled, shrink all columns and their content by 30%. Useful for fitting more columns on screen.
+                </div>
+              </div>
+            </label>
+          </div>
         </section>
 
         {/* Environment Variables Note */}
