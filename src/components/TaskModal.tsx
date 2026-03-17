@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus, Users, ImageIcon } from 'lucide-react';
+import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus, Users, ImageIcon, MessageCircle, CheckCircle } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { triggerAutoDispatch, shouldTriggerAutoDispatch } from '@/lib/auto-dispatch';
 import { ActivityLog } from './ActivityLog';
@@ -11,9 +11,10 @@ import { PlanningTab } from './PlanningTab';
 import { TeamTab } from './TeamTab';
 import { AgentModal } from './AgentModal';
 import { TaskImages } from './TaskImages';
+import { TaskComments } from './TaskComments';
 import type { Task, TaskPriority, TaskStatus } from '@/lib/types';
 
-type TabType = 'overview' | 'planning' | 'team' | 'activity' | 'deliverables' | 'images' | 'sessions';
+type TabType = 'overview' | 'planning' | 'team' | 'activity' | 'deliverables' | 'images' | 'sessions' | 'comments';
 
 interface TaskModalProps {
   task?: Task;
@@ -184,11 +185,12 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
   const tabs = [
     { id: 'overview' as TabType, label: 'Overview', icon: null },
     { id: 'planning' as TabType, label: 'Planning', icon: <ClipboardList className="w-4 h-4" /> },
-    { id: 'team' as TabType, label: 'Team', icon: <Users className="w-4 h-4" /> },
+{ id: 'team' as TabType, label: 'Team', icon: <Users className="w-4 h-4" /> },
     { id: 'activity' as TabType, label: 'Activity', icon: <Activity className="w-4 h-4" /> },
     { id: 'deliverables' as TabType, label: 'Deliverables', icon: <Package className="w-4 h-4" /> },
     { id: 'images' as TabType, label: 'Images', icon: <ImageIcon className="w-4 h-4" /> },
     { id: 'sessions' as TabType, label: 'Sessions', icon: <Bot className="w-4 h-4" /> },
+    { id: 'comments' as TabType, label: 'Comments', icon: <MessageCircle className="w-4 h-4" /> },
   ];
 
   return (
@@ -196,9 +198,17 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
       <div className="bg-mc-bg-secondary border border-mc-border rounded-t-xl sm:rounded-lg w-full max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col pb-[env(safe-area-inset-bottom)] sm:pb-0">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-mc-border flex-shrink-0">
-          <h2 className="text-lg font-semibold">
-            {task ? task.title : 'Create New Task'}
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">
+              {task ? task.title : 'Create New Task'}
+            </h2>
+            {task?.is_verified === 1 && (
+              <span className="flex items-center gap-1 px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">
+                <CheckCircle className="w-3.5 h-3.5" />
+                Verified
+              </span>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="p-1 hover:bg-mc-bg-tertiary rounded"
@@ -376,6 +386,11 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
           {/* Sessions Tab */}
           {activeTab === 'sessions' && task && (
             <SessionsList taskId={task.id} />
+          )}
+
+          {/* Comments Tab */}
+          {activeTab === 'comments' && task && (
+            <TaskComments taskId={task.id} />
           )}
         </div>
 

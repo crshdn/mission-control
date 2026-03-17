@@ -635,6 +635,33 @@ const migrations: Migration[] = [
         console.log('[Migration 014] Added images column to tasks');
       }
     }
+  },
+  {
+    id: '015',
+    name: 'add_task_comments_table',
+    up: (db) => {
+      console.log('[Migration 015] Adding task_comments table...');
+
+      // Create task_comments table
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS task_comments (
+          id TEXT PRIMARY KEY,
+          task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+          author_agent_id TEXT REFERENCES agents(id),
+          parent_comment_id TEXT REFERENCES task_comments(id) ON DELETE CASCADE,
+          content TEXT NOT NULL,
+          is_rejection INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now'))
+        )
+      `);
+
+      // Create indexes for performance
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id, created_at DESC)`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_task_comments_parent ON task_comments(parent_comment_id)`);
+
+      console.log('[Migration 015] task_comments table created');
+    }
   }
 ];
 

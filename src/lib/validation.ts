@@ -25,6 +25,9 @@ const ActivityType = z.enum([
 
 const DeliverableType = z.enum(['file', 'url', 'artifact']);
 
+// Comment validation schema
+const CommentContent = z.string().min(1, 'Comment content is required').max(10000, 'Comment must be 10000 characters or less');
+
 // Task validation schemas
 export const CreateTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(500, 'Title must be 500 characters or less'),
@@ -68,8 +71,23 @@ export const CreateDeliverableSchema = z.object({
   description: z.string().optional(),
 });
 
+// Comment validation schemas
+export const CreateCommentSchema = z.object({
+  content: CommentContent,
+  author_agent_id: z.string().uuid().optional(),
+  parent_comment_id: z.string().uuid().optional(),
+  is_rejection: z.boolean().optional().default(false),
+});
+
+export const UpdateCommentSchema = z.object({
+  content: CommentContent.optional(),
+  is_rejection: z.boolean().optional(),
+});
+
 // Type exports for use in routes
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof UpdateTaskSchema>;
 export type CreateActivityInput = z.infer<typeof CreateActivitySchema>;
 export type CreateDeliverableInput = z.infer<typeof CreateDeliverableSchema>;
+export type CreateCommentInput = z.infer<typeof CreateCommentSchema>;
+export type UpdateCommentInput = z.infer<typeof UpdateCommentSchema>;

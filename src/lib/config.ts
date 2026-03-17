@@ -23,6 +23,7 @@ export interface MissionControlConfig {
 
   // UX preferences
   kanbanCompactEmptyColumns: boolean; // shrink empty columns to fit header text
+  kanbanCompactMode: boolean; // shrink all columns and content by 30%
 }
 
 const DEFAULT_CONFIG: MissionControlConfig = {
@@ -31,6 +32,7 @@ const DEFAULT_CONFIG: MissionControlConfig = {
   missionControlUrl: typeof window !== 'undefined' ? window.location.origin : `http://localhost:${process.env.PORT || '4000'}`,
   defaultProjectName: 'mission-control',
   kanbanCompactEmptyColumns: false,
+  kanbanCompactMode: false,
 };
 
 const CONFIG_KEY = 'mission-control-config';
