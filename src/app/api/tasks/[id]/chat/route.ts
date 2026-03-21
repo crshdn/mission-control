@@ -95,6 +95,7 @@ export async function POST(
         const dispatchRes = await fetch(`${missionControlUrl}/api/tasks/${taskId}/dispatch`, {
           method: 'POST',
           headers,
+          signal: AbortSignal.timeout(30_000),
         });
 
         if (dispatchRes.ok) {

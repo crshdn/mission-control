@@ -211,6 +211,7 @@ export async function nudgeAgent(agentId: string): Promise<{ success: boolean; e
     const res = await fetch(`${missionControlUrl}/api/tasks/${activeTask.id}/dispatch`, {
       method: 'POST',
       headers,
+      signal: AbortSignal.timeout(30_000),
     });
 
     if (!res.ok) {

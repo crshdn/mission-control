@@ -139,6 +139,7 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
       const dispatchRes = await fetch(dispatchUrl, {
         method: 'POST',
         headers: dispatchHeaders,
+        signal: AbortSignal.timeout(30_000),
       });
 
       if (dispatchRes.ok) {

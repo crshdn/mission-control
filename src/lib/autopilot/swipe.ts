@@ -157,7 +157,7 @@ function queueDispatch(taskId: string): void {
   if (process.env.MC_API_TOKEN) {
     headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
   }
-  fetch(`${url}/api/tasks/${taskId}/dispatch`, { method: 'POST', headers })
+  fetch(`${url}/api/tasks/${taskId}/dispatch`, { method: 'POST', headers, signal: AbortSignal.timeout(30_000) })
     .then(res => { if (!res.ok) console.error('[AutoDispatch] Failed:', res.status); })
     .catch(err => console.error('[AutoDispatch] Error:', err));
 }

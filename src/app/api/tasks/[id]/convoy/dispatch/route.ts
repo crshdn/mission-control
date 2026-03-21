@@ -80,6 +80,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         const res = await fetch(`${missionControlUrl}/api/tasks/${subtask.task_id}/dispatch`, {
           method: 'POST',
           headers,
+          signal: AbortSignal.timeout(30_000),
         });
 
         if (res.ok) {

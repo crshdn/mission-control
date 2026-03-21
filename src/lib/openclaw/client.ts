@@ -520,6 +520,33 @@ export class OpenClawClient extends EventEmitter {
     return {};
   }
 
+  /**
+   * Force-close the current connection so the next call to connect() starts fresh.
+   * Unlike disconnect(), this preserves autoReconnect so the client can recover.
+   */
+  forceReconnect(): void {
+    console.log('[OpenClaw] Force-reconnecting (dropping stale connection)');
+    if (this.ws) {
+      this.ws.onclose = null;
+      this.ws.onerror = null;
+      this.ws.onmessage = null;
+      this.ws.onopen = null;
+      if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
+        this.ws.close();
+      }
+      this.ws = null;
+    }
+    this.connected = false;
+    this.authenticated = false;
+    this.connecting = null;
+    this.messageHandlers.clear();
+    // Reject any pending requests so they don't leak
+    this.pendingRequests.forEach(({ reject }) => {
+      reject(new Error('Connection reset'));
+    });
+    this.pendingRequests.clear();
+  }
+
   disconnect(): void {
     this.autoReconnect = false;
     if (this.reconnectTimer) {

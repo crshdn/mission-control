@@ -114,6 +114,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         await client.connect();
       } catch (err) {
         console.error('Failed to connect to OpenClaw Gateway:', err);
+        client.forceReconnect();
         return NextResponse.json(
           { error: 'Failed to connect to OpenClaw Gateway' },
           { status: 503 }
@@ -482,6 +483,9 @@ If you need help or clarification, ask the orchestrator.`;
       });
     } catch (err) {
       console.error('Failed to send message to agent:', err);
+      // Force-reconnect so the next dispatch attempt gets a fresh WebSocket
+      const client2 = getOpenClawClient();
+      client2.forceReconnect();
       // Reset task to 'assigned' so dispatch can be retried
       run(
         `UPDATE tasks SET status = 'assigned', planning_dispatch_error = ?, updated_at = datetime('now') WHERE id = ? AND status != 'done'`,

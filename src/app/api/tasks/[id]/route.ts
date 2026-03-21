@@ -314,6 +314,7 @@ export async function PATCH(
           const dispatchRes = await fetch(`${missionControlUrl}/api/tasks/${id}/dispatch`, {
             method: 'POST',
             headers,
+            signal: AbortSignal.timeout(30_000),
           });
 
           if (!dispatchRes.ok) {
@@ -376,6 +377,7 @@ export async function PATCH(
         const dispatchRes = await fetch(`${missionControlUrl}/api/tasks/${id}/dispatch`, {
           method: 'POST',
           headers,
+          signal: AbortSignal.timeout(30_000),
         });
         if (!dispatchRes.ok) {
           const errorText = await dispatchRes.text();
