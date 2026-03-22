@@ -149,7 +149,7 @@ function setupTestDb(): Database.Database {
 }
 
 // Monkey-patch the db module to use our test database
-let testDb: Database.Database | null = null;
+const testDb: Database.Database | null = null;
 
 function patchDbModule() {
   // We can't easily monkey-patch the module in this context,

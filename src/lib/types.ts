@@ -497,6 +497,8 @@ export interface HealthScoreResponse {
   components: HealthComponentScore[];
   weights: HealthWeightConfig;
   history: ProductHealthScore[];
+}
+
 export interface ProductProgramVariant {
   id: string;
   product_id: string;
@@ -838,7 +840,7 @@ export type SSEEventType =
   | 'research_phase'
   | 'ideation_phase'
   | 'autopilot_activity'
-  | 'health_score_updated';
+  | 'health_score_updated'
   | 'ab_test_started'
   | 'ab_test_concluded'
   | 'ab_test_cancelled';

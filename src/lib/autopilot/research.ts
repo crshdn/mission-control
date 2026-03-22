@@ -185,7 +185,6 @@ export async function runResearchCycle(productId: string, existingCycleId?: stri
         console.error('[Research] Health score recalc failed:', err);
       }
 
-      console.log(`[Research] Cycle ${cycleId} completed successfully (tokens: ${usage.totalTokens})`);
       console.log(`[Research] Cycle ${cycleId} completed successfully (tokens: ${totalTokens})`);
 
       // Auto-chain: kick off ideation using this research cycle
