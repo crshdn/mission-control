@@ -91,7 +91,8 @@ export async function PATCH(
     }
     if (body.session_key_prefix !== undefined) {
       updates.push('session_key_prefix = ?');
-      values.push(body.session_key_prefix);
+      const trimmed = body.session_key_prefix?.trim();
+      values.push(!trimmed ? null : trimmed.endsWith(':') ? trimmed : trimmed + ':');
     }
 
     if (updates.length === 0) {

@@ -86,11 +86,15 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
       const url = agent ? `/api/agents/${agent.id}` : '/api/agents';
       const method = agent ? 'PATCH' : 'POST';
 
+      const trimmedPrefix = form.session_key_prefix?.trim();
+      const normalizedPrefix = !trimmedPrefix ? '' : trimmedPrefix.endsWith(':') ? trimmedPrefix : trimmedPrefix + ':';
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          session_key_prefix: normalizedPrefix || undefined,
           workspace_id: workspaceId || agent?.workspace_id || 'default',
         }),
       });
