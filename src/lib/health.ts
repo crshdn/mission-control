@@ -7,10 +7,11 @@
 
 import { getDb, queryOne, queryAll } from '@/lib/db';
 import { getAllAgentHealth } from '@/lib/agent-health';
-import { listCostCaps } from '@/lib/costs/caps';
+import { checkCaps, listCostCaps } from '@/lib/costs/caps';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import fs from 'fs';
 import path from 'path';
+import type { Product } from '@/lib/types';
 
 // Track process start time at module level for uptime calculation
 const startedAt = Date.now();
@@ -258,6 +259,16 @@ function checkResearch(): ResearchHealth {
 
 function checkCosts(): CostsHealth {
   try {
+    const workspaceIds = queryAll<{ id: string }>('SELECT id FROM workspaces');
+    const productRows = queryAll<Pick<Product, 'id' | 'workspace_id'>>('SELECT id, workspace_id FROM products');
+
+    for (const workspace of workspaceIds) {
+      checkCaps(workspace.id);
+    }
+    for (const product of productRows) {
+      checkCaps(product.workspace_id, product.id);
+    }
+
     const caps = listCostCaps();
     const mapped: CostCapHealth[] = caps.map((c) => ({
       product_id: c.product_id ?? null,

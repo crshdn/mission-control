@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { queryOne, queryAll, run } from '@/lib/db';
+import { updateConvoyProgress } from '@/lib/convoy';
+import { dispatchReadyConvoySubtasks } from '@/lib/convoy-dispatch';
 import type { Task, Agent, OpenClawSession } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+
+if (!process.env.WEBHOOK_SECRET) {
+  console.warn('[SECURITY WARNING] WEBHOOK_SECRET not set — agent-completion webhook signature validation is DISABLED');
+}
+
 /**
  * Verify HMAC-SHA256 signature of webhook request
  */
@@ -24,7 +31,8 @@ function verifyWebhookSignature(signature: string, rawBody: string): boolean {
     .update(rawBody)
     .digest('hex');
 
-  return signature === expectedSignature;
+  if (signature.length !== expectedSignature.length) return false;
+  return timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
 }
 
 /**
@@ -110,6 +118,14 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // If this task is a convoy subtask, update progress and dispatch ready siblings
+      if (task.convoy_id) {
+        updateConvoyProgress(task.convoy_id);
+        dispatchReadyConvoySubtasks(task.convoy_id).catch(err =>
+          console.error('[Webhook] convoy auto-dispatch failed:', err)
+        );
+      }
+
       return NextResponse.json({
         success: true,
         task_id: task.id,
@@ -191,6 +207,14 @@ export async function POST(request: NextRequest) {
         'UPDATE agents SET status = ?, updated_at = ? WHERE id = ?',
         ['standby', now, session.agent_id]
       );
+
+      // If this task is a convoy subtask, update progress and dispatch ready siblings
+      if (task.convoy_id) {
+        updateConvoyProgress(task.convoy_id);
+        dispatchReadyConvoySubtasks(task.convoy_id).catch(err =>
+          console.error('[Webhook] convoy auto-dispatch failed:', err)
+        );
+      }
 
       return NextResponse.json({
         success: true,

@@ -54,7 +54,8 @@ export async function POST(
       taskTitle: task.title,
       agentId: task.assigned_agent_id,
       agentName: agent?.name || 'Unknown Agent',
-      workspaceId: task.workspace_id
+      workspaceId: task.workspace_id,
+      baseUrl: request.nextUrl.origin,
     });
 
     // Update task state based on dispatch result — preserve planning data either way

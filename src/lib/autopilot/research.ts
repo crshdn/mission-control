@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { recordCostEvent } from '@/lib/costs/tracker';
+import { estimateModelCostUsd } from '@/lib/costs/pricing';
+import { evaluateProductCostGuards } from '@/lib/costs/caps';
 import { emitAutopilotActivity } from './activity';
 import { runIdeationCycle } from './ideation';
 import { recalculateAndBroadcast } from './health-score';
@@ -54,6 +56,10 @@ ${learnedPreferences ? `## Learned Preferences\n${learnedPreferences}` : ''}`;
 export async function runResearchCycle(productId: string, existingCycleId?: string, chainIdeation = false): Promise<string> {
   const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [productId]);
   if (!product) throw new Error(`Product ${productId} not found`);
+  const capStatus = evaluateProductCostGuards(product);
+  if (!capStatus.ok) {
+    throw new Error(`Research blocked by cost caps: ${capStatus.exceeded.join(' | ')}`);
+  }
 
   const prefModel = queryOne<{ learned_preferences_md: string }>(
     'SELECT learned_preferences_md FROM preference_models WHERE product_id = ? ORDER BY last_updated DESC LIMIT 1',
@@ -133,16 +139,27 @@ export async function runResearchCycle(productId: string, existingCycleId?: stri
         allReports.push({ report, variantId: programEntry.variantId, variantName: programEntry.variantName });
         totalTokens += usage.totalTokens;
         lastModel = responseModel;
+        const pricing = estimateModelCostUsd({
+          model: responseModel,
+          tokensInput: usage.promptTokens,
+          tokensOutput: usage.completionTokens,
+        });
 
         recordCostEvent({
           product_id: productId,
           workspace_id: product.workspace_id,
           cycle_id: cycleId,
           event_type: 'research_cycle',
-          model: responseModel,
+          provider: pricing.provider,
+          model: pricing.normalizedModel || responseModel,
           tokens_input: usage.promptTokens,
           tokens_output: usage.completionTokens,
-          cost_usd: 0,
+          cost_usd: pricing.costUsd,
+          metadata: JSON.stringify({
+            pricing_status: pricing.pricingStatus,
+            input_rate_per_million: pricing.inputRatePerMillion ?? null,
+            output_rate_per_million: pricing.outputRatePerMillion ?? null,
+          }),
         });
       }
 

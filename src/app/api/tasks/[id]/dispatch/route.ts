@@ -12,6 +12,8 @@ import { buildCheckpointContext } from '@/lib/checkpoint';
 import { formatMailForDispatch } from '@/lib/mailbox';
 import { getPendingNotesForDispatch } from '@/lib/task-notes';
 import { createTaskWorkspace, determineIsolationStrategy } from '@/lib/workspace-isolation';
+import { evaluateProductCostGuards } from '@/lib/costs/caps';
+import { buildAgentSessionKey } from '@/lib/openclaw/routing';
 import type { Task, Agent, Product, OpenClawSession, WorkflowStage, TaskImage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -161,21 +163,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Cost cap warning check
+    // Cost cap enforcement and warning check
     let costCapWarning: string | undefined;
     if (task.product_id) {
       const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [task.product_id]);
-      if (product?.cost_cap_monthly) {
-        const monthStart = new Date();
-        monthStart.setDate(1);
-        monthStart.setHours(0, 0, 0, 0);
-        const monthlySpend = queryOne<{ total: number }>(
-          `SELECT COALESCE(SUM(cost_usd), 0) as total FROM cost_events
-           WHERE product_id = ? AND created_at >= ?`,
-          [task.product_id, monthStart.toISOString()]
-        );
-        if (monthlySpend && monthlySpend.total >= product.cost_cap_monthly) {
-          costCapWarning = `Monthly cost cap reached: $${monthlySpend.total.toFixed(2)}/$${product.cost_cap_monthly.toFixed(2)}`;
+      if (product) {
+        const capStatus = evaluateProductCostGuards(product, task.estimated_cost_usd || undefined);
+        if (!capStatus.ok) {
+          return NextResponse.json(
+            {
+              error: 'Dispatch blocked by cost caps',
+              details: capStatus.exceeded,
+              warnings: capStatus.warnings,
+            },
+            { status: 402 }
+          );
+        }
+        if (capStatus.warnings.length > 0) {
+          costCapWarning = capStatus.warnings.join(' | ');
           console.warn(`[Dispatch] ${costCapWarning} for product ${product.name}`);
         }
       }
@@ -272,10 +277,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Inject matched product skills (proven procedures from previous tasks)
     let skillsSection = '';
+    let matchedSkillIds: string[] = [];
     if (task.product_id) {
       try {
         const { getMatchedSkills, formatSkillsForDispatch } = await import('@/lib/skills');
-        const skills = getMatchedSkills(task.product_id, task.title, task.description || '', agent.name);
+        const skills = getMatchedSkills(task.product_id, task.title, task.description || '', agent.role);
+        matchedSkillIds = skills.map((skill: { id: string }) => skill.id);
         skillsSection = formatSkillsForDispatch(skills);
       } catch {
         // Skills injection is best-effort
@@ -435,10 +442,7 @@ If you need help or clarification, ask the orchestrator.`;
 
     // Send message to agent's session using chat.send
     try {
-      // Use sessionKey for routing to the agent's session
-      // Format: {prefix}{openclaw_session_id} where prefix defaults to 'agent:main:'
-      const prefix = agent.session_key_prefix || 'agent:main:';
-      const sessionKey = `${prefix}${session.openclaw_session_id}`;
+      const sessionKey = buildAgentSessionKey(agent, session.openclaw_session_id, { context: 'dispatch' });
       await client.call('chat.send', {
         sessionKey,
         message: finalMessage,
@@ -484,6 +488,20 @@ If you need help or clarification, ask the orchestrator.`;
          VALUES (?, ?, ?, ?, ?, ?)`,
         [activityId, task.id, agent.id, 'status_changed', `Task dispatched to ${agent.name} - Agent is now working on this task`, now]
       );
+
+      if (matchedSkillIds.length > 0) {
+        try {
+          const { recordSkillDispatch } = await import('@/lib/skills');
+          recordSkillDispatch({
+            taskId: task.id,
+            agentId: agent.id,
+            agentRole: agent.role,
+            skillIds: matchedSkillIds,
+          });
+        } catch (skillErr) {
+          console.warn('[Dispatch] Failed to record injected skill context:', skillErr);
+        }
+      }
 
       return NextResponse.json({
         success: true,

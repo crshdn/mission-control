@@ -1,5 +1,7 @@
 # Mission Control Integration Fixes
 
+> Historical note only. This document captures an earlier repair pass and should not be used as the current verification source. Use [VERIFICATION_CHECKLIST.md](/Users/jordan/.openclaw/workspace/mission-control/VERIFICATION_CHECKLIST.md) and [POST_REBUILD_VERIFICATION_REPORT_2026-03-24.md](/Users/jordan/.openclaw/workspace/mission-control/docs/POST_REBUILD_VERIFICATION_REPORT_2026-03-24.md) for the rebuilt local contract.
+
 **Date:** January 31, 2025  
 **Status:** ✅ COMPLETE
 

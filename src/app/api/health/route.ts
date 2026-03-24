@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 /**
  * GET /api/health
  *
- * Unauthenticated: returns summary {status, uptime_seconds, version}
+ * Unauthenticated: returns {status, uptime_seconds} only.
  * Authenticated (Bearer MC_API_TOKEN) or same-origin: returns full detail payload.
  */
 export async function GET(request: NextRequest) {
@@ -18,8 +18,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(detail);
     }
 
-    const summary = getHealthSummary();
-    return NextResponse.json(summary);
+    // Strip version from unauthenticated response to avoid info leakage
+    const { status, uptime_seconds } = getHealthSummary();
+    return NextResponse.json({ status, uptime_seconds });
   } catch (error) {
     return NextResponse.json(
       { error: 'Health check failed', message: error instanceof Error ? error.message : String(error) },

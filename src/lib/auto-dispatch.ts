@@ -6,6 +6,7 @@ interface AutoDispatchOptions {
   agentId: string | null;
   agentName: string;
   workspaceId?: string;
+  baseUrl?: string;
 }
 
 /**
@@ -13,15 +14,22 @@ interface AutoDispatchOptions {
  * Used in MissionQueue and TaskModal to eliminate duplication
  */
 export async function triggerAutoDispatch(options: AutoDispatchOptions): Promise<{ success: boolean; error?: string }> {
-  const { taskId, taskTitle, agentId, agentName, workspaceId } = options;
+  const { taskId, taskTitle, agentId, agentName, workspaceId, baseUrl } = options;
 
   if (!agentId) {
     return { success: false, error: 'No agent ID provided for dispatch' };
   }
 
   try {
-    const dispatchRes = await fetch(`/api/tasks/${taskId}/dispatch`, {
+    const dispatchUrl = baseUrl
+      ? new URL(`/api/tasks/${taskId}/dispatch`, baseUrl).toString()
+      : `/api/tasks/${taskId}/dispatch`;
+
+    const dispatchRes = await fetch(dispatchUrl, {
       method: 'POST',
+      headers: process.env.MC_API_TOKEN
+        ? { Authorization: `Bearer ${process.env.MC_API_TOKEN}` }
+        : undefined,
     });
 
     if (dispatchRes.ok) {

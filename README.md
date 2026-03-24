@@ -1,13 +1,13 @@
 <h1 align="center">Autensa</h1>
 
 <p align="center">
-  <em>The World's First Autonomous Product Engine</em><br>
+  <em>Multi-Agent Product Engine</em><br>
   <a href="https://autensa.com">autensa.com</a>
 </p>
 
 <p align="center">
-  <strong>Your products improve themselves — 24/7 — while you sleep.</strong><br>
-  Research → Ideation → Swipe → Build → Test → Review → Pull Request — fully automated.
+  <strong>Verified behavior is tracked in <a href="VERIFICATION_CHECKLIST.md">VERIFICATION_CHECKLIST.md</a>.</strong><br>
+  v2.4.0 includes secure-mode validation, repo-backed PR creation, skill extraction &amp; reuse, convoy dispatch, scheduling, and webhook-driven rollback monitoring.
 </p>
 
 <p align="center">
@@ -53,32 +53,13 @@ I highly recommend getting Hetzner VPS to run this. <a href="https://hetzner.clo
 <details>
 <summary>v2.3.x — Idea Dedup, Chat, Undo, A/B Testing, Rollback</summary>
 
-- Idea similarity detection & auto-deduplication
-- Floating operator chat widget with @mentions
-- 10-second swipe undo + batch review mode
-- Product program A/B testing
-- Automated rollback pipeline via GitHub webhooks
+- **Idea similarity detection** — New ideas compared against existing ones. >90% similar to rejected ideas are auto-suppressed. Warning badges on similar ideas. Full audit trail.
+- **Operator chat widget** — Floating chat with threaded conversations per task. `@agent` mentions, command palette (`/status`, `/nudge`, `/checkpoint`), and unread badges.
+- **Swipe undo** — 10-second full rollback of any swipe including task deletion. Batch review mode for table-view multi-select.
+- **A/B testing** — Run concurrent or alternating tests on product program variants. Statistical comparison of approval rates. *Note: CRUD exists but variant split routing is not yet enforced at dispatch.*
+- **Automated rollback** — GitHub webhook monitors merged PRs. Post-merge health checks. Auto-creates revert PRs when failures detected.
+- **Activity dashboard picker** — `/activity` lists all workspaces.
 </details>
-
-### Idea Similarity Detection
-- **Auto-deduplication** — New ideas are compared against existing ones. Ideas >90% similar to rejected ideas are auto-suppressed. Similar ideas get a warning badge. Full audit trail.
-
-### Operator Chat Widget
-- **Chat from anywhere** — Floating chat widget with threaded conversations per task. `@agent` mentions, command palette (`/status`, `/nudge`, `/checkpoint`), and unread badges.
-
-### Swipe Undo & Batch Review
-- **10-second undo** — Full rollback of any swipe including task deletion. Batch review mode for table-view multi-select actions.
-
-### Product Program A/B Testing
-- **Test your product program** — Run concurrent or alternating A/B tests on product program variants. Research and ideation run against each variant. Statistical comparison of approval rates.
-
-### Automated Rollback Pipeline
-- **Auto-revert failed deploys** — GitHub webhook monitors merged PRs. Post-merge health checks. Auto-creates revert PRs when failures detected.
-
-### Activity Dashboard Picker
-- **Workspace selector** — `/activity` lists all workspaces instead of hardcoding to one.
-
-### Previous Releases
 
 <details>
 <summary>v2.2.1 — Health Check & Backup API</summary>
@@ -125,11 +106,7 @@ I highly recommend getting Hetzner VPS to run this. <a href="https://hetzner.clo
 
 ### v2.0 Highlights
 
-Autensa v2 is a ground-up expansion from task orchestration dashboard to **the world's first autonomous product improvement engine**. It researches your market, generates feature ideas, lets you decide with a swipe, and builds them — automatically.
-
 ### 🔬 Product Autopilot — The Full Pipeline
-
-The headline feature. Point Autensa at any product (repo + live URL) and it runs a continuous improvement loop:
 
 1. **Autonomous Research** — AI agents analyze your codebase, scan your live site, and research your market: competitors, user intent, conversion patterns, SEO gaps, technical opportunities. Runs on configurable schedules — daily, weekly, or on-demand.
 
@@ -143,7 +120,6 @@ The headline feature. Point Autensa at any product (repo + live URL) and it runs
 
 4. **Automated Build → PR** — Approved ideas flow through the full agent pipeline: Build agent implements the feature → Test agent runs the suite → Review agent inspects the diff → Pull request created on GitHub with full context.
 
-**Your only job is the swipe.** Everything else is automated.
 
 ### 📄 Product Program (Karpathy AutoResearch Pattern)
 
@@ -157,7 +133,7 @@ Large features get decomposed into subtasks with a visual dependency graph (DAG)
 - **Dependency graph visualization** — See what depends on what
 - **Health monitoring** — Detects stalled, stuck, or zombie agents automatically
 - **Auto-nudge** — Reassigns or restarts agents that go dark
-- **Crash recovery** — Checkpoints save agent progress; work resumes from last checkpoint, not from scratch
+- **Crash recovery** — Checkpoints save agent progress; manual restore via API if a session crashes
 
 ### 💬 Operator Chat — Talk to Agents Mid-Build
 
@@ -194,8 +170,7 @@ Before any build starts, agents run a structured planning phase:
 
 Agent progress is saved at configurable checkpoints:
 
-- If a session crashes, work resumes from the last checkpoint — not from scratch
-- Checkpoint restore API for manual recovery
+- If a session crashes, work can be resumed from the last checkpoint via the restore API
 - Checkpoint history visible per task
 
 ### 🎯 Preference Learning
@@ -231,9 +206,9 @@ Choose your comfort level per product:
 
 | Tier | Behavior | Best For |
 |:-----|:---------|:---------|
-| **Supervised** | PRs created automatically. You review and merge manually. | Production apps |
-| **Semi-Auto** | PRs auto-merge when CI passes and review agent approves. | Staging & trusted repos |
-| **Full Auto** | Everything automated end-to-end. Idea → deployed feature. | Side projects & MVPs |
+| **Supervised** | Merged-PR webhook does not start a monitor and does not auto-rollback. | Highest-control products |
+| **Semi-Auto** | Merged-PR webhook starts monitoring; failing health/CI triggers rollback and tier pause to `supervised`. | Trusted repos with rollback guardrails |
+| **Full Auto** | Currently behaves the same as Semi-Auto. No additional unattended behavior is implemented yet. | Reserved for future differentiation |
 
 ### 🔀 Workspace Isolation
 
@@ -257,6 +232,8 @@ Configure autonomous cycles per product:
 ---
 
 ## ✨ Features
+
+See [VERIFICATION_CHECKLIST.md](VERIFICATION_CHECKLIST.md) for current verification status of each feature.
 
 **Product Autopilot**
 - 🔬 Autonomous market research (competitors, SEO, user intent, technical gaps)

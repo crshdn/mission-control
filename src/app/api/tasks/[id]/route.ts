@@ -6,6 +6,7 @@ import { getMissionControlUrl } from '@/lib/config';
 import { handleStageTransition, handleStageFailure, getTaskWorkflow, drainQueue, populateTaskRolesFromAgents } from '@/lib/workflow-engine';
 import { hasStageEvidence, canUseBoardOverride, auditBoardOverride, taskCanBeDone, recordLearnerOnTransition } from '@/lib/task-governance';
 import { updateConvoyProgress, checkConvoyCompletion } from '@/lib/convoy';
+import { dispatchReadyConvoySubtasks } from '@/lib/convoy-dispatch';
 import { syncGatewayAgentsToCatalog } from '@/lib/agent-catalog-sync';
 import { triggerWorkspaceMerge } from '@/lib/workspace-isolation';
 import { UpdateTaskSchema } from '@/lib/validation';
@@ -438,7 +439,13 @@ export async function PATCH(
       try {
         updateConvoyProgress(existing.convoy_id);
         if (nextStatus === 'done') {
-          checkConvoyCompletion(existing.convoy_id);
+          const convoyDone = checkConvoyCompletion(existing.convoy_id);
+          // If convoy is still active, dispatch any newly-unblocked subtasks
+          if (!convoyDone) {
+            dispatchReadyConvoySubtasks(existing.convoy_id).catch(err =>
+              console.error('[Convoy] auto-dispatch failed:', err)
+            );
+          }
         }
       } catch (err) {
         console.error('[Convoy] progress update failed:', err);
@@ -447,6 +454,18 @@ export async function PATCH(
 
     // Extract skills from completed task (non-blocking, async)
     if (nextStatus === 'done' && existing.product_id) {
+      import('@/lib/skills').then(({ reportPendingSkillUsageForTask }) => {
+        const reported = reportPendingSkillUsageForTask({
+          taskId: id,
+          succeeded: true,
+        });
+        if (reported > 0) {
+          console.log(`[Skills] Reported ${reported} successful skill usage(s) for task ${id}`);
+        }
+      }).catch(err =>
+        console.error('[Skills] usage reporting failed:', err)
+      );
+
       import('@/lib/skill-extraction').then(({ extractSkillsFromTask }) =>
         extractSkillsFromTask(id).catch(err =>
           console.error('[Skills] extraction failed:', err)

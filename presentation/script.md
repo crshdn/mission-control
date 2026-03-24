@@ -8,9 +8,9 @@
 
 ## Slide 1 — Title
 
-This is Autensa v2 — the autonomous product engine.
+This is Autensa v2 — the multi-agent product engine.
 
-It watches your products, researches your market, generates feature ideas, and builds them — automatically — while you sleep.
+It watches your products, researches your market, generates feature ideas, and routes validated work through a verified trust gate.
 
 ---
 
@@ -28,7 +28,7 @@ Seventy-two percent of feature ideas never get built. The average time from idea
 
 Before Autensa, you were doing all of this manually. Researching competitors every week. Brainstorming in docs that get forgotten. Prioritizing in spreadsheets. Writing specs from scratch. Assigning work to developers and waiting. Reviewing pull requests by hand. Deploying and hoping for the best.
 
-With Autensa v2, AI researches your market automatically. It generates ranked, scored feature ideas. You swipe Yes or No in seconds. Specs get written from the research. Build agents implement the feature immediately. Review agents verify quality and run tests. And a pull request shows up on GitHub — ready to merge.
+With Autensa v2, AI researches your market, generates ranked feature ideas, and helps turn approved work into validated pull requests. You swipe Yes or No in seconds. Specs get written from the research. Build agents implement the feature. Review agents verify quality and run tests. And a pull request shows up on GitHub — ready for supervised review.
 
 ---
 
@@ -36,7 +36,7 @@ With Autensa v2, AI researches your market automatically. It generates ranked, s
 
 Here's the full pipeline: Research, Ideation, Swipe, Build, Test, Review, Pull Request.
 
-Seven steps, end to end, from idea to shipped code. And only one of those steps is manual — the swipe. That's where you decide what gets built. Everything else runs on autopilot.
+Seven steps, end to end, from idea to validated code. The current local branch still uses explicit trust gates to separate proven automation from broader product scope.
 
 ---
 
@@ -158,7 +158,7 @@ And you steer the program, not every individual action. Your swipe decisions bec
 
 Autensa is built for builders.
 
-If you're a solo developer who can't research and build and ship at the same time — Autensa handles the research and ideation loop. You swipe, agents build, and your side project improves while you sleep.
+If you're a solo developer who can't research and build and ship at the same time — Autensa handles the research and ideation loop. You swipe, agents build, and the validated work moves through a supervised trust gate.
 
 If you're a startup founder who needs to iterate faster than competitors — ship improvements daily instead of monthly. Autensa surfaces what competitors are doing and builds your response automatically.
 

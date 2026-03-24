@@ -8,7 +8,17 @@
 import { queryOne, queryAll, run } from '@/lib/db';
 import { getMissionControlUrl } from '@/lib/config';
 import { getOpenClawClient } from '@/lib/openclaw/client';
+import { buildAgentSessionKey } from '@/lib/openclaw/routing';
+import { completeJSON } from '@/lib/autopilot/llm';
 import type { KnowledgeEntry, TaskRole, OpenClawSession } from '@/lib/types';
+
+interface SynthesizedKnowledgeEntry {
+  category: 'failure' | 'fix' | 'pattern' | 'checklist';
+  title: string;
+  content: string;
+  tags?: string[];
+  confidence?: number;
+}
 
 /**
  * Notify the Learner agent about a stage transition.
@@ -98,8 +108,16 @@ Focus on:
     }
 
     if (session) {
-      const prefix = learnerRole.session_key_prefix || 'agent:main:';
-      const sessionKey = `${prefix}${session.openclaw_session_id}`;
+      const sessionKey = buildAgentSessionKey(
+        {
+          id: learnerRole.agent_id,
+          name: learnerRole.agent_name,
+          is_master: false,
+          session_key_prefix: learnerRole.session_key_prefix,
+        },
+        session.openclaw_session_id,
+        { context: 'learner' },
+      );
       await client.call('chat.send', {
         sessionKey,
         message: learningMessage,
@@ -110,6 +128,119 @@ Focus on:
   } catch (err) {
     // Learner notification is best-effort — don't fail the transition
     console.error('[Learner] Failed to notify learner:', (err as Error).message);
+  }
+
+  synthesizeKnowledgeEntry(taskId, task.workspace_id, learnerRole.agent_id, task.title, event).catch(err => {
+    console.error('[Learner] Failed to synthesize knowledge entry:', (err as Error).message);
+  });
+}
+
+async function synthesizeKnowledgeEntry(
+  taskId: string,
+  workspaceId: string,
+  learnerAgentId: string,
+  taskTitle: string,
+  event: {
+    previousStatus: string;
+    newStatus: string;
+    passed: boolean;
+    failReason?: string;
+    context?: string;
+  }
+): Promise<void> {
+  const activities = queryAll<{ activity_type: string; message: string }>(
+    `SELECT activity_type, message
+     FROM task_activities
+     WHERE task_id = ?
+     ORDER BY created_at DESC
+     LIMIT 12`,
+    [taskId]
+  );
+
+  const deliverables = queryAll<{ deliverable_type: string; title: string; description: string | null }>(
+    `SELECT deliverable_type, title, description
+     FROM task_deliverables
+     WHERE task_id = ?
+     ORDER BY created_at DESC
+     LIMIT 8`,
+    [taskId]
+  );
+
+  const activitySummary = activities.map((entry) => `[${entry.activity_type}] ${entry.message}`).join('\n');
+  const deliverableSummary = deliverables
+    .map((entry) => `${entry.deliverable_type}: ${entry.title}${entry.description ? ` — ${entry.description}` : ''}`)
+    .join('\n');
+
+  const prompt = `You are the Learner for Mission Control.
+
+Task: ${taskTitle}
+Task ID: ${taskId}
+Transition: ${event.previousStatus} -> ${event.newStatus}
+Result: ${event.passed ? 'passed' : 'failed'}
+Failure reason: ${event.failReason || 'n/a'}
+Extra context: ${event.context || 'n/a'}
+
+Recent activities:
+${activitySummary || 'No activity notes recorded'}
+
+Recent deliverables:
+${deliverableSummary || 'No deliverables recorded'}
+
+Return a JSON array with 0 or 1 durable knowledge entries for future agents.
+Only create an entry if there is a concrete reusable lesson.
+Prefer failure/fix/checklist entries on failures and pattern/checklist entries on successful transitions.
+Each item must use:
+{
+  "category": "failure" | "fix" | "pattern" | "checklist",
+  "title": "Short lesson title",
+  "content": "Concrete lesson with enough detail for a future agent",
+  "tags": ["short", "tags"],
+  "confidence": 0.0 to 1.0
+}
+
+Return JSON only.`;
+
+  const { data } = await completeJSON<SynthesizedKnowledgeEntry[]>(prompt, {
+    systemPrompt: 'You extract concise, reusable operational knowledge from task transitions. Return JSON only.',
+    timeoutMs: 60_000,
+  });
+
+  const entries = Array.isArray(data) ? data.slice(0, 1) : [];
+  for (const entry of entries) {
+    if (!entry?.category || !entry?.title || !entry?.content) {
+      continue;
+    }
+
+    const duplicate = queryOne<{ id: string }>(
+      `SELECT id
+       FROM knowledge_entries
+       WHERE workspace_id = ?
+         AND task_id = ?
+         AND title = ?
+       LIMIT 1`,
+      [workspaceId, taskId, entry.title]
+    );
+    if (duplicate) {
+      continue;
+    }
+
+    run(
+      `INSERT INTO knowledge_entries (id, workspace_id, task_id, category, title, content, tags, confidence, created_by_agent_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+      [
+        crypto.randomUUID(),
+        workspaceId,
+        taskId,
+        entry.category,
+        entry.title,
+        entry.content,
+        entry.tags ? JSON.stringify(entry.tags) : null,
+        entry.confidence ?? (event.passed ? 0.65 : 0.8),
+        learnerAgentId,
+      ]
+    );
+
+    console.log(`[Learner] Stored synthesized knowledge entry for task ${taskId}: ${entry.title}`);
   }
 }
 

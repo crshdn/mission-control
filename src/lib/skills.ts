@@ -4,6 +4,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { createHash } from 'crypto';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 
@@ -52,6 +53,16 @@ export interface SkillReport {
   created_at: string;
 }
 
+interface SkillDispatchMetadata {
+  skill_ids: string[];
+  agent_id?: string;
+  agent_role?: string | null;
+  reported?: boolean;
+  reported_at?: string;
+  reported_succeeded?: boolean;
+  deviation?: string;
+}
+
 // --- Confidence ---
 
 // Bayesian confidence: uses a prior of 0.5 with weight of 2 "virtual" observations.
@@ -83,7 +94,7 @@ export function createSkill(input: {
 
   run(
     `INSERT INTO product_skills (id, product_id, skill_type, title, trigger_keywords, prerequisites, steps, verification, confidence, created_by_task_id, created_by_agent_id, status, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0.5, ?, ?, 'draft', ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0.5, ?, ?, 'active', ?, ?)`,
     [
       id, input.productId, input.skillType, input.title,
       input.triggerKeywords ? JSON.stringify(input.triggerKeywords) : null,
@@ -328,4 +339,145 @@ export function reportSkillUsage(input: {
   }
 
   return queryOne<ProductSkill>('SELECT * FROM product_skills WHERE id = ?', [input.skillId]);
+}
+
+export function recordSkillDispatch(input: {
+  taskId: string;
+  agentId?: string;
+  agentRole?: string | null;
+  skillIds: string[];
+}): void {
+  const uniqueSkillIds = Array.from(new Set(input.skillIds.filter(Boolean)));
+  if (uniqueSkillIds.length === 0) return;
+
+  const metadata: SkillDispatchMetadata = {
+    skill_ids: uniqueSkillIds,
+    agent_id: input.agentId,
+    agent_role: input.agentRole ?? null,
+    reported: false,
+  };
+  const dispatchId = `skillctx-${createHash('sha256')
+    .update(`${input.taskId}:${input.agentId || 'none'}:${uniqueSkillIds.slice().sort().join(',')}`)
+    .digest('hex')
+    .slice(0, 24)}`;
+
+  const existingActivities = queryAll<{
+    id: string;
+    metadata: string | null;
+  }>(
+    `SELECT id, metadata
+     FROM task_activities
+     WHERE task_id = ? AND activity_type = 'skill_context'
+     ORDER BY created_at ASC`,
+    [input.taskId]
+  );
+
+  for (const activity of existingActivities) {
+    try {
+      const existing = activity.metadata ? JSON.parse(activity.metadata) as SkillDispatchMetadata : null;
+      const existingIds = Array.from(new Set((existing?.skill_ids || []).filter(Boolean))).sort();
+      const incomingIds = [...uniqueSkillIds].sort();
+      const sameSkillSet =
+        existingIds.length === incomingIds.length &&
+        existingIds.every((skillId, index) => skillId === incomingIds[index]);
+
+      if (sameSkillSet && (existing?.agent_id || null) === (input.agentId || null)) {
+        return;
+      }
+    } catch {
+      // Ignore malformed metadata and continue with insert.
+    }
+  }
+
+  run(
+    `INSERT OR IGNORE INTO task_activities (id, task_id, agent_id, activity_type, message, metadata, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      dispatchId,
+      input.taskId,
+      input.agentId || null,
+      'skill_context',
+      `Injected ${uniqueSkillIds.length} reusable skill(s) into dispatch context`,
+      JSON.stringify(metadata),
+      new Date().toISOString(),
+    ]
+  );
+}
+
+export function reportPendingSkillUsageForTask(input: {
+  taskId: string;
+  succeeded: boolean;
+  deviation?: string;
+}): number {
+  const activities = queryAll<{
+    id: string;
+    metadata: string | null;
+  }>(
+    `SELECT id, metadata
+     FROM task_activities
+     WHERE task_id = ? AND activity_type = 'skill_context'
+     ORDER BY created_at ASC`,
+    [input.taskId]
+  );
+
+  let reportsCreated = 0;
+  const reportedSkillIds = new Set<string>();
+
+  for (const activity of activities) {
+    let metadata: SkillDispatchMetadata | null = null;
+    try {
+      metadata = activity.metadata ? JSON.parse(activity.metadata) as SkillDispatchMetadata : null;
+    } catch {
+      metadata = null;
+    }
+
+    if (!metadata?.skill_ids?.length || metadata.reported) {
+      continue;
+    }
+
+    for (const skillId of metadata.skill_ids) {
+      if (reportedSkillIds.has(skillId)) {
+        continue;
+      }
+
+      const existingReport = queryOne<{ skill_id: string }>(
+        `SELECT skill_id
+         FROM skill_reports
+         WHERE task_id = ? AND skill_id = ?
+         LIMIT 1`,
+        [input.taskId, skillId]
+      );
+      if (existingReport) {
+        reportedSkillIds.add(skillId);
+        continue;
+      }
+
+      const reported = reportSkillUsage({
+        skillId,
+        taskId: input.taskId,
+        used: true,
+        succeeded: input.succeeded,
+        deviation: input.deviation,
+      });
+      if (reported) {
+        reportsCreated += 1;
+        reportedSkillIds.add(skillId);
+      }
+    }
+
+    const updatedMetadata: SkillDispatchMetadata = {
+      ...metadata,
+      reported: true,
+      reported_at: new Date().toISOString(),
+      reported_succeeded: input.succeeded,
+      deviation: input.deviation,
+    };
+
+    run(
+      'UPDATE task_activities SET metadata = ? WHERE id = ?',
+      [JSON.stringify(updatedMetadata), activity.id]
+    );
+  }
+
+  return reportsCreated;
 }

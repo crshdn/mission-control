@@ -11,6 +11,11 @@ export const dynamic = 'force-dynamic';
 // Can be overridden per-agent via the session_key_prefix column on agents table
 const DEFAULT_SESSION_KEY_PREFIX = 'agent:main:';
 
+interface PlanningRunAccepted {
+  runId?: string;
+  status?: string;
+}
+
 // GET /api/tasks/[id]/planning - Get planning state
 export async function GET(
   request: NextRequest,
@@ -147,14 +152,16 @@ export async function POST(
 Task Title: ${task.title}
 Task Description: ${task.description || 'No description provided'}
 
-You are starting a planning session for this task. Read PLANNING.md for your protocol.
+You are the planning orchestrator for this task.
 
-Generate your FIRST question to understand what the user needs. Remember:
-- Questions must be multiple choice
-- Include an "Other" option
-- Be specific to THIS task, not generic
+Rules:
+- Stay specific to THIS task.
+- Ask at most 3 multiple-choice questions before completing.
+- If you already have enough information, skip questions and complete immediately.
+- Every response must be valid JSON only. No markdown fences. No commentary outside JSON.
+- For question responses, always include an "other" option.
 
-Respond with ONLY valid JSON in this format:
+If you need more information, respond with:
 {
   "question": "Your question here?",
   "options": [
@@ -163,6 +170,31 @@ Respond with ONLY valid JSON in this format:
     {"id": "C", "label": "Third option"},
     {"id": "other", "label": "Other"}
   ]
+}
+
+If you have enough information, respond with:
+{
+  "status": "complete",
+  "spec": {
+    "title": "Task title",
+    "summary": "What needs to be built",
+    "deliverables": ["Concrete output 1"],
+    "success_criteria": ["How we know it is done"],
+    "constraints": {"key": "value"}
+  },
+  "agents": [
+    {
+      "name": "Builder",
+      "role": "builder",
+      "avatar_emoji": "🛠️",
+      "soul_md": "Short identity or operating style",
+      "instructions": "Specific execution guidance"
+    }
+  ],
+  "execution_plan": {
+    "approach": "High-level execution approach",
+    "steps": ["Step 1", "Step 2"]
+  }
 }`;
 
     // Connect to OpenClaw and send the planning request
@@ -171,10 +203,13 @@ Respond with ONLY valid JSON in this format:
       await client.connect();
     }
 
-    // Send planning request to the planning session
-    await client.call('chat.send', {
+    // Start a routed agent turn for planning. This is more reliable than chat.send
+    // on fresh sessions because it explicitly asks Gateway to run the agent.
+    await client.call<PlanningRunAccepted>('agent', {
       sessionKey: sessionKey,
       message: planningPrompt,
+      deliver: false,
+      lane: 'task',
       idempotencyKey: `planning-start-${taskId}-${Date.now()}`,
     });
 

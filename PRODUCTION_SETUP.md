@@ -13,6 +13,54 @@ This guide walks you through setting up Mission Control for production use with 
 
 All sensitive values go in `.env.local` (which is gitignored).
 
+## 🔒 Security & Authorization Model
+
+### Single-Operator Model
+
+Mission Control uses a **single bearer token** (`MC_API_TOKEN`) for all API authentication.
+This token grants access to **all workspaces and tasks** — there is no per-workspace authorization.
+
+- `workspace_id` on tasks is a **filter**, not a security boundary.
+- Any valid token + any task ID = full access.
+- This is by design for single-operator / small-team deployments.
+
+**If you need multi-tenant workspace isolation**, implement per-workspace token scoping before exposing this to untrusted users.
+
+### Webhook Security
+
+Both webhook endpoints (`/api/webhooks/agent-completion` and `/api/webhooks/github`) validate HMAC signatures **only when their respective secrets are configured**:
+
+| Variable | Webhook | Behavior when unset |
+|----------|---------|---------------------|
+| `WEBHOOK_SECRET` | Agent completion | Unsigned requests accepted |
+| `GITHUB_WEBHOOK_SECRET` | GitHub events | Unsigned requests accepted |
+
+**For production**, always set these secrets:
+```bash
+# .env.local
+WEBHOOK_SECRET=$(openssl rand -hex 32)
+GITHUB_WEBHOOK_SECRET=$(openssl rand -hex 32)
+```
+
+Without these, anyone who can reach the endpoint can forge webhook events (trigger rollbacks, mark tasks done, etc.).
+
+### Health Endpoint
+
+`GET /api/health` bypasses token auth. Unauthenticated requests receive only `{status, uptime_seconds, version}`. Detailed diagnostics (DB integrity, agent counts, cost caps) require a valid bearer token or same-origin request.
+
+## 🚧 Known Feature Gaps
+
+### full_auto vs semi_auto
+
+The `full_auto` automation tier is currently **functionally identical** to `semi_auto`.
+Both tiers run the same webhook handler logic (post-merge health monitoring, CI-failure rollback).
+The upstream intent for full_auto (fully autonomous idea → deployed feature) is not yet implemented.
+
+### A/B Test Variant Routing
+
+A/B test CRUD and metrics comparison are implemented. However, the `split_mode` (concurrent vs alternating)
+is **not enforced during research/ideation execution** — ideas are not routed to variant A vs B based on the split configuration. A/B tests currently serve as a manual comparison framework.
+
 ## 📦 Initial Setup
 
 ### 1. Clone the Repository
@@ -197,11 +245,16 @@ OPENCLAW_GATEWAY_TOKEN=your-production-token
 ### Database Backups
 
 ```bash
-# Backup database
-cp mission-control.db mission-control.backup.$(date +%Y%m%d).db
+# Create an on-demand backup through the live API
+curl -X POST http://127.0.0.1:4000/api/admin/backups
 
-# Restore from backup
-cp mission-control.backup.20250131.db mission-control.db
+# List available backups
+curl http://127.0.0.1:4000/api/admin/backups
+
+# Restore a specific backup
+curl -X POST http://127.0.0.1:4000/api/admin/backups/restore \
+  -H 'Content-Type: application/json' \
+  -d '{"filename":"mc-backup-YYYY-MM-DDTHH-MM-SS-sss-v028.db"}'
 ```
 
 ## 🧪 Testing Your Setup
@@ -212,30 +265,30 @@ cp mission-control.backup.20250131.db mission-control.db
 # Check environment variables
 cat .env.local
 
-# Verify database
-ls -la mission-control.db
+# Verify OpenClaw auth and service health
+openclaw gateway status
 ```
 
-### 2. Test OpenClaw Connection
+### 2. Run The Current Trust Gate
 
-1. Start OpenClaw Gateway: `openclaw gateway`
-2. Open Mission Control: `http://localhost:4000`
-3. Check status indicator (top-right): Should show **ONLINE** (green)
+```bash
+npm run lint
+npm test
+npm run test:smoke
+npm run test:pr-validation
+npm run test:self-improvement
+npm run test:automation-verification
+```
 
-### 3. Test Real-Time Updates
+### 3. Verify Backup Roundtrip And Intake
 
-1. Create a task
-2. Assign it to an agent
-3. Drag to "In Progress"
-4. Watch it update in real-time (no refresh needed)
+```bash
+curl -X POST http://127.0.0.1:4000/api/admin/backups
+curl http://127.0.0.1:4000/api/admin/backups
+npm run cutline:telegram -- submit --lane build --build-mode idea --product "Mission Control" --text "..." --confirm
+```
 
-✅ **Task cards should move between columns instantly**
-
-### 4. Test Deliverables
-
-1. Open a task with deliverables
-2. Click the arrow (→) button next to a file deliverable
-3. File path should copy to clipboard
+Use [VERIFICATION_CHECKLIST.md](/Users/jordan/.openclaw/workspace/mission-control/VERIFICATION_CHECKLIST.md) as the source of truth for what must be green before trusting the local stack with real ideas.
 
 ## 🔧 Troubleshooting
 
@@ -305,14 +358,14 @@ ls -la mission-control.db
 3. ✅ Start dev server
 4. ✅ Test real-time updates
 5. ✅ Configure workspace paths
-6. 🚀 Create your first agent!
+6. ✅ Verify backups, learner loop, and automation rollback
+7. 🚀 Create your first agent!
 
 ## 📖 Further Reading
 
 - [Agent Protocol Documentation](docs/AGENT_PROTOCOL.md)
-- [Real-Time Implementation](REALTIME_IMPLEMENTATION_SUMMARY.md)
-- [the orchestrator Orchestration Guide](src/lib/orchestration.ts)
 - [Verification Checklist](VERIFICATION_CHECKLIST.md)
+- [the orchestrator Orchestration Guide](src/lib/orchestration.ts)
 
 ---
 

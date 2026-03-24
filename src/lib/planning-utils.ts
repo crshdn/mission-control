@@ -3,6 +3,63 @@ import { getOpenClawClient } from './openclaw/client';
 // Maximum input length for extractJSON to prevent ReDoS attacks
 const MAX_EXTRACT_JSON_LENGTH = 1_000_000; // 1MB
 
+function extractBalancedJsonCandidate(text: string): string | null {
+  const firstBrace = text.indexOf('{');
+  const firstBracket = text.indexOf('[');
+  const startIndex = (() => {
+    if (firstBrace === -1) return firstBracket === -1 ? -1 : firstBracket;
+    if (firstBracket === -1) return firstBrace;
+    return Math.min(firstBrace, firstBracket);
+  })();
+
+  if (startIndex === -1) return null;
+
+  const stack: string[] = [];
+  let inString = false;
+  let escapeNext = false;
+
+  for (let index = startIndex; index < text.length; index++) {
+    const char = text[index];
+
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escapeNext = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) {
+      continue;
+    }
+
+    if (char === '{' || char === '[') {
+      stack.push(char);
+      continue;
+    }
+
+    if (char === '}' || char === ']') {
+      const expected = char === '}' ? '{' : '[';
+      if (stack[stack.length - 1] !== expected) {
+        return null;
+      }
+      stack.pop();
+      if (stack.length === 0) {
+        return text.slice(startIndex, index + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
 /**
  * Extract JSON from a response that might have markdown code blocks or surrounding text.
  * Handles various formats:
@@ -17,16 +74,21 @@ export function extractJSON(text: string): object | null {
     return null;
   }
 
+  const normalizedText = text
+    .replace(/<\/?think>/gi, ' ')
+    .replace(/<\/?final>/gi, ' ')
+    .trim();
+
   // First, try direct parse
   try {
-    return JSON.parse(text.trim());
+    return JSON.parse(normalizedText);
   } catch {
     // Continue to other methods
   }
 
   // Try to extract from markdown code block (```json ... ``` or ``` ... ```)
   // Use greedy match first (handles nested backticks), then lazy as fallback
-  const codeBlockGreedy = text.match(/```(?:json)?\s*([\s\S]*)```/);
+  const codeBlockGreedy = normalizedText.match(/```(?:json)?\s*([\s\S]*)```/);
   if (codeBlockGreedy) {
     try {
       return JSON.parse(codeBlockGreedy[1].trim());
@@ -34,7 +96,7 @@ export function extractJSON(text: string): object | null {
       // Continue
     }
   }
-  const codeBlockLazy = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const codeBlockLazy = normalizedText.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (codeBlockLazy) {
     try {
       return JSON.parse(codeBlockLazy[1].trim());
@@ -43,7 +105,7 @@ export function extractJSON(text: string): object | null {
     }
   }
   // Handle unclosed code blocks (LLM generated opening ``` but no closing ```)
-  const unclosedBlock = text.match(/```(?:json)?\s*(\{[\s\S]*)/);
+  const unclosedBlock = normalizedText.match(/```(?:json)?\s*(\{[\s\S]*)/);
   if (unclosedBlock) {
     const jsonCandidate = unclosedBlock[1].trim();
     try {
@@ -62,11 +124,20 @@ export function extractJSON(text: string): object | null {
   }
 
   // Try to find JSON object in the text (first { to last })
-  const firstBrace = text.indexOf('{');
-  const lastBrace = text.lastIndexOf('}');
+  const firstBrace = normalizedText.indexOf('{');
+  const lastBrace = normalizedText.lastIndexOf('}');
   if (firstBrace !== -1 && lastBrace > firstBrace) {
     try {
-      return JSON.parse(text.slice(firstBrace, lastBrace + 1));
+      return JSON.parse(normalizedText.slice(firstBrace, lastBrace + 1));
+    } catch {
+      // Continue
+    }
+  }
+
+  const balancedCandidate = extractBalancedJsonCandidate(normalizedText);
+  if (balancedCandidate) {
+    try {
+      return JSON.parse(balancedCandidate);
     } catch {
       // Continue
     }
@@ -104,10 +175,12 @@ export async function getMessagesFromOpenClaw(
     for (const msg of result.messages || []) {
       if (msg.role === 'assistant') {
         const textContent = msg.content?.find((c) => c.type === 'text');
-        if (textContent?.text && textContent.text.trim().length > 0) {
+        const normalized = textContent?.text?.trim() || '';
+        const isThinkingMarker = /^<\/?think>$/i.test(normalized);
+        if (normalized.length > 0 && !isThinkingMarker) {
           messages.push({
             role: 'assistant',
-            content: textContent.text,
+            content: normalized,
           });
         }
       }

@@ -11,7 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from 'crypto';
-import { queryOne, queryAll } from '@/lib/db';
+import { queryOne, queryAll, run } from '@/lib/db';
 import {
   executeRollback,
   startPostMergeMonitor,
@@ -95,6 +95,12 @@ async function handlePullRequestMerged(payload: {
   }
 
   const task = findTaskByPrUrl(pr.html_url);
+  if (task) {
+    run(
+      'UPDATE tasks SET pr_status = ?, updated_at = ? WHERE id = ?',
+      ['merged', new Date().toISOString(), task.id]
+    );
+  }
 
   startPostMergeMonitor({
     productId: product.id,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { queryOne } from '@/lib/db';
 import { handleStageFailure, drainQueue } from '@/lib/workflow-engine';
 import { notifyLearner } from '@/lib/learner';
+import { reportPendingSkillUsageForTask } from '@/lib/skills';
 import type { Task } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -49,6 +50,19 @@ export async function POST(
       passed: false,
       failReason: reason,
     }).catch(err => console.error('[Learner] notification failed:', err));
+
+    try {
+      const reported = reportPendingSkillUsageForTask({
+        taskId,
+        succeeded: false,
+        deviation: reason,
+      });
+      if (reported > 0) {
+        console.log(`[Skills] Reported ${reported} failed skill usage(s) for task ${taskId}`);
+      }
+    } catch (err) {
+      console.error('[Skills] usage reporting failed on task failure:', err);
+    }
 
     // Trigger the fail-loopback via the workflow engine
     const result = await handleStageFailure(taskId, task.status, reason);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryAll, queryOne, run } from '@/lib/db';
+import { normalizeSessionKeyPrefix } from '@/lib/openclaw/routing';
 import type { Agent, CreateAgentRequest } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -50,17 +51,24 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body: CreateAgentRequest = await request.json();
+    const normalizedPrefix = normalizeSessionKeyPrefix(body.session_key_prefix);
 
     if (!body.name || !body.role) {
       return NextResponse.json({ error: 'Name and role are required' }, { status: 400 });
+    }
+    if (!body.is_master && !normalizedPrefix) {
+      return NextResponse.json(
+        { error: 'Trusted non-master agents require an explicit session_key_prefix' },
+        { status: 400 }
+      );
     }
 
     const id = uuidv4();
     const now = new Date().toISOString();
 
     run(
-      `INSERT INTO agents (id, name, role, description, avatar_emoji, is_master, workspace_id, soul_md, user_md, agents_md, model, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO agents (id, name, role, description, avatar_emoji, is_master, workspace_id, soul_md, user_md, agents_md, model, session_key_prefix, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         body.name,
@@ -72,7 +80,8 @@ export async function POST(request: NextRequest) {
         body.soul_md || null,
         body.user_md || null,
         body.agents_md || null,
-        body.model || null,
+        null,
+        normalizedPrefix,
         now,
         now,
       ]

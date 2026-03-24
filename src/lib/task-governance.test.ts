@@ -8,7 +8,16 @@ import {
   getFailureCountInStage,
 } from './task-governance';
 
+function seedWorkspace(id: string) {
+  run(
+    `INSERT OR IGNORE INTO workspaces (id, name, slug, created_at, updated_at)
+     VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
+    [id, `Workspace ${id}`, `workspace-${id}`]
+  );
+}
+
 function seedTask(id: string, workspace = 'default') {
+  seedWorkspace(workspace);
   run(
     `INSERT INTO tasks (id, title, status, priority, workspace_id, business_id, created_at, updated_at)
      VALUES (?, 'T', 'review', 'normal', ?, 'default', datetime('now'), datetime('now'))`,
@@ -58,7 +67,10 @@ test('task cannot be done when status_reason indicates failure', () => {
 });
 
 test('ensureFixerExists creates fixer when missing', () => {
-  const fixer = ensureFixerExists('default');
+  const workspaceId = `workspace-${crypto.randomUUID()}`;
+  seedWorkspace(workspaceId);
+
+  const fixer = ensureFixerExists(workspaceId);
   assert.equal(fixer.created, true);
 
   const stored = queryOne<{ id: string; role: string }>('SELECT id, role FROM agents WHERE id = ?', [fixer.id]);

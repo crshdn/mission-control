@@ -19,6 +19,54 @@ if (isNaN(PLANNING_POLL_INTERVAL_MS) || PLANNING_POLL_INTERVAL_MS < 100) {
   throw new Error('PLANNING_POLL_INTERVAL_MS must be a valid number >= 100ms');
 }
 
+function parsePlanningPayload(content: string): {
+  status?: string;
+  question?: string;
+  options?: Array<{ id: string; label: string }>;
+  spec?: object;
+  agents?: Array<{
+    name: string;
+    role: string;
+    avatar_emoji?: string;
+    soul_md?: string;
+    instructions?: string;
+  }>;
+  execution_plan?: object;
+} | null {
+  const parsed = extractJSON(content) as {
+    status?: string;
+    question?: string;
+    options?: Array<{ id: string; label: string }>;
+    spec?: object;
+    agents?: Array<{
+      name: string;
+      role: string;
+      avatar_emoji?: string;
+      soul_md?: string;
+      instructions?: string;
+    }>;
+    execution_plan?: object;
+  } | null;
+
+  if (parsed) return parsed;
+
+  const normalized = content
+    .replace(/<\/?think>/gi, ' ')
+    .replace(/<\/?final>/gi, ' ')
+    .trim();
+  const firstBrace = normalized.indexOf('{');
+  const lastBrace = normalized.lastIndexOf('}');
+  if (firstBrace === -1 || lastBrace <= firstBrace) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(normalized.slice(firstBrace, lastBrace + 1));
+  } catch {
+    return null;
+  }
+}
+
 // Helper to handle planning completion with proper error handling
 async function handlePlanningCompletion(taskId: string, parsed: any, messages: any[]) {
   const db = getDb();
@@ -246,20 +294,7 @@ export async function GET(
           messages.push(lastMessage);
 
           // Check if this message contains completion status or a question
-          const parsed = extractJSON(msg.content) as {
-            status?: string;
-            question?: string;
-            options?: Array<{ id: string; label: string }>;
-            spec?: object;
-            agents?: Array<{
-              name: string;
-              role: string;
-              avatar_emoji?: string;
-              soul_md?: string;
-              instructions?: string;
-            }>;
-            execution_plan?: object;
-          } | null;
+          const parsed = parsePlanningPayload(msg.content);
 
           console.log('[Planning Poll] Parsed message content:', {
             hasStatus: !!parsed?.status,
@@ -322,7 +357,7 @@ export async function GET(
     // extractJSON failed or the completion handler never fired).
     const lastAssistantMsg = [...messages].reverse().find((m: any) => m.role === 'assistant');
     if (lastAssistantMsg) {
-      const parsed = extractJSON(lastAssistantMsg.content) as { status?: string; spec?: object; agents?: any[]; execution_plan?: object } | null;
+      const parsed = parsePlanningPayload(lastAssistantMsg.content);
       if (parsed && parsed.status === 'complete') {
         console.log('[Planning Poll] FALLBACK: Found unprocessed completion in stored messages — handling now');
         const { firstAgentId, parsed: fullParsed, dispatchError } = await handlePlanningCompletion(taskId, parsed, messages);

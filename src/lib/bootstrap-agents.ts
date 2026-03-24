@@ -57,6 +57,7 @@ interface AgentDef {
   role: string;
   emoji: string;
   soulMd: string;
+  sessionKeyPrefix: string;
 }
 
 const CORE_AGENTS: AgentDef[] = [
@@ -64,6 +65,7 @@ const CORE_AGENTS: AgentDef[] = [
     name: 'Builder Agent',
     role: 'builder',
     emoji: '🛠️',
+    sessionKeyPrefix: 'agent:coder:',
     soulMd: `# Builder Agent
 
 Expert builder. Follows specs exactly. Creates output in the designated project directory.
@@ -88,6 +90,7 @@ When tasks come back from failed QA (testing or verification), read the failure 
     name: 'Tester Agent',
     role: 'tester',
     emoji: '🧪',
+    sessionKeyPrefix: 'agent:worker:',
     soulMd: `# Tester Agent — Front-End QA
 
 Front-end QA specialist. Tests the app/project from the user's perspective.
@@ -114,6 +117,7 @@ Front-end QA specialist. Tests the app/project from the user's perspective.
     name: 'Reviewer Agent',
     role: 'reviewer',
     emoji: '🔍',
+    sessionKeyPrefix: 'agent:coder:',
     soulMd: `# Reviewer Agent — Code Quality Gatekeeper
 
 Reviews code structure, best practices, patterns, completeness, correctness, and security.
@@ -142,6 +146,7 @@ Be specific. "Code quality could be better" is useless. "src/utils.ts:42 — mis
     name: 'Learner Agent',
     role: 'learner',
     emoji: '📚',
+    sessionKeyPrefix: 'agent:worker:',
     soulMd: `# Learner Agent
 
 Observes all task transitions — both passes and failures. Captures lessons learned and writes them to the knowledge base.
@@ -206,8 +211,8 @@ export function bootstrapCoreAgentsRaw(
   const now = new Date().toISOString();
 
   const insert = db.prepare(`
-    INSERT INTO agents (id, name, role, description, avatar_emoji, status, is_master, workspace_id, soul_md, user_md, agents_md, source, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, 'standby', 0, ?, ?, ?, ?, 'local', ?, ?)
+    INSERT INTO agents (id, name, role, description, avatar_emoji, status, is_master, workspace_id, soul_md, user_md, agents_md, source, session_key_prefix, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, 'standby', 0, ?, ?, ?, ?, 'local', ?, ?, ?)
   `);
 
   for (const agent of CORE_AGENTS) {
@@ -222,6 +227,7 @@ export function bootstrapCoreAgentsRaw(
       agent.soulMd,
       userMd,
       SHARED_AGENTS_MD,
+      agent.sessionKeyPrefix,
       now,
       now,
     );

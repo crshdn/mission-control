@@ -29,24 +29,18 @@ It also takes a full-page screenshot as evidence.
 - ✅ **All checks pass** → moves to Review
 - ❌ **Any check fails** → kicks back to Builder with the exact errors
 
-### 4. 👀 Review
-The **Reviewer** agent examines the code itself — not just whether it runs, but whether it's *good*. It looks at:
+### 4. 👀 Review And Final Verification
+The **Reviewer** agent owns the final verified gate in the rebuilt strict workflow. It examines the code itself — not just whether it runs, but whether it's *good* and whether it fulfills the original task. It looks at:
 
 - Code quality and readability
 - Architecture decisions
 - Security concerns
-- Whether the implementation matches the original spec
+- Whether the implementation matches the original spec and actually delivers what was asked for
 
-Think of Testing as "does it work?" and Review as "is it well built?"
+Think of Testing as "does it work?" and Reviewer-owned verification as "is it well built, and is it actually the right thing?"
 
-- ✅ **Review passes** → moves to Verification
+- ✅ **Reviewer passes** → task moves to **Done** 🎉
 - ❌ **Review fails** → kicks back to Builder with feedback
-
-### 5. ✅ Verification
-The **Verifier** agent does the final check. This is the last gate before Done. It confirms the deliverable actually fulfills the original task requirements — not just that the code works or looks good, but that it **delivers what was asked for**.
-
-- ✅ **Verification passes** → task moves to **Done** 🎉
-- ❌ **Verification fails** → kicks back to Builder
 
 ---
 
@@ -65,7 +59,7 @@ Builder → Tester (pass) → Reviewer (fail: "SQL injection risk in search")
     ↑                          |
     └──────────────────────────┘  Builder fixes the SQL issue
 
-Builder → Tester (pass) → Reviewer (pass) → Verifier (pass) → Done ✅
+Builder → Tester (pass) → Reviewer (pass + final verification) → Done ✅
 ```
 
 The system tracks retry counts and uses exponential backoff (10s → 20s → 40s, up to 5 minutes). After 5 failed attempts, the task gets flagged for manual intervention so it doesn't loop forever.
@@ -84,6 +78,17 @@ The **Learner** isn't a stage — it's a hook that fires on **every stage transi
 These lessons are saved to a knowledge base. The next time the Builder starts a new task, the most relevant lessons are injected directly into its context. So if a CSS import issue caused a failure last week, the Builder knows to avoid that pattern before writing a single line.
 
 **Every failure makes every future build smarter.**
+
+## Skill Creation Loop
+
+Mission Control also extracts reusable product skills from completed tasks. This is separate from the Learner knowledge base:
+
+- the Learner stores compact lessons and patterns
+- the skill loop stores reusable procedures with steps, keywords, and verification guidance
+
+When a completed task demonstrates a repeatable workflow, Mission Control creates or updates a product skill. On later matching tasks, those skills are injected directly into the dispatch payload before work starts. After the task finishes, usage is reported back so confidence can increase or decrease over time.
+
+In the local Cutline trust gate, this loop is verified with `npm run test:self-improvement`.
 
 ---
 
@@ -104,7 +109,7 @@ The pipeline is fully customizable. You can:
 - **Assign different agents** to different roles per task
 - **Configure via WORKFLOW.md** in your workspace, or through the database
 
-The default workflow (`Builder → Tester → Reviewer → Verifier → Done`) works for most projects, but you can create templates for different types of work.
+The default strict workflow (`Builder → Tester → Reviewer → Done`) works for most projects, and the Reviewer owns final verification in the currently verified Cutline setup.
 
 ---
 
@@ -114,8 +119,7 @@ The default workflow (`Builder → Tester → Reviewer → Verifier → Done`) w
 |-------|------|-------------|---------|---------|
 | **Builder** | Build | Writes the code | → Testing | — |
 | **Tester** | Test | Automated browser checks | → Review | → Builder |
-| **Reviewer** | Review | Code quality review | → Verification | → Builder |
-| **Verifier** | Verify | Requirements check | → Done | → Builder |
+| **Reviewer** | Review / Verify | Code review and final verification in the rebuilt strict workflow | → Done | → Builder |
 | **Learner** | Learn | Captures lessons | *(always runs)* | *(always runs)* |
 
 ---
@@ -126,7 +130,7 @@ The default workflow (`Builder → Tester → Reviewer → Verifier → Done`) w
 2. The Builder builds it
 3. The Tester checks if it works
 4. The Reviewer checks if it's well-built
-5. The Verifier checks if it's what you asked for
+5. The Reviewer closes the final verified gate
 6. The Learner captures lessons at every step
 7. Any failure loops back to the Builder with specific feedback
 8. Each iteration gets smarter from previous lessons

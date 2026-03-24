@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { getOpenClawClient } from '@/lib/openclaw/client';
+import { buildAgentSessionKey } from '@/lib/openclaw/routing';
 import type { TaskNote, OpenClawSession, Agent } from '@/lib/types';
 
 /**
@@ -98,8 +99,11 @@ export async function deliverPendingNotesAtCheckpoint(taskId: string): Promise<n
 
     // Get the agent's session key prefix
     const agent = queryOne<Agent>('SELECT * FROM agents WHERE id = ?', [activeSession.agent_id]);
-    const prefix = agent?.session_key_prefix || 'agent:main:';
-    const sessionKey = `${prefix}${activeSession.openclaw_session_id}`;
+    if (!agent) {
+      console.warn(`[TaskNotes] Missing agent ${activeSession.agent_id} for task ${taskId}`);
+      return 0;
+    }
+    const sessionKey = buildAgentSessionKey(agent, activeSession.openclaw_session_id, { context: 'task-notes' });
 
     // Build the message
     const lines = notes.map(n => `- ${n.content}`);
@@ -161,8 +165,8 @@ export function getActiveSessionForTask(taskId: string): { session: OpenClawSess
   if (!session) return null;
 
   const agent = queryOne<Agent>('SELECT * FROM agents WHERE id = ?', [session.agent_id]);
-  const prefix = agent?.session_key_prefix || 'agent:main:';
-  const sessionKey = `${prefix}${session.openclaw_session_id}`;
+  if (!agent) return null;
+  const sessionKey = buildAgentSessionKey(agent, session.openclaw_session_id, { context: 'task-notes.lookup' });
 
   return { session, sessionKey };
 }
