@@ -26,7 +26,7 @@ Real ideas stay out of Mission Control until every item in `Must Pass` is green 
 
 ## Current Notes
 
-- ~~`npm run build` is not a clean trust signal yet.~~ Build passes as of 2026-03-24 after fixing TS strict-null and Set iteration issues.
+- `npm run build` is part of the clean local baseline again as of 2026-03-24.
 - The disposable PR validation path surfaced and fixed two real issues:
   - server-side retry dispatch used a relative URL
   - secure-mode retry dispatch omitted bearer auth
@@ -36,7 +36,8 @@ Real ideas stay out of Mission Control until every item in `Must Pass` is green 
 - `npm run test:automation-verification` is green: supervised skips monitors, semi-auto health failures roll back, CI failures roll back, rollback acknowledgement restores the tier, and `full_auto` currently follows the same webhook/rollback path as `semi_auto`.
 - The merged GitHub webhook now marks matching task PRs as `merged`, so CI-failure rollback has a natural task lookup path after merge.
 - The latest consolidated evidence is captured in [docs/POST_REBUILD_VERIFICATION_REPORT_2026-03-24.md](/Users/jordan/.openclaw/workspace/mission-control/docs/POST_REBUILD_VERIFICATION_REPORT_2026-03-24.md).
-- Remaining documentation should be updated against this checklist, not against older “real-time integration” or pre-`v2.4.0` assumptions.- Convoy mode dispatch loop is now wired: subtask completion auto-dispatches unblocked siblings, agent-completion webhook triggers convoy progress, and SSE heartbeat sweeps active convoys every 2 minutes.
+- Remaining documentation should be updated against this checklist, not against older “real-time integration” or pre-`v2.4.0` assumptions.
+- Convoy mode dispatch loop is now wired: subtask completion auto-dispatches unblocked siblings, agent-completion webhook triggers convoy progress, and SSE heartbeat sweeps active convoys every 2 minutes.
 - Product scheduling (`checkAndRunDueSchedules`) is now wired into the SSE heartbeat (60-second tick).
 - `full_auto` is documented as functionally identical to `semi_auto` for now. See [PRODUCTION_SETUP.md](PRODUCTION_SETUP.md).
 - Webhook signature validation uses timing-safe comparison. Secrets are still optional for dev; must be set for production. See [PRODUCTION_SETUP.md](PRODUCTION_SETUP.md).
@@ -50,8 +51,15 @@ Real ideas stay out of Mission Control until every item in `Must Pass` is green 
 - **Webhook signature rejection test**: Available via `scripts/test-webhook-rejection.ts` (requires `WEBHOOK_SECRET` / `GITHUB_WEBHOOK_SECRET` set against a running server).
 ## Required Commands
 
+### Baseline Gate
+
 - `npm run lint`
+- `npm run typecheck`
+- `npm run build`
 - `npm test`
+
+### Targeted Verifiers
+
 - `npm run test:smoke`
 - `npm run test:pr-validation`
 - `npm run test:self-improvement`

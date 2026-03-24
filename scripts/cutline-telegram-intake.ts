@@ -16,6 +16,7 @@ interface CliOptions {
   buildMode?: BuildSubmissionMode;
   product?: string;
   title?: string;
+  help?: boolean;
 }
 
 interface WorkspaceRow {
@@ -38,6 +39,13 @@ interface AgentRow {
   is_master: boolean;
 }
 
+interface ProbeResult {
+  ok: boolean;
+  status?: number;
+  body?: unknown;
+  error?: string;
+}
+
 function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = {};
   const positional: string[] = [];
@@ -54,6 +62,9 @@ function parseArgs(argv: string[]): CliOptions {
     const hasValue = typeof next === 'string' && !next.startsWith('--');
 
     switch (key) {
+      case 'help':
+        options.help = true;
+        break;
       case 'chat':
         options.chatId = hasValue ? next : undefined;
         if (hasValue) index += 1;
@@ -90,8 +101,50 @@ function parseArgs(argv: string[]): CliOptions {
     }
   }
 
+  if (positional[0] === 'help') {
+    options.help = true;
+  }
   options.command = positional[0];
   return options;
+}
+
+function printHelp(): void {
+  console.log(
+    [
+      'Cutline Telegram Intake',
+      '',
+      'Usage:',
+      '  npm run cutline:telegram -- submit --lane <signal|line_lab|build> --text "..." [--confirm]',
+      '  npm run cutline:telegram -- doctor',
+      '',
+      'Behavior:',
+      '  - no --confirm: preview only, creates nothing',
+      '  - with --confirm: creates the Mission Control idea/task and writes the vault note',
+      '  - doctor: checks whether the local Mission Control API is reachable and authenticated',
+      '',
+      'Common commands:',
+      '  Preview a build idea:',
+      '    npm run cutline:telegram -- submit --lane build --build-mode idea --product "Mission Control" --text "Add a clearer task status banner."',
+      '',
+      '  Confirm that build idea:',
+      '    npm run cutline:telegram -- submit --lane build --build-mode idea --product "Mission Control" --text "Add a clearer task status banner." --confirm',
+      '',
+      '  Create a real build task:',
+      '    npm run cutline:telegram -- submit --lane build --build-mode task --product "Mission Control" --text "Fix the Telegram intake preview path." --confirm',
+      '',
+      '  Check whether the local intake path is ready:',
+      '    npm run cutline:telegram -- doctor',
+      '',
+      'Flags:',
+      '  --lane signal|line_lab|build',
+      '  --text "..." or --transcript "..."',
+      '  --confirm',
+      '  --build-mode task|idea',
+      '  --product "Mission Control"',
+      '  --title "..."',
+      '  --chat "..."',
+    ].join('\n'),
+  );
 }
 
 function normalizeLane(value?: string): IntakeLane | undefined {
@@ -114,6 +167,43 @@ function defaultChatId(): string | undefined {
     channels?: { telegram?: { allowFrom?: string[] } };
   };
   return config.channels?.telegram?.allowFrom?.[0];
+}
+
+async function probe(baseUrl: string, pathname: string): Promise<ProbeResult> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (process.env.MC_API_TOKEN) {
+    headers.Authorization = `Bearer ${process.env.MC_API_TOKEN}`;
+  }
+
+  try {
+    const response = await fetch(`${baseUrl.replace(/\/$/, '')}${pathname}`, {
+      headers,
+    });
+    const text = await response.text();
+    let body: unknown = null;
+
+    if (text) {
+      try {
+        body = JSON.parse(text);
+      } catch {
+        body = text;
+      }
+    }
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      body,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 async function resolveCutlineWorkspace(baseUrl: string): Promise<WorkspaceRow> {
@@ -228,15 +318,58 @@ function writeTelegramNote(notePath: string, fields: {
   fs.writeFileSync(notePath, lines.join('\n'));
 }
 
+async function runDoctor(baseUrl: string): Promise<void> {
+  const repoRoot = path.resolve(__dirname, '..');
+  const health = await probe(baseUrl, '/api/health');
+  const workspaces = await probe(baseUrl, '/api/workspaces');
+
+  console.log(
+    JSON.stringify(
+      {
+        ok: health.ok && workspaces.ok,
+        missionControlUrl: baseUrl,
+        repoRoot,
+        apiTokenPresent: Boolean(process.env.MC_API_TOKEN),
+        defaultChatId: defaultChatId() || null,
+        health,
+        workspaces: {
+          ...workspaces,
+          workspaceCount: Array.isArray(workspaces.body) ? workspaces.body.length : undefined,
+        },
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+function printRecoveryHint(baseUrl: string): void {
+  console.error('Quick recovery steps:');
+  console.error(`  1. Start Mission Control locally: cd ${path.resolve(__dirname, '..')} && npm run dev`);
+  console.error(`  2. Check the local API path: npm run cutline:telegram -- doctor`);
+  console.error(`  3. Confirm your target URL: ${baseUrl}`);
+  console.error('  4. See examples: npm run cutline:telegram -- --help');
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  if (options.command !== 'submit') {
-    throw new Error('Usage: tsx scripts/cutline-telegram-intake.ts submit --lane <signal|line_lab|build> --text "..." [--confirm]');
+  if (options.help || !options.command) {
+    printHelp();
+    return;
   }
 
   const repoRoot = path.resolve(__dirname, '..');
   const { missionControlUrl } = loadLocalEnv(repoRoot);
   const baseUrl = missionControlUrl;
+  if (options.command === 'doctor') {
+    await runDoctor(baseUrl);
+    return;
+  }
+  if (options.command !== 'submit') {
+    throw new Error(
+      'Usage: tsx scripts/cutline-telegram-intake.ts <submit|doctor> [submit flags...]',
+    );
+  }
   const chatId = options.chatId || defaultChatId();
   const lane = options.lane;
   const body = options.text || options.transcript;
@@ -352,5 +485,8 @@ async function main() {
 
 main().catch((error) => {
   console.error('[cutline-telegram-intake] failed:', error);
+  const repoRoot = path.resolve(__dirname, '..');
+  const { missionControlUrl } = loadLocalEnv(repoRoot);
+  printRecoveryHint(missionControlUrl);
   process.exitCode = 1;
 });

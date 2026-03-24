@@ -7,6 +7,7 @@ Do not use old handover notes as current operating guidance for the rebuilt v2.4
 Use these documents instead:
 
 - [VERIFICATION_CHECKLIST.md](/Users/jordan/.openclaw/workspace/mission-control/VERIFICATION_CHECKLIST.md) for the current local trust contract
+- [docs/SESSION_WRAPUP_2026-03-24.md](/Users/jordan/.openclaw/workspace/mission-control/docs/SESSION_WRAPUP_2026-03-24.md) for the latest follow-up hardening, Telegram recovery, and DB repair summary
 - [docs/POST_REBUILD_VERIFICATION_REPORT_2026-03-24.md](/Users/jordan/.openclaw/workspace/mission-control/docs/POST_REBUILD_VERIFICATION_REPORT_2026-03-24.md) for the latest evidence bundle summary
 - [docs/HOW-THE-PIPELINE-WORKS.md](/Users/jordan/.openclaw/workspace/mission-control/docs/HOW-THE-PIPELINE-WORKS.md) for the current rebuilt pipeline description
 - [PRODUCTION_SETUP.md](/Users/jordan/.openclaw/workspace/mission-control/PRODUCTION_SETUP.md) for current setup and verification commands
