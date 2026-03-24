@@ -2,12 +2,13 @@
 
 If you restart your computer and want to get to work fast, use the Desktop launcher:
 
-- Double-click [Mission Control Morning Startup.command](/Users/jordan/Desktop/Mission%20Control%20Morning%20Startup.command)
+- Double-click [Start Cutline Workspace.app](/Users/jordan/Desktop/Start%20Cutline%20Workspace.app)
 
 What it does:
 
 - Starts OpenClaw Gateway if it is not already running
 - Starts Mission Control on port `4000` if it is not already running
+- If port `4000` is occupied by a broken Mission Control process, it restarts it with the correct Node runtime
 - Opens a Terminal window that runs `npm run cutline:telegram -- doctor`
 - Opens Mission Control in your browser at `http://localhost:4000`
 

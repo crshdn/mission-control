@@ -8,6 +8,37 @@ STARTUP_NOTE="$MISSION_CONTROL_DIR/docs/MORNING_STARTUP.md"
 DEFAULT_BRANCH="codex/full-rebuild-v240"
 GATEWAY_PORT=18789
 MISSION_CONTROL_PORT=4000
+MISSION_CONTROL_URL="http://127.0.0.1:${MISSION_CONTROL_PORT}"
+LAUNCHER_NAME="Start Cutline Workspace"
+GATEWAY_LOG="/tmp/openclaw-gateway-start.log"
+MISSION_CONTROL_LOG="/tmp/mission-control-dev.log"
+
+bootstrap_env() {
+  source ~/.zshrc >/dev/null 2>&1 || true
+  export NVM_DIR="$HOME/.nvm"
+  if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+    . "$NVM_DIR/nvm.sh"
+    nvm use default >/dev/null 2>&1 || true
+  fi
+}
+
+resolve_default_node_dir() {
+  local alias_file="$HOME/.nvm/alias/default"
+  if [[ -f "$alias_file" ]]; then
+    local default_alias
+    default_alias="$(tr -d '[:space:]' < "$alias_file")"
+    if [[ -n "$default_alias" ]]; then
+      local version_dir="${default_alias#node/}"
+      if [[ "$version_dir" != v* ]]; then
+        version_dir="v$version_dir"
+      fi
+      printf '%s/.nvm/versions/node/%s/bin' "$HOME" "$version_dir"
+      return 0
+    fi
+  fi
+
+  return 1
+}
 
 run_or_print() {
   if [[ "${MORNING_STARTUP_DRY_RUN:-0}" == "1" ]]; then
@@ -42,9 +73,74 @@ end tell
 APPLESCRIPT
 }
 
+start_background_job() {
+  local label="$1"
+  local command="$2"
+
+  if [[ "${MORNING_STARTUP_DRY_RUN:-0}" == "1" ]]; then
+    printf '[dry-run] start background job: %s\n' "$label"
+    printf '[dry-run] command: %s\n' "$command"
+    return 0
+  fi
+
+  /bin/zsh -lc "$command" >/dev/null 2>&1 &
+}
+
 is_port_listening() {
   local port="$1"
   lsof -tiTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+}
+
+listening_pid() {
+  local port="$1"
+  lsof -tiTCP:"$port" -sTCP:LISTEN | head -n 1
+}
+
+mission_control_api_ready() {
+  bootstrap_env
+  local auth_header=()
+  if [[ -f "$MISSION_CONTROL_DIR/.env.local" ]]; then
+    local token
+    token="$(awk -F= '/^MC_API_TOKEN=/{print $2}' "$MISSION_CONTROL_DIR/.env.local" | tail -n 1)"
+    if [[ -n "$token" ]]; then
+      auth_header=(-H "Authorization: Bearer $token")
+    fi
+  fi
+
+  local code
+  code="$(curl -s -o /tmp/mission-control-startup-workspaces.json -w '%{http_code}' "${auth_header[@]}" "$MISSION_CONTROL_URL/api/workspaces" || true)"
+  [[ "$code" == "200" ]]
+}
+
+wait_for_port() {
+  local port="$1"
+  local timeout_seconds="${2:-30}"
+  local elapsed=0
+
+  while (( elapsed < timeout_seconds )); do
+    if is_port_listening "$port"; then
+      return 0
+    fi
+    sleep 1
+    ((elapsed += 1))
+  done
+
+  return 1
+}
+
+wait_for_mission_control() {
+  local timeout_seconds="${1:-45}"
+  local elapsed=0
+
+  while (( elapsed < timeout_seconds )); do
+    if mission_control_api_ready; then
+      return 0
+    fi
+    sleep 1
+    ((elapsed += 1))
+  done
+
+  return 1
 }
 
 if [[ ! -d "$MISSION_CONTROL_DIR" ]]; then
@@ -52,27 +148,62 @@ if [[ ! -d "$MISSION_CONTROL_DIR" ]]; then
   exit 1
 fi
 
-if ! command -v openclaw >/dev/null 2>&1; then
-  echo "openclaw is not installed or not on PATH" >&2
-  exit 1
+bootstrap_env
+
+if NODE_BIN_DIR="$(resolve_default_node_dir)" \
+  && [[ -x "$NODE_BIN_DIR/node" ]] \
+  && [[ -x "$NODE_BIN_DIR/npm" ]]; then
+  NODE_BIN="$NODE_BIN_DIR/node"
+  NPM_BIN="$NODE_BIN_DIR/npm"
+else
+  NODE_BIN="$(command -v node)"
+  NPM_BIN="$(command -v npm)"
+  NODE_BIN_DIR="$(dirname "$NODE_BIN")"
 fi
 
-gateway_command="source ~/.zshrc >/dev/null 2>&1; openclaw gateway start; exec zsh -l"
-mission_control_command="cd '$MISSION_CONTROL_DIR'; git branch --show-current; if [ -n \"\$(git status --short)\" ]; then echo; echo 'Repo has local changes:'; git status --short; echo; fi; npm run dev; exec zsh -l"
-doctor_command="cd '$MISSION_CONTROL_DIR'; echo 'Mission Control morning check'; echo; echo 'Expected branch: $DEFAULT_BRANCH'; echo 'Current branch:'; git branch --show-current; echo; echo 'Doctor:'; npm run cutline:telegram -- doctor; echo; echo 'Next command:'; echo 'npm run cutline:telegram -- submit --lane build --build-mode idea --product \"Mission Control\" --text \"Your request here\"'; echo; echo 'Reference note: $STARTUP_NOTE'; exec zsh -l"
+OPENCLAW_BIN="$NODE_BIN_DIR/openclaw"
+if [[ ! -x "$OPENCLAW_BIN" ]]; then
+  echo "openclaw is not installed in $NODE_BIN_DIR" >&2
+  exit 1
+fi
+NPM_CLI_JS="$NODE_BIN_DIR/../lib/node_modules/npm/bin/npm-cli.js"
+OPENCLAW_ENTRY="$NODE_BIN_DIR/../lib/node_modules/openclaw/openclaw.mjs"
+NEXT_ENTRY="$MISSION_CONTROL_DIR/node_modules/next/dist/bin/next"
+TSX_ENTRY="$MISSION_CONTROL_DIR/node_modules/tsx/dist/cli.mjs"
+
+bootstrap_snippet='source ~/.zshrc >/dev/null 2>&1 || true; export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; nvm use default >/dev/null 2>&1 || true;'
+gateway_background_command="cd '$WORKSPACE_ROOT'; '$NODE_BIN' '$OPENCLAW_ENTRY' gateway start >'$GATEWAY_LOG' 2>&1"
+mission_control_background_command="cd '$MISSION_CONTROL_DIR'; PORT='$MISSION_CONTROL_PORT' '$NODE_BIN' '$NEXT_ENTRY' dev --turbo -p '$MISSION_CONTROL_PORT' >'$MISSION_CONTROL_LOG' 2>&1"
+mission_control_window_command="${bootstrap_snippet} cd '$MISSION_CONTROL_DIR'; echo 'Mission Control dev server log tail'; echo; echo 'Node binary: $NODE_BIN'; echo 'npm binary: $NPM_BIN'; echo; tail -n 40 -f '$MISSION_CONTROL_LOG'; exec zsh -l"
+doctor_command="${bootstrap_snippet} cd '$MISSION_CONTROL_DIR'; echo 'Mission Control morning check'; echo; echo 'Launcher: $LAUNCHER_NAME'; echo 'Expected branch: $DEFAULT_BRANCH'; echo 'Current branch:'; git branch --show-current; echo; echo 'Node:'; '$NODE_BIN' -v; echo 'npm:'; '$NPM_BIN' -v; echo; echo 'Doctor:'; '$NODE_BIN' '$TSX_ENTRY' scripts/cutline-telegram-intake.ts doctor; echo; echo 'Next command:'; echo 'npm run cutline:telegram -- submit --lane build --build-mode idea --product \"Mission Control\" --text \"Your request here\"'; echo; echo 'Reference note: $STARTUP_NOTE'; exec zsh -l"
 
 if is_port_listening "$GATEWAY_PORT"; then
   echo "OpenClaw Gateway already listening on port $GATEWAY_PORT"
 else
-  open_terminal_window "OpenClaw Gateway" "$gateway_command"
+  : >"$GATEWAY_LOG"
+  start_background_job "OpenClaw Gateway" "$gateway_background_command"
+  wait_for_port "$GATEWAY_PORT" 20 || true
 fi
 
 if is_port_listening "$MISSION_CONTROL_PORT"; then
-  echo "Mission Control already listening on port $MISSION_CONTROL_PORT"
+  if mission_control_api_ready; then
+    echo "Mission Control already listening on port $MISSION_CONTROL_PORT"
+  else
+    existing_pid="$(listening_pid "$MISSION_CONTROL_PORT")"
+    echo "Mission Control is listening on port $MISSION_CONTROL_PORT but failed the workspace check; restarting"
+    if [[ -n "${existing_pid:-}" ]]; then
+      kill "$existing_pid" >/dev/null 2>&1 || true
+      sleep 1
+    fi
+    : >"$MISSION_CONTROL_LOG"
+    start_background_job "Mission Control" "$mission_control_background_command"
+  fi
 else
-  open_terminal_window "Mission Control" "$mission_control_command"
+  : >"$MISSION_CONTROL_LOG"
+  start_background_job "Mission Control" "$mission_control_background_command"
 fi
 
+wait_for_mission_control 45 || true
+open_terminal_window "Mission Control Log" "$mission_control_window_command"
 open_terminal_window "Mission Control Check" "$doctor_command"
 run_or_print "/usr/bin/open 'http://localhost:$MISSION_CONTROL_PORT'"
-
