@@ -201,7 +201,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
     // Chat is always available — messages dispatch the agent if needed
     { id: 'chat' as TabType, label: 'Chat', icon: <MessageSquare className="w-4 h-4" /> },
     // Agent Live only shown when agent is active
-    ...(task && ['in_progress', 'convoy_active', 'testing', 'verification'].includes(task.status)
+    ...(task && ['in_progress', 'convoy_active', 'testing', 'verification', 'review_fix'].includes(task.status)
       ? [
           { id: 'agent-live' as TabType, label: 'Agent Live', icon: <Radio className="w-4 h-4" /> },
         ]
@@ -381,6 +381,17 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
                   </span>
                 )}
               </div>
+              {/* Review-fix cycle count */}
+              {(task.review_fix_count ?? 0) > 0 && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs px-2 py-1 rounded font-medium bg-orange-500/20 text-orange-400">
+                    Review fix cycle {task.review_fix_count}/{task.review_fix_max ?? 3}
+                  </span>
+                  {task.status === 'review_fix' && (
+                    <span className="text-xs text-orange-300">Fixing reviewer feedback...</span>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

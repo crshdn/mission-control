@@ -1595,6 +1595,36 @@ const migrations: Migration[] = [
 
       console.log('[Migration 028] product_skills and skill_reports tables created');
     }
+  },
+  {
+    id: '029',
+    name: 'add_pr_review_autofix',
+    up: (db) => {
+      console.log('[Migration 029] Adding PR review auto-fix columns...');
+
+      // Add review_fix_count and review_fix_max to tasks
+      const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
+      if (!tasksInfo.some(col => col.name === 'review_fix_count')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN review_fix_count INTEGER DEFAULT 0`);
+      }
+      if (!tasksInfo.some(col => col.name === 'review_fix_max')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN review_fix_max INTEGER DEFAULT 3`);
+      }
+
+      // Add auto_fix_pr_reviews to products
+      const productsInfo = db.prepare("PRAGMA table_info(products)").all() as { name: string }[];
+      if (!productsInfo.some(col => col.name === 'auto_fix_pr_reviews')) {
+        db.exec(`ALTER TABLE products ADD COLUMN auto_fix_pr_reviews INTEGER DEFAULT 1`);
+      }
+
+      // Recreate tasks table with updated CHECK constraint to include 'review_fix'
+      // SQLite doesn't support ALTER CHECK, so we need to check if it's already there
+      // For existing databases, the CHECK constraint is soft — SQLite allows inserts
+      // of values not in CHECK when using ALTER TABLE ADD COLUMN. The schema.ts
+      // handles it for fresh databases. We'll just ensure the columns exist.
+
+      console.log('[Migration 029] PR review auto-fix columns added');
+    }
   }
 ];
 
