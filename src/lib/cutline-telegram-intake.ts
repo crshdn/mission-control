@@ -157,6 +157,13 @@ export interface DraftPreview {
   missingFields: DraftFieldKey[];
   // New structured fields for preview
   fields: Record<string, string | undefined>;
+  readiness: {
+    ideaReady: boolean;
+    taskReady: boolean;
+    ideaMissingFields: DraftFieldKey[];
+    taskMissingFields: DraftFieldKey[];
+    requestedBuildMode?: BuildSubmissionMode;
+  };
 }
 
 export interface DraftResponseBase {
@@ -795,17 +802,25 @@ export class CutlineTelegramIntakeService {
 
   async cancelDraft(chatId: string): Promise<IntakeResponse> {
     const draft = this.requireDraft(chatId);
+    const draftPath = buildDraftPath(this.workspaceRoot, chatId);
     draft.state = 'cancelled';
     draft.updated_at = this.now().toISOString();
-    this.saveDraft(draft);
+
+    const archivePath = buildArchivePath(this.workspaceRoot, draft);
+    this.ensureDir(path.dirname(archivePath));
+    fs.writeFileSync(archivePath, JSON.stringify(draft, null, 2));
+    if (fs.existsSync(draftPath)) {
+      fs.unlinkSync(draftPath);
+    }
+
     return {
       ok: true,
       action: 'cancelled',
       chatId,
       state: draft.state,
       readyScore: draft.ready_score,
-      draftPath: buildDraftPath(this.workspaceRoot, chatId),
-      message: 'The active Cutline Telegram draft is now cancelled and will not write to Mission Control.',
+      draftPath,
+      message: 'The active Cutline Telegram draft was cancelled and local draft state was cleared without writing to Mission Control.',
     };
   }
 
@@ -845,11 +860,11 @@ export class CutlineTelegramIntakeService {
     const preview = this.renderPreview(draft, evaluation, true, request.buildMode);
     this.saveDraft(draft);
 
-    if (request.buildMode === 'task') {
-      if (evaluation.taskMissing.length > 0) {
-        throw new Error(`Cannot submit as task: missing fields ${evaluation.taskMissing.join(', ')}`);
-      }
-    } else if (evaluation.ideaMissing.length > 0) {
+    if (request.buildMode === 'task' && evaluation.taskMissing.length > 0) {
+      return this.previewResponse(request.chatId, draft, preview);
+    }
+
+    if (evaluation.ideaMissing.length > 0) {
       throw new Error(`Cannot submit as idea: missing fields ${evaluation.ideaMissing.join(', ')}`);
     }
 
@@ -897,9 +912,9 @@ export class CutlineTelegramIntakeService {
     }
 
     if (request.buildMode === 'task' && evaluation.taskMissing.length > 0) {
-      throw new Error(
-        `Draft is not task-ready yet. Missing task fields: ${evaluation.taskMissing.join(', ')}`,
-      );
+      const preview = this.renderPreview(draft, evaluation, false, request.buildMode);
+      this.saveDraft(draft);
+      return this.previewResponse(request.chatId, draft, preview);
     }
 
     const entityType: BuildSubmissionMode =
@@ -1093,6 +1108,7 @@ export class CutlineTelegramIntakeService {
         title: cleanValue(draft.title),
         goal: cleanValue(draft.goal),
         why_now: cleanValue(draft.why_now),
+        target_product: cleanValue(draft.build.target_product),
         user_problem: cleanValue(draft.build.user_problem),
         requested_change: cleanValue(draft.build.requested_change),
         definition_of_done: cleanValue(draft.definition_of_done),
@@ -1100,6 +1116,13 @@ export class CutlineTelegramIntakeService {
         acceptance_criteria: cleanValue(draft.build.acceptance_criteria),
         non_goals: cleanValue(draft.build.non_goals),
         repo_or_product_target: cleanValue(draft.build.repo_or_product_target),
+      },
+      readiness: {
+        ideaReady: evaluation.ideaMissing.length === 0,
+        taskReady: evaluation.taskMissing.length === 0,
+        ideaMissingFields: evaluation.ideaMissing,
+        taskMissingFields: evaluation.taskMissing,
+        requestedBuildMode,
       },
     };
   }

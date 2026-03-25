@@ -228,6 +228,7 @@ test('task submit before task readiness falls back to idea preview and shows tas
   assert.equal(result.action, 'preview');
   assert.equal(result.preview.proposedSubmissionType, 'idea');
   assert.deepEqual(result.preview.taskOnlyMissingFields, ['acceptance_criteria', 'non_goals']);
+  assert.equal(result.preview.readiness.taskReady, false);
   assert.equal(calls.tasks.length, 0);
   assert.equal(calls.ideas.length, 0);
 });
@@ -334,7 +335,7 @@ test('note export failure blocks blind re-submit after Mission Control write suc
   assert.equal((draft.submission as { type?: string }).type, 'idea');
 });
 
-test('cancel closes the active draft without writing to Mission Control', async () => {
+test('cancel closes the active draft without writing to Mission Control and clears local draft state', async () => {
   const { service, calls, workspaceRoot } = createService();
 
   await service.handleMessage({
@@ -347,8 +348,14 @@ test('cancel closes the active draft without writing to Mission Control', async 
   assert.equal(calls.ideas.length, 0);
   assert.equal(calls.tasks.length, 0);
 
-  const draft = readDraft(workspaceRoot, 'chat-9');
-  assert.equal(draft.state, 'cancelled');
+  assert.equal(
+    fs.existsSync(path.join(workspaceRoot, 'state', 'cutline-telegram', 'drafts', 'chat-9.json')),
+    false,
+  );
+  const archived = fs
+    .readdirSync(path.join(workspaceRoot, 'state', 'cutline-telegram', 'drafts'))
+    .find((name) => name.startsWith('chat-9-cancelled-'));
+  assert.ok(archived);
 });
 
 test('draft survives service restart and resumes from persisted state', async () => {
@@ -374,4 +381,83 @@ test('draft survives service restart and resumes from persisted state', async ()
   assert.equal(result.action, 'draft_updated');
   const draft = readDraft(workspaceRoot, 'chat-10');
   assert.equal(draft.state, 'draft');
+});
+
+test('task confirm with missing task fields stays gated on preview instead of creating a task', async () => {
+  const { service, calls } = createService();
+  const structured = [
+    'lane: build',
+    'title: Improve task confirm gate',
+    'goal: Keep incomplete Telegram drafts from becoming tasks.',
+    'why now: We need safe confirmation behavior for real usage.',
+    'constraints: Stay conservative and explicit.',
+    'definition of done: Confirm shows missing task fields instead of creating a task.',
+    'target product: Mission Control',
+    'user problem: A mistaken /confirm should not create cleanup work.',
+    'requested change: Refuse task-mode confirmation until task-only fields are present.',
+  ].join('\n');
+
+  const preview = await service.handleMessage({
+    chatId: 'chat-11',
+    text: structured,
+  });
+
+  assert.equal(preview.action, 'preview');
+
+  const gated = await service.confirmDraft({
+    chatId: 'chat-11',
+    previewRevision: preview.preview.previewRevision,
+    buildMode: 'task',
+  });
+
+  assert.equal(gated.action, 'preview');
+  assert.equal(gated.preview.readiness.taskReady, false);
+  assert.deepEqual(gated.preview.readiness.taskMissingFields, ['acceptance_criteria', 'non_goals']);
+  assert.equal(calls.tasks.length, 0);
+  assert.equal(calls.ideas.length, 0);
+});
+
+test('conversational replies fill missing task fields and enable task confirmation', async () => {
+  const { service, calls } = createService();
+  const structured = [
+    'lane: build',
+    'title: Refine Telegram drafts conversationally',
+    'goal: Let replies fill missing structured fields.',
+    'why now: Telegram refinement should stay low-friction.',
+    'constraints: Do not build a wizard.',
+    'definition of done: Missing task fields can be supplied by reply.',
+    'target product: Mission Control',
+    'user problem: I want to add missing detail without rewriting the whole draft.',
+    'requested change: Accept reply-based field injection for missing task details.',
+  ].join('\n');
+
+  const firstPreview = await service.handleMessage({
+    chatId: 'chat-12',
+    text: structured,
+  });
+  assert.equal(firstPreview.action, 'preview');
+  assert.deepEqual(firstPreview.preview.readiness.taskMissingFields, ['acceptance_criteria', 'non_goals']);
+
+  const fillAcceptance = await service.handleMessage({
+    chatId: 'chat-12',
+    text: 'Acceptance criteria: The wrapper shows every parsed field before Mission Control write.',
+  });
+  assert.equal(fillAcceptance.action, 'preview');
+  assert.deepEqual(fillAcceptance.preview.readiness.taskMissingFields, ['non_goals']);
+
+  const fillNonGoals = await service.handleMessage({
+    chatId: 'chat-12',
+    text: 'Non-goals: No schema changes, no wizard flow, no non-build lanes.',
+  });
+  assert.equal(fillNonGoals.action, 'preview');
+  assert.equal(fillNonGoals.preview.readiness.taskReady, true);
+
+  const submitted = await service.confirmDraft({
+    chatId: 'chat-12',
+    previewRevision: fillNonGoals.preview.previewRevision,
+    buildMode: 'task',
+  });
+  assert.equal(submitted.action, 'submitted');
+  assert.equal(submitted.entityType, 'task');
+  assert.equal(calls.tasks.length, 1);
 });
