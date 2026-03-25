@@ -91,6 +91,7 @@ export interface Task {
   workspace_base_commit?: string;
   merge_status?: 'pending' | 'merged' | 'conflict' | 'pr_created' | 'abandoned';
   merge_pr_url?: string;
+  browser_test_url?: string;
   created_at: string;
   updated_at: string;
   // Joined fields
@@ -451,6 +452,7 @@ export interface Product {
   cost_cap_monthly?: number;
   health_weight_config?: string; // JSON: HealthWeightConfig
   batch_review_threshold?: number;
+  browser_test_enabled?: number;
   created_at: string;
   updated_at: string;
 }

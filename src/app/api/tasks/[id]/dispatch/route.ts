@@ -12,6 +12,7 @@ import { buildCheckpointContext } from '@/lib/checkpoint';
 import { formatMailForDispatch } from '@/lib/mailbox';
 import { getPendingNotesForDispatch } from '@/lib/task-notes';
 import { createTaskWorkspace, determineIsolationStrategy } from '@/lib/workspace-isolation';
+import { buildBrowserTestContext } from '@/lib/browser-test-context';
 import type { Task, Agent, Product, OpenClawSession, WorkflowStage, TaskImage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -317,21 +318,39 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 When complete, reply with:
 \`TASK_COMPLETE: [brief summary of what you did]\``;
     } else if (isTester) {
-      completionInstructions = `**YOUR ROLE: TESTER** — Test the deliverables for this task.
+      // Build browser testing context for the tester
+      const browserContext = buildBrowserTestContext(task as Task & { planning_spec?: string; workspace_port?: number; browser_test_url?: string });
 
-Review the output directory for deliverables and run any applicable tests.
+      // Store the dev URL used for testing on the task record
+      const devUrlMatch = browserContext.match(/\*\*(\bhttps?:\/\/[^\s*]+)\*\*/);
+      if (devUrlMatch) {
+        run('UPDATE tasks SET browser_test_url = ?, updated_at = datetime(\'now\') WHERE id = ?', [devUrlMatch[1], id]);
+      }
+
+      completionInstructions = `**YOUR ROLE: TESTER** — Visually and functionally test the deliverables using the browser tool.
+${browserContext}
+
+**Testing Procedure:**
+1. Navigate to the dev server URL using the browser tool
+2. Take a screenshot of the initial page load
+3. Check the browser console for JavaScript errors (\`browser evaluate console.error\`)
+4. Click through all relevant UI elements — buttons, links, navigation
+5. Fill and submit any forms if applicable
+6. Take screenshots at each major step for evidence
+7. Use your vision to evaluate: does the output match the original task spec?
+8. Check responsive behavior if the task involves UI work
 
 **If tests PASS:**
 1. Log activity: POST ${missionControlUrl}/api/tasks/${task.id}/activities
-   Body: {"activity_type": "completed", "message": "Tests passed: [summary]"}
+   Body: {"activity_type": "completed", "message": "Browser QA passed: [summary of what was verified with visual evidence]"}
 2. Update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
    Body: {"status": "${nextStatus}"}
 
 **If tests FAIL:**
 1. ${failEndpoint}
-   Body: {"reason": "Detailed description of what failed and what needs fixing"}
+   Body: {"reason": "Visual/functional issue: [what you saw] vs [what was expected]. Steps to reproduce: [clicks/actions taken]. Console errors: [if any]"}
 
-Reply with: \`TEST_PASS: [summary]\` or \`TEST_FAIL: [what failed]\``;
+Reply with: \`TEST_PASS: [summary]\` or \`TEST_FAIL: [what failed with visual evidence]\``;
     } else if (isVerifier) {
       completionInstructions = `**YOUR ROLE: VERIFIER** — Verify that all work meets quality standards.
 
