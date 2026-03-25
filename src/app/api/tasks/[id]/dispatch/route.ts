@@ -199,6 +199,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const projectDir = task.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     let taskProjectDir = `${projectsPath}/${projectDir}`;
     const missionControlUrl = getMissionControlUrl();
+    const mcApiToken = process.env.MC_API_TOKEN;
+    const authHeader = mcApiToken ? ` -H 'Authorization: Bearer ${mcApiToken}'` : '';
 
     // Create isolated workspace if parallel builds are possible
     // Only for builder dispatches (assigned/in_progress), not tester/reviewer
@@ -309,16 +311,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const isTester = currentStage?.role === 'tester';
     const isVerifier = currentStage?.role === 'verifier' || currentStage?.role === 'reviewer';
     const nextStatus = nextStage?.status || 'review';
-    const failEndpoint = `POST ${missionControlUrl}/api/tasks/${task.id}/fail`;
+    const failEndpoint = `POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/fail`;
 
     let completionInstructions: string;
     if (isBuilder) {
       completionInstructions = `**IMPORTANT:** After completing work, you MUST call these APIs:
-1. Log activity: POST ${missionControlUrl}/api/tasks/${task.id}/activities
+1. Log activity: POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/activities
    Body: {"activity_type": "completed", "message": "Description of what was done"}
-2. Register deliverable: POST ${missionControlUrl}/api/tasks/${task.id}/deliverables
+2. Register deliverable: POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/deliverables
    Body: {"deliverable_type": "file", "title": "File name", "path": "${taskProjectDir}/filename.html"}
-3. Update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
+3. Update status: PATCH ${missionControlUrl}${authHeader}/api/tasks/${task.id}
    Body: {"status": "${nextStatus}"}
 
 When complete, reply with:
@@ -329,9 +331,9 @@ When complete, reply with:
 Review the output directory for deliverables and run any applicable tests.
 
 **If tests PASS:**
-1. Log activity: POST ${missionControlUrl}/api/tasks/${task.id}/activities
+1. Log activity: POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/activities
    Body: {"activity_type": "completed", "message": "Tests passed: [summary]"}
-2. Update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
+2. Update status: PATCH ${missionControlUrl}${authHeader}/api/tasks/${task.id}
    Body: {"status": "${nextStatus}"}
 
 **If tests FAIL:**
@@ -345,9 +347,9 @@ Reply with: \`TEST_PASS: [summary]\` or \`TEST_FAIL: [what failed]\``;
 Review deliverables, test results, and task requirements.
 
 **If verification PASSES:**
-1. Log activity: POST ${missionControlUrl}/api/tasks/${task.id}/activities
+1. Log activity: POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/activities
    Body: {"activity_type": "completed", "message": "Verification passed: [summary]"}
-2. Update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
+2. Update status: PATCH ${missionControlUrl}${authHeader}/api/tasks/${task.id}
    Body: {"status": "${nextStatus}"}
 
 **If verification FAILS:**
@@ -358,7 +360,7 @@ Reply with: \`VERIFY_PASS: [summary]\` or \`VERIFY_FAIL: [what failed]\``;
     } else {
       // Fallback for unknown roles
       completionInstructions = `**IMPORTANT:** After completing work:
-1. Update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
+1. Update status: PATCH ${missionControlUrl}${authHeader}/api/tasks/${task.id}
    Body: {"status": "${nextStatus}"}`;
     }
 
@@ -395,7 +397,7 @@ Reply with: \`VERIFY_PASS: [summary]\` or \`VERIFY_FAIL: [what failed]\``;
 **GIT WORKFLOW:**
 1. First, verify you have git access: run \`git ls-remote ${repoUrl}\`
    - If this fails, report the error immediately via:
-     PATCH ${missionControlUrl}/api/tasks/${task.id}
+     PATCH ${missionControlUrl}${authHeader}/api/tasks/${task.id}
      Body: {"status_reason": "Git auth not configured: [error message]"}
      Then STOP — do not proceed without repo access.
 2. Clone the repo (or use existing local copy)
@@ -414,7 +416,7 @@ Reply with: \`VERIFY_PASS: [summary]\` or \`VERIFY_FAIL: [what failed]\``;
   - Task ID: ${task.id}
 - Target branch: ${repoBranch}
 - After creating PR, report the PR URL:
-  PATCH ${missionControlUrl}/api/tasks/${task.id}
+  PATCH ${missionControlUrl}${authHeader}/api/tasks/${task.id}
   Body: {"pr_url": "<github PR url>", "pr_status": "open"}
 `;
     }
