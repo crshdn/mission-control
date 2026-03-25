@@ -1595,6 +1595,32 @@ const migrations: Migration[] = [
 
       console.log('[Migration 028] product_skills and skill_reports tables created');
     }
+  },
+  {
+    id: '030',
+    name: 'add_mcp_integrations',
+    up: (db) => {
+      console.log('[Migration 030] Adding product_mcp_servers table...');
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS product_mcp_servers (
+          id TEXT PRIMARY KEY,
+          product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          transport TEXT NOT NULL CHECK (transport IN ('stdio', 'sse')),
+          command TEXT,
+          url TEXT,
+          env_vars TEXT,
+          available_tools TEXT,
+          enabled INTEGER DEFAULT 1,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now'))
+        )
+      `);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_product_mcp_servers_product ON product_mcp_servers(product_id, enabled)`);
+
+      console.log('[Migration 030] product_mcp_servers table created');
+    }
   }
 ];
 
