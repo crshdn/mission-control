@@ -2,9 +2,15 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { assert, ensureDir, loadLocalEnv, request } from './_shared';
-
-type IntakeLane = 'signal' | 'line_lab' | 'build';
-type BuildSubmissionMode = 'task' | 'idea';
+import {
+  type AgentRow,
+  type BuildSubmissionMode,
+  CutlineTelegramIntakeService,
+  type IntakeLane,
+  type MissionControlApi,
+  type ProductRow,
+  type WorkspaceRow,
+} from '../src/lib/cutline-telegram-intake';
 
 interface CliOptions {
   command?: string;
@@ -16,27 +22,8 @@ interface CliOptions {
   buildMode?: BuildSubmissionMode;
   product?: string;
   title?: string;
+  previewRevision?: number;
   help?: boolean;
-}
-
-interface WorkspaceRow {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-interface ProductRow {
-  id: string;
-  name: string;
-  workspace_id: string;
-  repo_url?: string | null;
-  default_branch?: string | null;
-}
-
-interface AgentRow {
-  id: string;
-  name: string;
-  is_master: boolean;
 }
 
 interface ProbeResult {
@@ -96,6 +83,10 @@ function parseArgs(argv: string[]): CliOptions {
         options.title = hasValue ? next : undefined;
         if (hasValue) index += 1;
         break;
+      case 'preview-revision':
+        options.previewRevision = hasValue ? Number.parseInt(next, 10) : undefined;
+        if (hasValue) index += 1;
+        break;
       default:
         throw new Error(`Unknown flag: --${key}`);
     }
@@ -114,35 +105,33 @@ function printHelp(): void {
       'Cutline Telegram Intake',
       '',
       'Usage:',
-      '  npm run cutline:telegram -- submit --lane <signal|line_lab|build> --text "..." [--confirm]',
       '  npm run cutline:telegram -- doctor',
+      '  npm run cutline:telegram -- message --chat <id> --text "..."',
+      '  npm run cutline:telegram -- preview --chat <id>',
+      '  npm run cutline:telegram -- confirm --chat <id> --preview-revision <n> [--build-mode idea|task]',
+      '  npm run cutline:telegram -- cancel --chat <id>',
+      '  npm run cutline:telegram -- submit --lane build --chat <id> --text "structured request" [--confirm] [--build-mode idea|task]',
       '',
       'Behavior:',
-      '  - no --confirm: preview only, creates nothing',
-      '  - with --confirm: creates the Mission Control idea/task and writes the vault note',
+      '  - message: wrapper-facing conversational refinement for Telegram build requests',
+      '  - preview: render the current draft preview if the idea gate passes',
+      '  - confirm: submit the latest preview revision into Mission Control, then export the vault note',
+      '  - cancel: close the active draft without writing to Mission Control',
+      '  - submit: repo-local convenience path; without --confirm it previews, with --confirm it confirms the fresh preview revision',
       '  - doctor: checks whether the local Mission Control API is reachable and authenticated',
       '',
-      'Common commands:',
-      '  Preview a build idea:',
-      '    npm run cutline:telegram -- submit --lane build --build-mode idea --product "Mission Control" --text "Add a clearer task status banner."',
-      '',
-      '  Confirm that build idea:',
-      '    npm run cutline:telegram -- submit --lane build --build-mode idea --product "Mission Control" --text "Add a clearer task status banner." --confirm',
-      '',
-      '  Create a real build task:',
-      '    npm run cutline:telegram -- submit --lane build --build-mode task --product "Mission Control" --text "Fix the Telegram intake preview path." --confirm',
-      '',
-      '  Check whether the local intake path is ready:',
-      '    npm run cutline:telegram -- doctor',
+      'Important:',
+      '  - build lane only',
+      '  - nothing writes to Mission Control until the build draft passes the readiness gate',
+      '  - task mode only succeeds when the stronger repo-backed task gate passes; otherwise the flow safely falls back to idea preview',
       '',
       'Flags:',
-      '  --lane signal|line_lab|build',
+      '  --chat "..."',
       '  --text "..." or --transcript "..."',
-      '  --confirm',
-      '  --build-mode task|idea',
+      '  --build-mode idea|task',
       '  --product "Mission Control"',
       '  --title "..."',
-      '  --chat "..."',
+      '  --preview-revision <n>',
     ].join('\n'),
   );
 }
@@ -206,91 +195,10 @@ async function probe(baseUrl: string, pathname: string): Promise<ProbeResult> {
   }
 }
 
-async function resolveCutlineWorkspace(baseUrl: string): Promise<WorkspaceRow> {
-  const workspaces = (await request(baseUrl, '/api/workspaces')) as WorkspaceRow[];
-  const workspace = workspaces.find((entry) => entry.name === 'Cutline');
-  if (!workspace) {
-    throw new Error('Cutline workspace not found in Mission Control');
-  }
-  return workspace;
-}
-
-async function resolveAvery(baseUrl: string, workspaceId: string): Promise<AgentRow | undefined> {
-  const agents = (await request(
-    baseUrl,
-    `/api/agents?workspace_id=${encodeURIComponent(workspaceId)}`,
-  )) as AgentRow[];
-  return agents.find((agent) => agent.name === 'Avery') || agents.find((agent) => agent.is_master);
-}
-
-async function resolveProductByName(baseUrl: string, workspaceId: string, target: string): Promise<ProductRow> {
-  const products = (await request(
-    baseUrl,
-    `/api/products?workspace_id=${encodeURIComponent(workspaceId)}`,
-  )) as ProductRow[];
-  const cleanedTarget = target.trim().toLowerCase();
-  const match = products.find((product) => product.id === target || product.name.trim().toLowerCase() === cleanedTarget);
-
-  if (!match) {
-    const validTargets = products.map((product) => product.name).sort().join(', ') || 'none';
-    throw new Error(`Product not found in Cutline workspace: ${target}. Valid targets: ${validTargets}`);
-  }
-
-  return match;
-}
-
-function inferTitle(text: string, lane: IntakeLane, explicitTitle?: string): string {
-  if (explicitTitle?.trim()) return explicitTitle.trim();
-  const firstSentence = text
-    .split('\n')
-    .map((line) => line.trim())
-    .find(Boolean) || text.trim();
-  const trimmed = firstSentence.replace(/^[-*]\s*/, '').slice(0, 90);
-  if (trimmed) return trimmed;
-  return lane === 'build' ? 'Telegram build request' : `Telegram ${lane} request`;
-}
-
-function buildDescription(options: {
-  lane: IntakeLane;
-  body: string;
-  chatId: string;
-  transcript?: string;
-  product?: ProductRow;
-}): string {
-  const sections = [
-    `Lane: ${options.lane}`,
-    `Telegram chat: ${options.chatId}`,
-    options.product ? `Target product: ${options.product.name}` : undefined,
-    '',
-    '## Request',
-    options.body.trim(),
-  ].filter(Boolean);
-
-  if (options.transcript?.trim()) {
-    sections.push('', '## Transcript', options.transcript.trim());
-  }
-
-  return sections.join('\n');
-}
-
-function notePathFor(title: string): string {
-  const stamp = new Date().toISOString().replace(/[:]/g, '-');
-  const slug = title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 60) || 'telegram-intake';
-  return path.join(
-    '/Users/jordan/.openclaw/workspace/obsidian/Cutline Vault/99-Inbox/telegram-submissions',
-    `${stamp}-${slug}.md`,
-  );
-}
-
 function writeTelegramNote(notePath: string, fields: {
   title: string;
   lane: IntakeLane;
   buildMode?: BuildSubmissionMode;
-  chatId: string;
   text: string;
   transcript?: string;
   entityId?: string;
@@ -301,8 +209,8 @@ function writeTelegramNote(notePath: string, fields: {
   const lines = [
     `# ${fields.title}`,
     '',
+    `- Source: Telegram`,
     `- Lane: ${fields.lane}`,
-    `- Chat: ${fields.chatId}`,
     fields.buildMode ? `- Build mode: ${fields.buildMode}` : undefined,
     fields.productName ? `- Product: ${fields.productName}` : undefined,
     fields.entityType && fields.entityId ? `- Mission Control ${fields.entityType}: ${fields.entityId}` : undefined,
@@ -329,6 +237,7 @@ async function runDoctor(baseUrl: string): Promise<void> {
         ok: health.ok && workspaces.ok,
         missionControlUrl: baseUrl,
         repoRoot,
+        workspaceRoot: path.resolve(repoRoot, '..'),
         apiTokenPresent: Boolean(process.env.MC_API_TOKEN),
         defaultChatId: defaultChatId() || null,
         health,
@@ -351,6 +260,38 @@ function printRecoveryHint(baseUrl: string): void {
   console.error('  4. See examples: npm run cutline:telegram -- --help');
 }
 
+function buildApi(baseUrl: string): MissionControlApi {
+  return {
+    async listWorkspaces() {
+      return (await request(baseUrl, '/api/workspaces')) as WorkspaceRow[];
+    },
+    async listAgents(workspaceId: string) {
+      return (await request(
+        baseUrl,
+        `/api/agents?workspace_id=${encodeURIComponent(workspaceId)}`,
+      )) as AgentRow[];
+    },
+    async listProducts(workspaceId: string) {
+      return (await request(
+        baseUrl,
+        `/api/products?workspace_id=${encodeURIComponent(workspaceId)}`,
+      )) as ProductRow[];
+    },
+    async createIdea(productId: string, payload: Record<string, unknown>) {
+      return request(baseUrl, `/api/products/${productId}/ideas`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }) as Promise<{ id: string }>;
+    },
+    async createTask(payload: Record<string, unknown>) {
+      return request(baseUrl, '/api/tasks', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }) as Promise<{ id: string }>;
+    },
+  };
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   if (options.help || !options.command) {
@@ -359,128 +300,90 @@ async function main() {
   }
 
   const repoRoot = path.resolve(__dirname, '..');
+  const workspaceRoot = path.resolve(repoRoot, '..');
   const { missionControlUrl } = loadLocalEnv(repoRoot);
   const baseUrl = missionControlUrl;
+
   if (options.command === 'doctor') {
     await runDoctor(baseUrl);
     return;
   }
-  if (options.command !== 'submit') {
-    throw new Error(
-      'Usage: tsx scripts/cutline-telegram-intake.ts <submit|doctor> [submit flags...]',
-    );
-  }
+
   const chatId = options.chatId || defaultChatId();
-  const lane = options.lane;
-  const body = options.text || options.transcript;
-
   assert(chatId, 'No Telegram chat id available. Pass --chat or set CUTLINE_DEFAULT_CHAT_ID.');
-  assert(lane, 'Lane is required: --lane signal|line_lab|build');
-  assert(body?.trim(), 'Provide --text or --transcript');
 
-  const workspace = await resolveCutlineWorkspace(baseUrl);
-  const avery = await resolveAvery(baseUrl, workspace.id);
-  const title = inferTitle(body!, lane, options.title);
-  const buildMode = lane === 'build' ? options.buildMode || 'task' : undefined;
-  const product = lane === 'build'
-    ? await resolveProductByName(baseUrl, workspace.id, options.product || 'Mission Control')
-    : undefined;
-
-  const description = buildDescription({
-    lane,
-    body: body!,
-    chatId,
-    transcript: options.transcript && options.text ? options.transcript : undefined,
-    product,
+  const service = new CutlineTelegramIntakeService({
+    workspaceRoot,
+    missionControlApi: buildApi(baseUrl),
+    writeNote: (payload) => writeTelegramNote(payload.notePath, payload),
   });
-  const notePath = notePathFor(title);
 
-  if (!options.confirm) {
-    console.log(
-      JSON.stringify(
-        {
-          ok: true,
-          preview: true,
-          title,
-          lane,
-          buildMode,
-          workspace: workspace.name,
-          product: product?.name || null,
-          notePath,
-        },
-        null,
-        2,
-      ),
-    );
+  if (options.command === 'message') {
+    const result = await service.handleMessage({
+      chatId,
+      text: options.text,
+      transcript: options.transcript,
+      title: options.title,
+      product: options.product,
+    });
+    console.log(JSON.stringify(result, null, 2));
     return;
   }
 
-  let entityType: 'task' | 'idea';
-  let entityId: string;
-
-  if (lane === 'build' && buildMode === 'idea') {
-    assert(product, 'Build-to-idea requires a target product');
-    const idea = await request(baseUrl, `/api/products/${product.id}/ideas`, {
-      method: 'POST',
-      body: JSON.stringify({
-        title,
-        description,
-        category: 'operations',
-        complexity: 'S',
-        impact_score: 6,
-        feasibility_score: 8,
-        technical_approach: 'Captured from Telegram intake and routed into Mission Control.',
-        tags: ['telegram', 'cutline', 'intake'],
-      }),
-    });
-    entityType = 'idea';
-    entityId = idea.id;
-  } else {
-    const task = await request(baseUrl, '/api/tasks', {
-      method: 'POST',
-      body: JSON.stringify({
-        title,
-        description,
-        workspace_id: workspace.id,
-        product_id: product?.id || null,
-        created_by_agent_id: avery?.id || null,
-        status: 'inbox',
-        priority: lane === 'build' ? 'high' : 'normal',
-        repo_url: product?.repo_url || undefined,
-        repo_branch: product?.default_branch || undefined,
-      }),
-    });
-    entityType = 'task';
-    entityId = task.id;
+  if (options.command === 'preview') {
+    const result = await service.previewDraft(chatId);
+    if (result.ok && result.action === 'preview') {
+      console.log('--- BUILD REQUEST PREVIEW ---');
+      console.log(`Title: ${result.preview.title}`);
+      console.log(`Product: ${result.preview.product}`);
+      console.log(`Ready Score: ${result.preview.readyScore}%`);
+      console.log(`Missing Fields: ${result.preview.missingFields.join(', ') || 'None'}`);
+      console.log('\nFields:');
+      for (const [key, val] of Object.entries(result.preview.fields)) {
+        if (val) console.log(`${key}: ${val}`);
+      }
+      console.log('-----------------------------');
+    } else {
+      console.log(JSON.stringify(result, null, 2));
+    }
+    return;
   }
 
-  writeTelegramNote(notePath, {
-    title,
-    lane,
-    buildMode,
+  if (options.command === 'cancel') {
+    const result = await service.cancelDraft(chatId);
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  if (options.command === 'confirm') {
+    assert(Number.isInteger(options.previewRevision), 'Confirm requires --preview-revision <n>.');
+    const result = await service.confirmDraft({
+      chatId,
+      previewRevision: options.previewRevision as number,
+      buildMode: options.buildMode,
+    });
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  if (options.command !== 'submit') {
+    throw new Error(
+      'Usage: tsx scripts/cutline-telegram-intake.ts <doctor|message|preview|confirm|cancel|submit> [flags]',
+    );
+  }
+
+  assert(options.lane === 'build', 'The Cutline Telegram intake only supports --lane build in this v1 bridge.');
+
+  const result = await service.submit({
     chatId,
-    text: body!,
-    transcript: options.transcript && options.text ? options.transcript : undefined,
-    entityType,
-    entityId,
-    productName: product?.name,
+    text: options.text,
+    transcript: options.transcript,
+    title: options.title,
+    product: options.product,
+    buildMode: options.confirm ? options.buildMode || 'idea' : undefined,
   });
 
-  console.log(
-    JSON.stringify(
-      {
-        ok: true,
-        entityType,
-        entityId,
-        lane,
-        buildMode,
-        product: product?.name || null,
-        notePath,
-      },
-      null,
-      2,
-    ),
-  );
+  console.log(JSON.stringify(result, null, 2));
 }
 
 main().catch((error) => {

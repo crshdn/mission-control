@@ -316,7 +316,7 @@ Your task data, research results, ideas, swipe history, and product programs sta
 
 ### Prerequisites
 
-- **Node.js** v18+ ([download](https://nodejs.org/))
+- **Node.js** `24.13.0` via NVM (`cat .nvmrc`) for local development and tests
 - **OpenClaw Gateway** — `npm install -g openclaw`
 - **AI API Key** — Anthropic (recommended), OpenAI, Google, or others via OpenRouter
 
@@ -326,6 +326,10 @@ Your task data, research results, ideas, swipe history, and product programs sta
 # Clone
 git clone https://github.com/crshdn/mission-control.git
 cd mission-control
+
+# Match the pinned runtime
+nvm install
+nvm use
 
 # Install dependencies
 npm install
@@ -608,6 +612,21 @@ autensa/
 lsof -i :4000
 kill -9 <PID>
 ```
+
+### `NODE_MODULE_VERSION` mismatch or `better-sqlite3` fails to load
+
+Mission Control is pinned to Node `24.13.0` via `.nvmrc`. If your shell is on a different Node version, native addons can be rebuilt for the wrong ABI and `npm test` will fail.
+
+Use the pinned runtime:
+
+```bash
+cd mission-control
+nvm use
+./scripts/run-with-project-node.sh node -p "process.version + ' / ABI ' + process.versions.modules"
+./scripts/run-with-project-node.sh npm rebuild better-sqlite3
+```
+
+If the repo was installed under the wrong runtime, prefer a clean reinstall under the pinned runtime.
 
 ### Agent callbacks failing behind a proxy (502 errors)
 

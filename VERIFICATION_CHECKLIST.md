@@ -16,7 +16,7 @@ Real ideas stay out of Mission Control until every item in `Must Pass` is green 
 - [x] Non-master agents no longer silently fall back to `agent:main:`.
 - [x] Agent `model` is no longer treated as an operator-editable dispatch control.
 - [x] `npm run test:smoke` passes on the rebuilt stack.
-- [x] `npm run cutline:telegram -- submit --lane build --build-mode idea --product "Mission Control" --text "..." --confirm` creates both a Mission Control idea and a durable vault note.
+- [x] `npm run cutline:telegram -- submit --lane build --build-mode idea --chat verification --text $'lane: build\ntitle: Verification Build Idea\ngoal: Verify the Telegram build gate.\nwhy now: We need a trusted local intake path.\nconstraints: Keep it local.\ndefinition of done: A preview or confirmed idea succeeds.\ntarget product: Mission Control\nuser problem: Incomplete Telegram ideas create cleanup work.\nrequested change: Keep Mission Control behind a real preview gate.' --confirm` creates both a Mission Control idea and a durable vault note.
 - [x] `npm run test:pr-validation` passes end to end with repo-backed workspace, planning, dispatch, workspace edits, task completion, and PR creation.
 - [x] `npm run test:self-improvement` passes with learner knowledge creation, later knowledge injection, skill extraction, later skill injection, and skill usage reporting.
 - [x] Learner verification is complete: a finished task produces a knowledge entry and later dispatches receive that knowledge.
@@ -32,7 +32,7 @@ Real ideas stay out of Mission Control until every item in `Must Pass` is green 
   - secure-mode retry dispatch omitted bearer auth
 - The self-improvement loop is verified with `npm run test:self-improvement`, including learner knowledge creation, knowledge injection on a later dispatch, skill extraction, skill injection, and skill usage reporting with deduped per-task accounting.
 - Backup verification now uses the live API and confirms create/list/restore against the rebuilt runtime.
-- Telegram intake verification is green for the confirmed build path and durable vault note export.
+- Telegram intake verification is green for the draft gate, confirmed build path, and durable vault note export.
 - `npm run test:automation-verification` is green: supervised skips monitors, semi-auto health failures roll back, CI failures roll back, rollback acknowledgement restores the tier, and `full_auto` currently follows the same webhook/rollback path as `semi_auto`.
 - The merged GitHub webhook now marks matching task PRs as `merged`, so CI-failure rollback has a natural task lookup path after merge.
 - The latest consolidated evidence is captured in [docs/POST_REBUILD_VERIFICATION_REPORT_2026-03-24.md](/Users/jordan/.openclaw/workspace/mission-control/docs/POST_REBUILD_VERIFICATION_REPORT_2026-03-24.md).
@@ -64,7 +64,8 @@ Real ideas stay out of Mission Control until every item in `Must Pass` is green 
 - `npm run test:pr-validation`
 - `npm run test:self-improvement`
 - `npm run test:automation-verification`
-- `npm run cutline:telegram -- submit --lane build --build-mode idea --product "Mission Control" --text "..." --confirm`
+- `npm run cutline:telegram -- doctor`
+- `npm run cutline:telegram -- submit --lane build --build-mode idea --chat verification --text $'lane: build\ntitle: Verification Build Idea\ngoal: Verify the Telegram build gate.\nwhy now: We need a trusted local intake path.\nconstraints: Keep it local.\ndefinition of done: A preview or confirmed idea succeeds.\ntarget product: Mission Control\nuser problem: Incomplete Telegram ideas create cleanup work.\nrequested change: Keep Mission Control behind a real preview gate.' --confirm`
 
 ## Evidence To Capture
 

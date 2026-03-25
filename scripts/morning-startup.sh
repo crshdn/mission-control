@@ -18,17 +18,20 @@ bootstrap_env() {
   export NVM_DIR="$HOME/.nvm"
   if [[ -s "$NVM_DIR/nvm.sh" ]]; then
     . "$NVM_DIR/nvm.sh"
-    nvm use default >/dev/null 2>&1 || true
+    if [[ -f "$MISSION_CONTROL_DIR/.nvmrc" ]]; then
+      nvm use "$(tr -d '[:space:]' < "$MISSION_CONTROL_DIR/.nvmrc")" >/dev/null 2>&1 || true
+    else
+      nvm use default >/dev/null 2>&1 || true
+    fi
   fi
 }
 
-resolve_default_node_dir() {
-  local alias_file="$HOME/.nvm/alias/default"
-  if [[ -f "$alias_file" ]]; then
-    local default_alias
-    default_alias="$(tr -d '[:space:]' < "$alias_file")"
-    if [[ -n "$default_alias" ]]; then
-      local version_dir="${default_alias#node/}"
+resolve_project_node_dir() {
+  if [[ -f "$MISSION_CONTROL_DIR/.nvmrc" ]]; then
+    local project_version
+    project_version="$(tr -d '[:space:]' < "$MISSION_CONTROL_DIR/.nvmrc")"
+    if [[ -n "$project_version" ]]; then
+      local version_dir="${project_version#node/}"
       if [[ "$version_dir" != v* ]]; then
         version_dir="v$version_dir"
       fi
@@ -150,7 +153,7 @@ fi
 
 bootstrap_env
 
-if NODE_BIN_DIR="$(resolve_default_node_dir)" \
+if NODE_BIN_DIR="$(resolve_project_node_dir)" \
   && [[ -x "$NODE_BIN_DIR/node" ]] \
   && [[ -x "$NODE_BIN_DIR/npm" ]]; then
   NODE_BIN="$NODE_BIN_DIR/node"
