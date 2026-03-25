@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
+import path from 'path';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
@@ -193,6 +195,19 @@ export async function PATCH(
 
       if (nextStatus === 'done' && !boardOverrideAllowed && !taskCanBeDone(id)) {
         return NextResponse.json({ error: 'Cannot mark done: validation/evidence requirements not met' }, { status: 400 });
+      }
+
+      // Cleanup temporary secrets file when task is marked as done
+      if (nextStatus === 'done' && existing.workspace_path) {
+        const secretFilePath = path.join(existing.workspace_path, '.env.mc-token-temp');
+        try {
+          if (fs.existsSync(secretFilePath)) {
+            fs.unlinkSync(secretFilePath);
+            console.log(`[Cleanup] Removed temporary secrets file: ${secretFilePath}`);
+          }
+        } catch (err) {
+          console.warn(`[Cleanup] Failed to remove temporary secrets file ${secretFilePath}:`, (err as Error).message);
+        }
       }
 
       updates.push('status = ?');

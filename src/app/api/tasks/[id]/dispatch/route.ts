@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
+import path from 'path';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
@@ -222,6 +224,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Write temporary secrets file for agent if needed
+    if (mcApiToken && taskProjectDir) {
+      const secretFileName = '.env.mc-token-temp';
+      const secretFilePath = path.join(taskProjectDir, secretFileName);
+      try {
+        fs.writeFileSync(secretFilePath, `MC_API_TOKEN=${mcApiToken}\n`, 'utf8');
+        console.log(`[Dispatch] Wrote temporary secrets file: ${secretFilePath}`);
+      } catch (err) {
+        console.warn(`[Dispatch] Failed to write temporary secrets file to ${secretFilePath}:`, (err as Error).message);
+      }
+    }
+
     // Parse planning_spec and planning_agents if present (stored as JSON text on the task row)
     const rawTask = task as Task & { assigned_agent_name?: string; workspace_id: string; planning_spec?: string; planning_agents?: string };
     let planningSpecSection = '';
@@ -316,7 +330,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     let completionInstructions: string;
     if (isBuilder) {
       completionInstructions = `**IMPORTANT:** After completing work, you MUST call these APIs:
-1. Log activity: POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/activities
+${mcApiToken ? `1. **Source API Token:** \`source ./.env.mc-token-temp\`\n` : ''}1. Log activity: POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/activities
    Body: {"activity_type": "completed", "message": "Description of what was done"}
 2. Register deliverable: POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/deliverables
    Body: {"deliverable_type": "file", "title": "File name", "path": "${taskProjectDir}/filename.html"}
@@ -331,7 +345,7 @@ When complete, reply with:
 Review the output directory for deliverables and run any applicable tests.
 
 **If tests PASS:**
-1. Log activity: POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/activities
+${mcApiToken ? `1. **Source API Token:** \`source ./.env.mc-token-temp\`\n` : ''}1. Log activity: POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/activities
    Body: {"activity_type": "completed", "message": "Tests passed: [summary]"}
 2. Update status: PATCH ${missionControlUrl}${authHeader}/api/tasks/${task.id}
    Body: {"status": "${nextStatus}"}
@@ -347,7 +361,7 @@ Reply with: \`TEST_PASS: [summary]\` or \`TEST_FAIL: [what failed]\``;
 Review deliverables, test results, and task requirements.
 
 **If verification PASSES:**
-1. Log activity: POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/activities
+${mcApiToken ? `1. **Source API Token:** \`source ./.env.mc-token-temp\`\n` : ''}1. Log activity: POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/activities
    Body: {"activity_type": "completed", "message": "Verification passed: [summary]"}
 2. Update status: PATCH ${missionControlUrl}${authHeader}/api/tasks/${task.id}
    Body: {"status": "${nextStatus}"}
