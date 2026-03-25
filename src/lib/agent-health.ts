@@ -95,7 +95,7 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
     const previousState = existing?.health_state;
 
     if (existing) {
-      const consecutiveStalls = healthState === 'stalled' || healthState === 'stuck'
+      const consecutiveStalls = healthState === 'stalled' || healthState === 'stuck' || healthState === 'zombie'
         ? (existing.consecutive_stall_checks || 0) + 1
         : 0;
 
@@ -119,22 +119,22 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
       if (healthRecord) {
         broadcast({ type: 'agent_health_changed', payload: healthRecord });
       }
-    }
 
-    // Log warnings for degraded states
-    if (activeTask && (healthState === 'stalled' || healthState === 'stuck' || healthState === 'zombie')) {
-      run(
-        `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
-         VALUES (?, ?, ?, 'status_changed', ?, ?)`,
-        [uuidv4(), activeTask.id, agentId, `Agent health: ${healthState}`, now]
-      );
+      // Log warnings for degraded states ONLY when entering the state
+      if (activeTask && (healthState === 'stalled' || healthState === 'stuck' || healthState === 'zombie')) {
+        run(
+          `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+           VALUES (?, ?, ?, 'status_changed', ?, ?)`,
+          [uuidv4(), activeTask.id, agentId, `Agent health: ${healthState}`, now]
+        );
+      }
     }
 
     // Auto-nudge after consecutive stall checks
     const updatedHealth = queryOne<AgentHealth>('SELECT * FROM agent_health WHERE agent_id = ?', [agentId]);
     if (updatedHealth) {
       results.push(updatedHealth);
-      if (updatedHealth.consecutive_stall_checks >= AUTO_NUDGE_AFTER_STALLS && healthState === 'stuck') {
+      if (updatedHealth.consecutive_stall_checks >= AUTO_NUDGE_AFTER_STALLS && (healthState === 'stuck' || healthState === 'zombie')) {
         // Auto-nudge is fire-and-forget
         nudgeAgent(agentId).catch(err =>
           console.error(`[Health] Auto-nudge failed for agent ${agentId}:`, err)
