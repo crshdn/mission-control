@@ -22,6 +22,7 @@ export function ProductSettings({ product, onSave }: Props) {
     cost_cap_per_task: product.cost_cap_per_task ?? '',
     cost_cap_monthly: product.cost_cap_monthly ?? '',
     batch_review_threshold: product.batch_review_threshold ?? 10,
+    exploration_depth: product.exploration_depth || 'standard',
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -37,7 +38,8 @@ export function ProductSettings({ product, onSave }: Props) {
     form.icon !== (product.icon || '📦') ||
     String(form.cost_cap_per_task) !== String(product.cost_cap_per_task ?? '') ||
     String(form.cost_cap_monthly) !== String(product.cost_cap_monthly ?? '') ||
-    form.batch_review_threshold !== (product.batch_review_threshold ?? 10);
+    form.batch_review_threshold !== (product.batch_review_threshold ?? 10) ||
+    form.exploration_depth !== (product.exploration_depth || 'standard');
 
   async function handleSave() {
     setSaving(true);
@@ -58,6 +60,7 @@ export function ProductSettings({ product, onSave }: Props) {
       if (form.cost_cap_monthly !== '') body.cost_cap_monthly = Number(form.cost_cap_monthly);
       else body.cost_cap_monthly = null;
       body.batch_review_threshold = Number(form.batch_review_threshold) || 10;
+      body.exploration_depth = form.exploration_depth;
 
       const res = await fetch(`/api/products/${product.id}`, {
         method: 'PATCH',
@@ -223,6 +226,19 @@ export function ProductSettings({ product, onSave }: Props) {
           >
             <option value="plan_first">Plan First — Agent plans before building</option>
             <option value="auto_build">Auto Build — Skip planning, build immediately</option>
+          </select>
+        </div>
+
+        <div>
+          <label className={labelClass}>Codebase Exploration Depth</label>
+          <select
+            value={form.exploration_depth}
+            onChange={e => setForm(f => ({ ...f, exploration_depth: e.target.value as 'shallow' | 'standard' | 'deep' }))}
+            className={inputClass}
+          >
+            <option value="shallow">Shallow — file tree only</option>
+            <option value="standard">Standard — tree + relevant files + types</option>
+            <option value="deep">Deep — tree + all exports + dependency graph</option>
           </select>
         </div>
 

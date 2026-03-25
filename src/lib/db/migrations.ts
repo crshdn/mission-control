@@ -1595,6 +1595,38 @@ const migrations: Migration[] = [
 
       console.log('[Migration 028] product_skills and skill_reports tables created');
     }
+  },
+  {
+    id: '033',
+    name: 'add_codebase_explorer',
+    up: (db) => {
+      console.log('[Migration 033] Adding codebase_snapshots table and exploration_depth column...');
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS codebase_snapshots (
+          id TEXT PRIMARY KEY,
+          product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+          commit_sha TEXT NOT NULL,
+          file_tree TEXT NOT NULL,
+          framework TEXT,
+          language TEXT,
+          loc INTEGER,
+          key_files TEXT,
+          type_definitions TEXT,
+          explored_at TEXT DEFAULT (datetime('now')),
+          UNIQUE(product_id, commit_sha)
+        )
+      `);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_codebase_snapshots_product ON codebase_snapshots(product_id)`);
+
+      const productsInfo = db.prepare("PRAGMA table_info(products)").all() as { name: string }[];
+      if (!productsInfo.some(col => col.name === 'exploration_depth')) {
+        db.exec(`ALTER TABLE products ADD COLUMN exploration_depth TEXT DEFAULT 'standard' CHECK (exploration_depth IN ('shallow', 'standard', 'deep'))`);
+        console.log('[Migration 033] Added exploration_depth column to products');
+      }
+
+      console.log('[Migration 033] codebase_snapshots table created');
+    }
   }
 ];
 
