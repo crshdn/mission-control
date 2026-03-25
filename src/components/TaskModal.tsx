@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus, Users, ImageIcon, Truck, Radio, MessageSquare, ExternalLink, HardDrive } from 'lucide-react';
+import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus, Users, ImageIcon, Truck, Radio, MessageSquare, ExternalLink, HardDrive, BarChart3 } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { triggerAutoDispatch, shouldTriggerAutoDispatch } from '@/lib/auto-dispatch';
 import { ActivityLog } from './ActivityLog';
@@ -15,9 +15,10 @@ import { ConvoyTab } from './ConvoyTab';
 import { AgentLiveTab } from './AgentLiveTab';
 import { TaskChatTab } from './TaskChatTab';
 import { WorkspaceTab } from './WorkspaceTab';
+import { InsightsTab } from './InsightsTab';
 import type { Task, TaskPriority, TaskStatus } from '@/lib/types';
 
-type TabType = 'overview' | 'planning' | 'convoy' | 'team' | 'activity' | 'deliverables' | 'images' | 'sessions' | 'workspace' | 'agent-live' | 'chat';
+type TabType = 'overview' | 'planning' | 'convoy' | 'team' | 'activity' | 'deliverables' | 'images' | 'sessions' | 'workspace' | 'agent-live' | 'chat' | 'insights';
 
 interface TaskModalProps {
   task?: Task;
@@ -198,6 +199,10 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
     { id: 'sessions' as TabType, label: 'Sessions', icon: <Bot className="w-4 h-4" /> },
     // Workspace tab — shown when task has workspace isolation
     ...(task?.workspace_path ? [{ id: 'workspace' as TabType, label: 'Workspace', icon: <HardDrive className="w-4 h-4" /> }] : []),
+    // Insights tab — shown for completed tasks or tasks with activities
+    ...(task && ['done', 'review', 'verification'].includes(task.status)
+      ? [{ id: 'insights' as TabType, label: 'Insights', icon: <BarChart3 className="w-4 h-4" /> }]
+      : []),
     // Chat is always available — messages dispatch the agent if needed
     { id: 'chat' as TabType, label: 'Chat', icon: <MessageSquare className="w-4 h-4" /> },
     // Agent Live only shown when agent is active
@@ -439,6 +444,11 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
           {/* Workspace Tab */}
           {activeTab === 'workspace' && task && (
             <WorkspaceTab taskId={task.id} taskStatus={task.status} />
+          )}
+
+          {/* Insights Tab */}
+          {activeTab === 'insights' && task && (
+            <InsightsTab taskId={task.id} />
           )}
 
           {activeTab === 'chat' && task && (

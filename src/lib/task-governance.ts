@@ -1,5 +1,7 @@
 import { queryAll, queryOne, run, transaction } from '@/lib/db';
 import { notifyLearner } from '@/lib/learner';
+import { generateInsights, saveInsights } from '@/lib/session-insights';
+import { generateImprovedPrompt } from '@/lib/prompt-improver';
 import type { Task } from '@/lib/types';
 
 const ACTIVE_STATUSES = ['assigned', 'in_progress', 'convoy_active', 'testing', 'review', 'verification'];
@@ -96,6 +98,41 @@ export async function escalateFailureIfNeeded(taskId: string, stage: string): Pr
 
 export async function recordLearnerOnTransition(taskId: string, previousStatus: string, newStatus: string, passed = true, failReason?: string): Promise<void> {
   await notifyLearner(taskId, { previousStatus, newStatus, passed, failReason });
+
+  // Trigger insight generation when task reaches 'done'
+  if (newStatus === 'done') {
+    triggerInsightGeneration(taskId).catch(err =>
+      console.error(`[Governance] Insight generation failed for task ${taskId}:`, err)
+    );
+  }
+}
+
+/** Generate and save insights for a completed task (fire-and-forget). */
+async function triggerInsightGeneration(taskId: string): Promise<void> {
+  const task = queryOne<{ id: string; product_id: string | null; title: string; description: string | null; status: string }>(
+    'SELECT id, product_id, title, description, status FROM tasks WHERE id = ?',
+    [taskId]
+  );
+  if (!task) return;
+
+  const productId = task.product_id || 'unknown';
+  const insights = generateInsights(taskId);
+  if (!insights) return;
+
+  let improvedPrompt: string | null = null;
+  try {
+    improvedPrompt = await generateImprovedPrompt({
+      originalDescription: task.description || '',
+      taskTitle: task.title,
+      taskStatus: task.status,
+      insights,
+    });
+  } catch {
+    // Non-fatal — save insights without improved prompt
+  }
+
+  saveInsights(taskId, productId, insights, improvedPrompt || undefined);
+  console.log(`[Governance] Insights generated for task ${taskId}`);
 }
 
 export function taskCanBeDone(taskId: string): boolean {
