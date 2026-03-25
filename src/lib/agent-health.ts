@@ -9,6 +9,14 @@ const STALL_THRESHOLD_MINUTES = 5;
 const STUCK_THRESHOLD_MINUTES = 15;
 const AUTO_NUDGE_AFTER_STALLS = 3;
 
+function parseDbTimestamp(value: string): number {
+  if (!value) return Date.now();
+  if (value.includes('T') || value.endsWith('Z')) {
+    return new Date(value).getTime();
+  }
+  return new Date(value.replace(' ', 'T') + 'Z').getTime();
+}
+
 /**
  * Check health state for a single agent.
  */
@@ -47,12 +55,12 @@ export function checkAgentHealth(agentId: string): AgentHealthState {
   );
 
   if (lastActivity) {
-    const minutesSince = (Date.now() - new Date(lastActivity.created_at).getTime()) / 60000;
+    const minutesSince = (Date.now() - parseDbTimestamp(lastActivity.created_at)) / 60000;
     if (minutesSince > STUCK_THRESHOLD_MINUTES) return 'stuck';
     if (minutesSince > STALL_THRESHOLD_MINUTES) return 'stalled';
   } else {
     // No real activity at all — check how long the task has been in progress
-    const taskAge = (Date.now() - new Date(activeTask.updated_at).getTime()) / 60000;
+    const taskAge = (Date.now() - parseDbTimestamp(activeTask.updated_at)) / 60000;
     if (taskAge > STUCK_THRESHOLD_MINUTES) return 'stuck';
     if (taskAge > STALL_THRESHOLD_MINUTES) return 'stalled';
   }

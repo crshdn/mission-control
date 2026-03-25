@@ -134,15 +134,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const now = new Date().toISOString();
 
+    if (session && session.task_id !== task.id) {
+      run(
+        `UPDATE openclaw_sessions SET task_id = ?, updated_at = ? WHERE id = ?`,
+        [task.id, now, session.id]
+      );
+      session = queryOne<OpenClawSession>(
+        'SELECT * FROM openclaw_sessions WHERE id = ?',
+        [session.id]
+      );
+    }
+
     if (!session) {
       // Create session record
       const sessionId = uuidv4();
       const openclawSessionId = `mission-control-${agent.name.toLowerCase().replace(/\s+/g, '-')}`;
       
       run(
-        `INSERT INTO openclaw_sessions (id, agent_id, openclaw_session_id, channel, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [sessionId, agent.id, openclawSessionId, 'mission-control', 'active', now, now]
+        `INSERT INTO openclaw_sessions (id, agent_id, task_id, openclaw_session_id, channel, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [sessionId, agent.id, task.id, openclawSessionId, 'mission-control', 'active', now, now]
       );
 
       session = queryOne<OpenClawSession>(
