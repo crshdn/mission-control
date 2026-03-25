@@ -24,6 +24,7 @@ const COLUMNS: { id: TaskStatus; label: string; color: string }[] = [
   { id: 'convoy_active', label: '🚚 Convoy', color: 'border-t-cyan-400' },
   { id: 'testing', label: 'Testing', color: 'border-t-mc-accent-cyan' },
   { id: 'review', label: 'Review', color: 'border-t-mc-accent-purple' },
+  { id: 'review_fix', label: 'Fixing PR', color: 'border-t-orange-400' },
   { id: 'verification', label: 'Verification', color: 'border-t-orange-500' },
   { id: 'done', label: 'Done', color: 'border-t-mc-accent-green' },
 ];
@@ -55,7 +56,7 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
   const getTasksByStatus = (status: TaskStatus) => tasks.filter((task) => task.status === status);
 
   // Active pipeline states where manual moves are dangerous
-  const ACTIVE_PIPELINE_STATES: TaskStatus[] = ['assigned', 'in_progress', 'convoy_active', 'testing', 'review', 'verification'];
+  const ACTIVE_PIPELINE_STATES: TaskStatus[] = ['assigned', 'in_progress', 'convoy_active', 'testing', 'review', 'review_fix', 'verification'];
 
   const getPipelineWarning = (task: Task, targetStatus: TaskStatus): string | null => {
     if (!ACTIVE_PIPELINE_STATES.includes(task.status)) return null;
@@ -68,6 +69,7 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
       convoy_active: 'running as a convoy',
       testing: 'being tested by an agent',
       review: 'in the review queue',
+      review_fix: 'fixing PR reviewer feedback',
       verification: 'being verified by an agent',
     };
 
@@ -412,6 +414,7 @@ function TaskCard({ task, onDragStart, onClick, onMoveStatus, isDragging, mobile
 
   const isPlanning = task.status === 'planning';
   const isConvoyActive = task.status === 'convoy_active';
+  const isReviewFix = task.status === 'review_fix';
   const isSubtask = !!task.is_subtask;
   const isAssigned = task.status === 'assigned';
   const dispatchError = task.planning_dispatch_error;
@@ -453,6 +456,15 @@ function TaskCard({ task, onDragStart, onClick, onMoveStatus, isDragging, mobile
           <div className={`flex items-center gap-2 ${portraitMode ? 'mb-3 py-2 px-3' : 'mb-2 py-1.5 px-2.5'} bg-cyan-500/10 rounded-md border border-cyan-500/20`}>
             <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse flex-shrink-0" />
             <span className="text-xs text-cyan-300 font-medium">Convoy active — sub-tasks running</span>
+          </div>
+        )}
+
+        {isReviewFix && (
+          <div className={`flex items-center gap-2 ${portraitMode ? 'mb-3 py-2 px-3' : 'mb-2 py-1.5 px-2.5'} bg-orange-500/10 rounded-md border border-orange-500/20`}>
+            <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse flex-shrink-0" />
+            <span className="text-xs text-orange-300 font-medium">
+              Fixing PR — cycle {task.review_fix_count ?? 0}/{task.review_fix_max ?? 3}
+            </span>
           </div>
         )}
 
