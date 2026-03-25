@@ -1595,6 +1595,21 @@ const migrations: Migration[] = [
 
       console.log('[Migration 028] product_skills and skill_reports tables created');
     }
+  },
+  {
+    id: '031',
+    name: 'add_browser_qa_columns',
+    up: (db) => {
+      console.log('[Migration 031] Adding browser QA columns...');
+
+      // Per-product toggle for browser testing
+      db.exec(`ALTER TABLE products ADD COLUMN browser_test_enabled INTEGER DEFAULT 1`);
+
+      // Dev server URL used during testing (set at dispatch time)
+      db.exec(`ALTER TABLE tasks ADD COLUMN browser_test_url TEXT`);
+
+      console.log('[Migration 031] browser_test_enabled (products) and browser_test_url (tasks) added');
+    }
   }
 ];
 
