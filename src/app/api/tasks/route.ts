@@ -4,7 +4,7 @@ import { queryAll, queryOne, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { CreateTaskSchema } from '@/lib/validation';
 import { populateTaskRolesFromAgents } from '@/lib/workflow-engine';
-import type { Task, CreateTaskRequest, Agent } from '@/lib/types';
+import type { Task, CreateTaskRequest, Agent, Product } from '@/lib/types';
 
 // GET /api/tasks - List all tasks with optional filters
 
@@ -93,12 +93,17 @@ export async function POST(request: NextRequest) {
     }
 
     const validatedData = validation.data;
+    const linkedProduct = validatedData.product_id
+      ? queryOne<Product>('SELECT * FROM products WHERE id = ?', [validatedData.product_id])
+      : undefined;
 
     const id = uuidv4();
     const now = new Date().toISOString();
 
-    const workspaceId = validatedData.workspace_id || 'default';
+    const workspaceId = validatedData.workspace_id || linkedProduct?.workspace_id || 'default';
     const status = validatedData.status || 'inbox';
+    const repoUrl = validatedData.repo_url || linkedProduct?.repo_url || null;
+    const repoBranch = validatedData.repo_branch || linkedProduct?.default_branch || null;
 
     // Auto-assign the workspace's default workflow template
     const defaultTemplate = queryOne<{ id: string }>(
@@ -108,8 +113,8 @@ export async function POST(request: NextRequest) {
     const workflowTemplateId = defaultTemplate?.id || null;
 
     run(
-      `INSERT INTO tasks (id, title, description, status, priority, assigned_agent_id, created_by_agent_id, workspace_id, business_id, due_date, workflow_template_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tasks (id, title, description, status, priority, assigned_agent_id, created_by_agent_id, workspace_id, business_id, due_date, workflow_template_id, product_id, idea_id, repo_url, repo_branch, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         validatedData.title,
@@ -122,6 +127,10 @@ export async function POST(request: NextRequest) {
         validatedData.business_id || 'default',
         validatedData.due_date || null,
         workflowTemplateId,
+        validatedData.product_id || null,
+        validatedData.idea_id || null,
+        repoUrl,
+        repoBranch,
         now,
         now,
       ]

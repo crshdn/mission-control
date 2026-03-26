@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, run } from '@/lib/db';
+import { normalizeSessionKeyPrefix } from '@/lib/openclaw/routing';
 import type { Agent, UpdateAgentRequest } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -37,9 +38,26 @@ export async function PATCH(
     if (!existing) {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
+    if (body.model !== undefined && body.model !== existing.model) {
+      return NextResponse.json(
+        { error: 'Per-agent model overrides are not enforced by dispatch. Model selection is gateway-controlled.' },
+        { status: 400 }
+      );
+    }
 
     const updates: string[] = [];
     const values: unknown[] = [];
+    const nextIsMaster = body.is_master !== undefined ? body.is_master : existing.is_master;
+    const nextPrefix = body.session_key_prefix !== undefined
+      ? normalizeSessionKeyPrefix(body.session_key_prefix)
+      : normalizeSessionKeyPrefix(existing.session_key_prefix);
+
+    if (!nextIsMaster && !nextPrefix) {
+      return NextResponse.json(
+        { error: 'Trusted non-master agents require an explicit session_key_prefix' },
+        { status: 400 }
+      );
+    }
 
     if (body.name !== undefined) {
       updates.push('name = ?');
@@ -86,13 +104,11 @@ export async function PATCH(
       values.push(body.agents_md);
     }
     if (body.model !== undefined) {
-      updates.push('model = ?');
-      values.push(body.model);
+      // Retain stored gateway metadata, but do not allow manual edits.
     }
     if (body.session_key_prefix !== undefined) {
       updates.push('session_key_prefix = ?');
-      const trimmed = body.session_key_prefix?.trim();
-      values.push(!trimmed ? null : trimmed.endsWith(':') ? trimmed : trimmed + ':');
+      values.push(nextPrefix);
     }
 
     if (updates.length === 0) {

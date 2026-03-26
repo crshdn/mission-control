@@ -70,9 +70,44 @@ export async function POST(
 
   try {
     // Get task
-    const task = getDb().prepare('SELECT * FROM tasks WHERE id = ?').get(taskId) as { id: string; title: string; description?: string; status: string } | undefined;
+    const task = getDb().prepare('SELECT * FROM tasks WHERE id = ?').get(taskId) as {
+      id: string;
+      title: string;
+      description?: string;
+      status: string;
+      planning_complete?: number;
+      planning_spec?: string | null;
+      planning_agents?: string | null;
+    } | undefined;
     if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
+
+    // Modern planning flow completes directly through the poll route and stores
+    // the final planning payload on the task. In that case, approve should be a
+    // harmless acknowledgement instead of rewriting the task back to inbox.
+    if (task.planning_complete) {
+      let parsedSpec: unknown = null;
+      let parsedAgents: unknown = null;
+
+      try {
+        parsedSpec = task.planning_spec ? JSON.parse(task.planning_spec) : null;
+      } catch {
+        parsedSpec = task.planning_spec ?? null;
+      }
+
+      try {
+        parsedAgents = task.planning_agents ? JSON.parse(task.planning_agents) : null;
+      } catch {
+        parsedAgents = task.planning_agents ?? null;
+      }
+
+      return NextResponse.json({
+        success: true,
+        alreadyComplete: true,
+        spec: parsedSpec,
+        agents: parsedAgents,
+      });
     }
 
     // Check if already locked

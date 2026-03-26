@@ -36,6 +36,10 @@ export const CreateTaskSchema = z.object({
   created_by_agent_id: z.string().uuid().optional().nullable(),
   business_id: z.string().optional(),
   workspace_id: z.string().optional(),
+  product_id: z.string().uuid().optional().nullable(),
+  idea_id: z.string().optional().nullable(),
+  repo_url: z.string().url().optional().or(z.literal('')),
+  repo_branch: z.string().max(200).optional(),
   due_date: z.string().optional().nullable(),
 });
 
@@ -49,6 +53,10 @@ export const UpdateTaskSchema = z.object({
   due_date: z.string().optional().nullable(),
   updated_by_agent_id: z.string().uuid().optional(),
   status_reason: z.string().max(2000).optional(),
+  product_id: z.string().uuid().optional().nullable(),
+  idea_id: z.string().optional().nullable(),
+  repo_url: z.string().url().optional().nullable().or(z.literal('')),
+  repo_branch: z.string().max(200).optional().nullable(),
   board_override: z.boolean().optional(),
   override_reason: z.string().max(2000).optional(),
   pr_url: z.string().url().optional().nullable(),

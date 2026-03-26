@@ -1,5 +1,7 @@
 # Agent Protocol
 
+> Historical note only. This document reflects an older direct `TASK_COMPLETE` / orchestrator-centric protocol and should not be treated as the verified local contract for the rebuilt v2.4.0 branch. Use [VERIFICATION_CHECKLIST.md](/Users/jordan/.openclaw/workspace/mission-control/VERIFICATION_CHECKLIST.md), [HOW-THE-PIPELINE-WORKS.md](/Users/jordan/.openclaw/workspace/mission-control/docs/HOW-THE-PIPELINE-WORKS.md), and [DEFAULT_WORKSPACE_BASELINE.md](/Users/jordan/.openclaw/workspace/mission-control/docs/DEFAULT_WORKSPACE_BASELINE.md) for current guidance.
+
 This document describes how OpenClaw agents interact with Mission Control.
 
 ## Task Assignment Flow

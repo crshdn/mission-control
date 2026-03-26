@@ -9,6 +9,18 @@ const STALL_THRESHOLD_MINUTES = 5;
 const STUCK_THRESHOLD_MINUTES = 15;
 const AUTO_NUDGE_AFTER_STALLS = 3;
 
+interface RunHealthCheckOptions {
+  awaitNudges?: boolean;
+}
+
+function parseDbTimestamp(value: string): number {
+  if (!value) return Date.now();
+  if (value.includes('T') || value.endsWith('Z')) {
+    return new Date(value).getTime();
+  }
+  return new Date(value.replace(' ', 'T') + 'Z').getTime();
+}
+
 /**
  * Check health state for a single agent.
  */
@@ -47,12 +59,12 @@ export function checkAgentHealth(agentId: string): AgentHealthState {
   );
 
   if (lastActivity) {
-    const minutesSince = (Date.now() - new Date(lastActivity.created_at).getTime()) / 60000;
+    const minutesSince = (Date.now() - parseDbTimestamp(lastActivity.created_at)) / 60000;
     if (minutesSince > STUCK_THRESHOLD_MINUTES) return 'stuck';
     if (minutesSince > STALL_THRESHOLD_MINUTES) return 'stalled';
   } else {
     // No real activity at all — check how long the task has been in progress
-    const taskAge = (Date.now() - new Date(activeTask.updated_at).getTime()) / 60000;
+    const taskAge = (Date.now() - parseDbTimestamp(activeTask.updated_at)) / 60000;
     if (taskAge > STUCK_THRESHOLD_MINUTES) return 'stuck';
     if (taskAge > STALL_THRESHOLD_MINUTES) return 'stalled';
   }
@@ -63,7 +75,7 @@ export function checkAgentHealth(agentId: string): AgentHealthState {
 /**
  * Run a full health check cycle across all agents with active tasks.
  */
-export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
+export async function runHealthCheckCycle(options: RunHealthCheckOptions = {}): Promise<AgentHealth[]> {
   const activeAgents = queryAll<{ id: string }>(
     `SELECT DISTINCT assigned_agent_id as id FROM tasks WHERE status IN ('assigned', 'in_progress', 'testing', 'verification') AND assigned_agent_id IS NOT NULL`
   );
@@ -76,6 +88,7 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
   const allAgentIds = Array.from(new Set([...activeAgents.map(a => a.id), ...workingAgents.map(a => a.id)]));
   const results: AgentHealth[] = [];
   const now = new Date().toISOString();
+  const pendingNudges: Promise<void>[] = [];
 
   for (const agentId of allAgentIds) {
     const healthState = checkAgentHealth(agentId);
@@ -95,7 +108,7 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
     const previousState = existing?.health_state;
 
     if (existing) {
-      const consecutiveStalls = healthState === 'stalled' || healthState === 'stuck'
+      const consecutiveStalls = healthState === 'stalled' || healthState === 'stuck' || healthState === 'zombie'
         ? (existing.consecutive_stall_checks || 0) + 1
         : 0;
 
@@ -119,26 +132,33 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
       if (healthRecord) {
         broadcast({ type: 'agent_health_changed', payload: healthRecord });
       }
-    }
 
-    // Log warnings for degraded states
-    if (activeTask && (healthState === 'stalled' || healthState === 'stuck' || healthState === 'zombie')) {
-      run(
-        `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
-         VALUES (?, ?, ?, 'status_changed', ?, ?)`,
-        [uuidv4(), activeTask.id, agentId, `Agent health: ${healthState}`, now]
-      );
+      // Log warnings for degraded states ONLY when entering the state
+      if (activeTask && (healthState === 'stalled' || healthState === 'stuck' || healthState === 'zombie')) {
+        run(
+          `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+           VALUES (?, ?, ?, 'status_changed', ?, ?)`,
+          [uuidv4(), activeTask.id, agentId, `Agent health: ${healthState}`, now]
+        );
+      }
     }
 
     // Auto-nudge after consecutive stall checks
     const updatedHealth = queryOne<AgentHealth>('SELECT * FROM agent_health WHERE agent_id = ?', [agentId]);
     if (updatedHealth) {
       results.push(updatedHealth);
-      if (updatedHealth.consecutive_stall_checks >= AUTO_NUDGE_AFTER_STALLS && healthState === 'stuck') {
-        // Auto-nudge is fire-and-forget
-        nudgeAgent(agentId).catch(err =>
+      if (updatedHealth.consecutive_stall_checks >= AUTO_NUDGE_AFTER_STALLS && (healthState === 'stuck' || healthState === 'zombie')) {
+        const nudgePromise = nudgeAgent(agentId).then(result => {
+          if (!result.success && result.error) {
+            console.error(`[Health] Auto-nudge failed for agent ${agentId}: ${result.error}`);
+          }
+        }).catch(err =>
           console.error(`[Health] Auto-nudge failed for agent ${agentId}:`, err)
         );
+
+        if (options.awaitNudges) {
+          pendingNudges.push(nudgePromise);
+        }
       }
     }
   }
@@ -204,6 +224,10 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
         [uuidv4(), agentId, now]
       );
     }
+  }
+
+  if (options.awaitNudges && pendingNudges.length > 0) {
+    await Promise.all(pendingNudges);
   }
 
   return results;

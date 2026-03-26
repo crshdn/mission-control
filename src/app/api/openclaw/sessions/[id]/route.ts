@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { getDb } from '@/lib/db';
 import { broadcast } from '@/lib/events';
+import { resolveOpenClawSessionRecord } from '@/lib/openclaw-session-record';
 
 export const dynamic = 'force-dynamic';
 interface RouteParams {
@@ -96,8 +97,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     const db = getDb();
 
-    // Find session by openclaw_session_id
-    const session = db.prepare('SELECT * FROM openclaw_sessions WHERE openclaw_session_id = ?').get(id) as any;
+    // Prefer an exact DB row id when provided. If the caller sends a shared
+    // OpenClaw session key, target the newest active row for that key.
+    const session = resolveOpenClawSessionRecord(id) as any;
 
     if (!session) {
       return NextResponse.json(
@@ -135,7 +137,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     // If status changed to completed, update the agent status too
     if (status === 'completed') {
       if (session.agent_id) {
-        db.prepare('UPDATE agents SET status = ? WHERE id = ?').run('idle', session.agent_id);
+        db.prepare('UPDATE agents SET status = ? WHERE id = ?').run('standby', session.agent_id);
       }
       if (session.task_id) {
         broadcast({
@@ -164,12 +166,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     const { id } = await params;
     const db = getDb();
 
-    // Find session by openclaw_session_id or internal id
-    let session = db.prepare('SELECT * FROM openclaw_sessions WHERE openclaw_session_id = ?').get(id) as any;
-
-    if (!session) {
-      session = db.prepare('SELECT * FROM openclaw_sessions WHERE id = ?').get(id) as any;
-    }
+    const session = resolveOpenClawSessionRecord(id) as any;
 
     if (!session) {
       return NextResponse.json(
@@ -190,8 +187,8 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       if (agent && agent.role === 'Sub-Agent') {
         db.prepare('DELETE FROM agents WHERE id = ?').run(agentId);
       } else if (agent) {
-        // Update non-subagent back to idle
-        db.prepare('UPDATE agents SET status = ? WHERE id = ?').run('idle', agentId);
+        // Update non-subagent back to standby
+        db.prepare('UPDATE agents SET status = ? WHERE id = ?').run('standby', agentId);
       }
     }
 

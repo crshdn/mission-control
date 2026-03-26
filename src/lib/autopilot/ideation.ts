@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { recordCostEvent } from '@/lib/costs/tracker';
+import { estimateModelCostUsd } from '@/lib/costs/pricing';
+import { evaluateProductCostGuards } from '@/lib/costs/caps';
 import { emitAutopilotActivity } from './activity';
 import { completeJSON } from './llm';
 import { batchCheckSimilarity, storeEmbedding, checkSimilarity } from './similarity';
@@ -68,6 +70,10 @@ Respond with ONLY a JSON array of idea objects. No markdown, no code blocks, no 
 export async function runIdeationCycle(productId: string, cycleId?: string, existingIdeationId?: string): Promise<string> {
   const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [productId]);
   if (!product) throw new Error(`Product ${productId} not found`);
+  const capStatus = evaluateProductCostGuards(product);
+  if (!capStatus.ok) {
+    throw new Error(`Ideation blocked by cost caps: ${capStatus.exceeded.join(' | ')}`);
+  }
 
   // Get latest research report
   let researchReport: string | null = null;
@@ -383,15 +389,26 @@ export async function storeIdeasFromPhaseData(
   }
 
   if (product) {
+    const pricing = estimateModelCostUsd({
+      model: llmUsage?.model,
+      tokensInput: llmUsage?.promptTokens || 0,
+      tokensOutput: llmUsage?.completionTokens || 0,
+    });
     recordCostEvent({
       product_id: productId,
       workspace_id: product.workspace_id,
       cycle_id: researchCycleId,
       event_type: 'ideation_cycle',
-      model: llmUsage?.model,
+      provider: pricing.provider,
+      model: pricing.normalizedModel || llmUsage?.model,
       tokens_input: llmUsage?.promptTokens || 0,
       tokens_output: llmUsage?.completionTokens || 0,
-      cost_usd: 0,
+      cost_usd: pricing.costUsd,
+      metadata: JSON.stringify({
+        pricing_status: pricing.pricingStatus,
+        input_rate_per_million: pricing.inputRatePerMillion ?? null,
+        output_rate_per_million: pricing.outputRatePerMillion ?? null,
+      }),
     });
   }
 

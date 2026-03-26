@@ -1,3 +1,5 @@
+> **⚠️ Historical Document** — This guide predates the v2.4.0 rebuild. API endpoints are generally still valid, but refer to [VERIFICATION_CHECKLIST.md](VERIFICATION_CHECKLIST.md) and the source code for authoritative behavior.
+
 # Mission Control Orchestration Guide
 
 This document explains how to orchestrate tasks in Mission Control, including how to:

@@ -27,8 +27,13 @@ export interface GatewayConfigSnapshot {
   };
 }
 
-const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL || 'ws://127.0.0.1:18789';
-const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || '';
+function getGatewayUrl(): string {
+  return process.env.OPENCLAW_GATEWAY_URL || 'ws://127.0.0.1:18789';
+}
+
+function getGatewayToken(): string {
+  return process.env.OPENCLAW_GATEWAY_TOKEN || '';
+}
 
 // Global deduplication cache that persists across module reloads in Next.js dev
 // Use globalThis to ensure it's shared across all instances
@@ -121,9 +126,9 @@ export class OpenClawClient extends EventEmitter {
     }
   }
 
-  constructor(private url: string = GATEWAY_URL, token: string = GATEWAY_TOKEN) {
+  constructor(private url: string = getGatewayUrl(), token?: string) {
     super();
-    this.token = token;
+    this.token = token ?? getGatewayToken();
     // Prevent Node.js from throwing on unhandled 'error' events
     this.on('error', () => {});
     // Load device identity for pairing
@@ -148,6 +153,7 @@ export class OpenClawClient extends EventEmitter {
         // Perform cleanup even if no new events have arrived
         this.performCacheCleanup();
       }, this.PERIODIC_CLEANUP_INTERVAL_MS);
+      timer.unref?.();
 
       // Store the timer globally so all instances share it
       (globalThis as Record<string, unknown>)[GLOBAL_CACHE_CLEANUP_KEY] = timer;
@@ -197,9 +203,11 @@ export class OpenClawClient extends EventEmitter {
         }
 
         // Add token to URL query string for Gateway authentication
-        const wsUrl = new URL(this.url);
-        if (this.token) {
-          wsUrl.searchParams.set('token', this.token);
+        const wsUrl = new URL(this.url || getGatewayUrl());
+        const token = this.token || getGatewayToken();
+        if (token) {
+          wsUrl.searchParams.set('token', token);
+          this.token = token;
         }
         console.log('[OpenClaw] Connecting to:', wsUrl.toString().replace(/token=[^&]+/, 'token=***'));
         console.log('[OpenClaw] Token in URL:', wsUrl.searchParams.has('token'));
@@ -469,11 +477,12 @@ export class OpenClawClient extends EventEmitter {
   }
 
   async getSessionHistory(sessionId: string): Promise<unknown[]> {
-    return this.call<unknown[]>('sessions.history', { session_id: sessionId });
+    const result = await this.call<{ messages?: unknown[] }>('chat.history', { sessionKey: sessionId });
+    return result?.messages || [];
   }
 
   async sendMessage(sessionId: string, content: string): Promise<void> {
-    await this.call('sessions.send', { session_id: sessionId, content });
+    await this.call('sessions.send', { sessionKey: sessionId, content });
   }
 
   async createSession(channel: string, peer?: string): Promise<OpenClawSessionInfo> {

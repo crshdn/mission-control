@@ -337,6 +337,11 @@ export interface CreateTaskRequest {
   assigned_agent_id?: string;
   created_by_agent_id?: string;
   business_id?: string;
+  workspace_id?: string;
+  product_id?: string | null;
+  idea_id?: string | null;
+  repo_url?: string;
+  repo_branch?: string;
   due_date?: string;
 }
 

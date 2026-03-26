@@ -4,6 +4,12 @@ import { getOpenClawClient } from '@/lib/openclaw/client';
 import { extractJSON } from '@/lib/planning-utils';
 
 export const dynamic = 'force-dynamic';
+
+interface PlanningRunAccepted {
+  runId?: string;
+  status?: string;
+}
+
 // POST /api/tasks/[id]/planning/answer - Submit an answer and get next question
 export async function POST(
   request: NextRequest,
@@ -46,6 +52,11 @@ export async function POST(
 Based on this answer and the conversation so far, either:
 1. Ask your next question (if you need more information)
 2. Complete the planning (if you have enough information)
+
+Rules:
+- Ask at most 3 total questions for the task.
+- Stay specific to this task and use concise option labels.
+- Return valid JSON only. No markdown fences or explanatory text.
 
 For another question, respond with JSON:
 {
@@ -97,9 +108,11 @@ If planning is complete, respond with JSON:
     console.log('[Planning Answer] Answer text:', answerText);
 
     try {
-      const sendResult = await client.call('chat.send', {
+      const sendResult = await client.call<PlanningRunAccepted>('agent', {
         sessionKey: task.planning_session_key,
         message: answerPrompt,
+        deliver: false,
+        lane: 'task',
         idempotencyKey: `planning-answer-${taskId}-${Date.now()}`,
       });
       console.log('[Planning Answer] Send successful, result:', sendResult);

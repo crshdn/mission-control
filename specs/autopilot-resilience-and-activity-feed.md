@@ -456,4 +456,4 @@ Steps 1-4 are backend resilience. Steps 5-8 are the UI. They can be built in par
 
 1. **Should interrupted cycles auto-retry on startup, or just be marked `interrupted` for manual retry?** Recommendation: auto-retry up to 2 times, then mark interrupted and surface in UI.
 2. **Activity log retention**: How long to keep entries? Recommendation: 30 days, with a cleanup cron.
-3. **Cost tracking granularity**: The current `recordCostEvent` uses `cost_usd: 0` (placeholder). Do we want to query OpenClaw for actual token usage per session? This is possible via `sessions.history` but adds complexity.
+3. **Cost tracking granularity**: The current `recordCostEvent` uses `cost_usd: 0` (placeholder). Do we want to query OpenClaw for actual token usage per session? This is possible via `chat.history` but adds complexity.

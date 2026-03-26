@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
@@ -12,7 +14,11 @@ import { buildCheckpointContext } from '@/lib/checkpoint';
 import { formatMailForDispatch } from '@/lib/mailbox';
 import { getPendingNotesForDispatch } from '@/lib/task-notes';
 import { createTaskWorkspace, determineIsolationStrategy } from '@/lib/workspace-isolation';
-import type { Task, Agent, Product, OpenClawSession, WorkflowStage, TaskImage } from '@/lib/types';
+import { evaluateProductCostGuards } from '@/lib/costs/caps';
+import { buildAgentSessionKey } from '@/lib/openclaw/routing';
+import { buildMissionControlCurlCommand, buildTaskCompletionInstructions } from '@/lib/dispatch-instructions';
+import { ensureTaskSessionLink } from '@/lib/dispatch-session';
+import type { Task, Agent, Product, WorkflowStage, TaskImage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 interface RouteParams {
@@ -122,31 +128,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Get or create OpenClaw session for this agent
-    let session = queryOne<OpenClawSession>(
-      'SELECT * FROM openclaw_sessions WHERE agent_id = ? AND status = ?',
-      [agent.id, 'active']
-    );
-
     const now = new Date().toISOString();
+    const { session, created: createdSession } = ensureTaskSessionLink({
+      agentId: agent.id,
+      agentName: agent.name,
+      taskId: task.id,
+      now,
+    });
 
-    if (!session) {
-      // Create session record
-      const sessionId = uuidv4();
-      const openclawSessionId = `mission-control-${agent.name.toLowerCase().replace(/\s+/g, '-')}`;
-      
-      run(
-        `INSERT INTO openclaw_sessions (id, agent_id, openclaw_session_id, channel, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [sessionId, agent.id, openclawSessionId, 'mission-control', 'active', now, now]
-      );
-
-      session = queryOne<OpenClawSession>(
-        'SELECT * FROM openclaw_sessions WHERE id = ?',
-        [sessionId]
-      );
-
-      // Log session creation
+    if (createdSession) {
       run(
         `INSERT INTO events (id, type, agent_id, message, created_at)
          VALUES (?, ?, ?, ?, ?)`,
@@ -154,28 +144,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Failed to create agent session' },
-        { status: 500 }
-      );
-    }
-
-    // Cost cap warning check
+    // Cost cap enforcement and warning check
     let costCapWarning: string | undefined;
     if (task.product_id) {
       const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [task.product_id]);
-      if (product?.cost_cap_monthly) {
-        const monthStart = new Date();
-        monthStart.setDate(1);
-        monthStart.setHours(0, 0, 0, 0);
-        const monthlySpend = queryOne<{ total: number }>(
-          `SELECT COALESCE(SUM(cost_usd), 0) as total FROM cost_events
-           WHERE product_id = ? AND created_at >= ?`,
-          [task.product_id, monthStart.toISOString()]
-        );
-        if (monthlySpend && monthlySpend.total >= product.cost_cap_monthly) {
-          costCapWarning = `Monthly cost cap reached: $${monthlySpend.total.toFixed(2)}/$${product.cost_cap_monthly.toFixed(2)}`;
+      if (product) {
+        const capStatus = evaluateProductCostGuards(product, task.estimated_cost_usd || undefined);
+        if (!capStatus.ok) {
+          return NextResponse.json(
+            {
+              error: 'Dispatch blocked by cost caps',
+              details: capStatus.exceeded,
+              warnings: capStatus.warnings,
+            },
+            { status: 402 }
+          );
+        }
+        if (capStatus.warnings.length > 0) {
+          costCapWarning = capStatus.warnings.join(' | ');
           console.warn(`[Dispatch] ${costCapWarning} for product ${product.name}`);
         }
       }
@@ -194,6 +180,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const projectDir = task.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     let taskProjectDir = `${projectsPath}/${projectDir}`;
     const missionControlUrl = getMissionControlUrl();
+    const mcApiToken = process.env.MC_API_TOKEN;
 
     // Create isolated workspace if parallel builds are possible
     // Only for builder dispatches (assigned/in_progress), not tester/reviewer
@@ -272,10 +259,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Inject matched product skills (proven procedures from previous tasks)
     let skillsSection = '';
+    let matchedSkillIds: string[] = [];
     if (task.product_id) {
       try {
         const { getMatchedSkills, formatSkillsForDispatch } = await import('@/lib/skills');
-        const skills = getMatchedSkills(task.product_id, task.title, task.description || '', agent.name);
+        const skills = getMatchedSkills(task.product_id, task.title, task.description || '', agent.role);
+        matchedSkillIds = skills.map((skill: { id: string }) => skill.id);
         skillsSection = formatSkillsForDispatch(skills);
       } catch {
         // Skills injection is best-effort
@@ -302,57 +291,55 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const isTester = currentStage?.role === 'tester';
     const isVerifier = currentStage?.role === 'verifier' || currentStage?.role === 'reviewer';
     const nextStatus = nextStage?.status || 'review';
-    const failEndpoint = `POST ${missionControlUrl}/api/tasks/${task.id}/fail`;
+
+    // Create temporary .env.mc-token-temp file for agent callback auth
+    if (mcApiToken) {
+      try {
+        if (!fs.existsSync(taskProjectDir)) {
+          fs.mkdirSync(taskProjectDir, { recursive: true });
+        }
+        const tempEnvPath = path.join(taskProjectDir, '.env.mc-token-temp');
+        fs.writeFileSync(tempEnvPath, `MC_API_TOKEN=${mcApiToken}\n`);
+        console.log(`[Dispatch] Created temporary auth file: ${tempEnvPath}`);
+      } catch (err) {
+        console.warn(`[Dispatch] Failed to create temporary auth file:`, (err as Error).message);
+      }
+    }
 
     let completionInstructions: string;
     if (isBuilder) {
-      completionInstructions = `**IMPORTANT:** After completing work, you MUST call these APIs:
-1. Log activity: POST ${missionControlUrl}/api/tasks/${task.id}/activities
-   Body: {"activity_type": "completed", "message": "Description of what was done"}
-2. Register deliverable: POST ${missionControlUrl}/api/tasks/${task.id}/deliverables
-   Body: {"deliverable_type": "file", "title": "File name", "path": "${taskProjectDir}/filename.html"}
-3. Update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
-   Body: {"status": "${nextStatus}"}
-
-When complete, reply with:
-\`TASK_COMPLETE: [brief summary of what you did]\``;
+      completionInstructions = buildTaskCompletionInstructions({
+        role: 'builder',
+        authEnabled: Boolean(mcApiToken),
+        missionControlUrl,
+        taskId: task.id,
+        nextStatus,
+        outputPath: `${taskProjectDir}/filename.html`,
+      });
     } else if (isTester) {
-      completionInstructions = `**YOUR ROLE: TESTER** — Test the deliverables for this task.
-
-Review the output directory for deliverables and run any applicable tests.
-
-**If tests PASS:**
-1. Log activity: POST ${missionControlUrl}/api/tasks/${task.id}/activities
-   Body: {"activity_type": "completed", "message": "Tests passed: [summary]"}
-2. Update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
-   Body: {"status": "${nextStatus}"}
-
-**If tests FAIL:**
-1. ${failEndpoint}
-   Body: {"reason": "Detailed description of what failed and what needs fixing"}
-
-Reply with: \`TEST_PASS: [summary]\` or \`TEST_FAIL: [what failed]\``;
+      completionInstructions = buildTaskCompletionInstructions({
+        role: 'tester',
+        authEnabled: Boolean(mcApiToken),
+        missionControlUrl,
+        taskId: task.id,
+        nextStatus,
+      });
     } else if (isVerifier) {
-      completionInstructions = `**YOUR ROLE: VERIFIER** — Verify that all work meets quality standards.
-
-Review deliverables, test results, and task requirements.
-
-**If verification PASSES:**
-1. Log activity: POST ${missionControlUrl}/api/tasks/${task.id}/activities
-   Body: {"activity_type": "completed", "message": "Verification passed: [summary]"}
-2. Update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
-   Body: {"status": "${nextStatus}"}
-
-**If verification FAILS:**
-1. ${failEndpoint}
-   Body: {"reason": "Detailed description of what failed and what needs fixing"}
-
-Reply with: \`VERIFY_PASS: [summary]\` or \`VERIFY_FAIL: [what failed]\``;
+      completionInstructions = buildTaskCompletionInstructions({
+        role: 'verifier',
+        authEnabled: Boolean(mcApiToken),
+        missionControlUrl,
+        taskId: task.id,
+        nextStatus,
+      });
     } else {
-      // Fallback for unknown roles
-      completionInstructions = `**IMPORTANT:** After completing work:
-1. Update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
-   Body: {"status": "${nextStatus}"}`;
+      completionInstructions = buildTaskCompletionInstructions({
+        role: 'fallback',
+        authEnabled: Boolean(mcApiToken),
+        missionControlUrl,
+        taskId: task.id,
+        nextStatus,
+      });
     }
 
     // Build image references section
@@ -388,8 +375,12 @@ Reply with: \`VERIFY_PASS: [summary]\` or \`VERIFY_FAIL: [what failed]\``;
 **GIT WORKFLOW:**
 1. First, verify you have git access: run \`git ls-remote ${repoUrl}\`
    - If this fails, report the error immediately via:
-     PATCH ${missionControlUrl}/api/tasks/${task.id}
-     Body: {"status_reason": "Git auth not configured: [error message]"}
+${buildMissionControlCurlCommand({
+  authEnabled: Boolean(mcApiToken),
+  method: 'PATCH',
+  url: `${missionControlUrl}/api/tasks/${task.id}`,
+  body: '{"status_reason":"Git auth not configured: [error message]"}',
+})}
      Then STOP — do not proceed without repo access.
 2. Clone the repo (or use existing local copy)
 3. Create branch \`${branchName}\` from \`${repoBranch}\`
@@ -403,12 +394,16 @@ Reply with: \`VERIFY_PASS: [summary]\` or \`VERIFY_FAIL: [what failed]\``;
   - What was built and why
   - Research backing (from the idea)
   - Technical approach taken
-  - Any risks or trade-offs
-  - Task ID: ${task.id}
+- Any risks or trade-offs
+- Task ID: ${task.id}
 - Target branch: ${repoBranch}
 - After creating PR, report the PR URL:
-  PATCH ${missionControlUrl}/api/tasks/${task.id}
-  Body: {"pr_url": "<github PR url>", "pr_status": "open"}
+${buildMissionControlCurlCommand({
+  authEnabled: Boolean(mcApiToken),
+  method: 'PATCH',
+  url: `${missionControlUrl}/api/tasks/${task.id}`,
+  body: '{"pr_url":"<github PR url>","pr_status":"open"}',
+})}
 `;
     }
 
@@ -435,10 +430,7 @@ If you need help or clarification, ask the orchestrator.`;
 
     // Send message to agent's session using chat.send
     try {
-      // Use sessionKey for routing to the agent's session
-      // Format: {prefix}{openclaw_session_id} where prefix defaults to 'agent:main:'
-      const prefix = agent.session_key_prefix || 'agent:main:';
-      const sessionKey = `${prefix}${session.openclaw_session_id}`;
+      const sessionKey = buildAgentSessionKey(agent, session.openclaw_session_id, { context: 'dispatch' });
       await client.call('chat.send', {
         sessionKey,
         message: finalMessage,
@@ -484,6 +476,20 @@ If you need help or clarification, ask the orchestrator.`;
          VALUES (?, ?, ?, ?, ?, ?)`,
         [activityId, task.id, agent.id, 'status_changed', `Task dispatched to ${agent.name} - Agent is now working on this task`, now]
       );
+
+      if (matchedSkillIds.length > 0) {
+        try {
+          const { recordSkillDispatch } = await import('@/lib/skills');
+          recordSkillDispatch({
+            taskId: task.id,
+            agentId: agent.id,
+            agentRole: agent.role,
+            skillIds: matchedSkillIds,
+          });
+        } catch (skillErr) {
+          console.warn('[Dispatch] Failed to record injected skill context:', skillErr);
+        }
+      }
 
       return NextResponse.json({
         success: true,

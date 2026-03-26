@@ -1,3 +1,5 @@
+> **⚠️ Historical Document** — Written for an earlier deployment layout. Path references (e.g. `~/Documents/Shared/mission-control`) may not apply to the current rebuild. See [PRODUCTION_SETUP.md](PRODUCTION_SETUP.md) and [VERIFICATION_CHECKLIST.md](VERIFICATION_CHECKLIST.md) for current guidance.
+
 # Real-Time Features - Quick Start Guide
 
 ## 🚀 Getting Started

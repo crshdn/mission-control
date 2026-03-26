@@ -1,5 +1,7 @@
 # Real-Time Integration Specification
 
+> Historical design note only. This spec predates the rebuilt local trust pass and should not be read as proof that the current branch is verified end to end. Use [VERIFICATION_CHECKLIST.md](/Users/jordan/.openclaw/workspace/mission-control/VERIFICATION_CHECKLIST.md) and [POST_REBUILD_VERIFICATION_REPORT_2026-03-24.md](/Users/jordan/.openclaw/workspace/mission-control/docs/POST_REBUILD_VERIFICATION_REPORT_2026-03-24.md) for current status.
+
 ## Goal
 Full transparency and real-time updates for Mission Control task orchestration.
 

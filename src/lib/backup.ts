@@ -62,20 +62,24 @@ function ensureBackupDir(): string {
 // Backup filename parsing
 // ---------------------------------------------------------------------------
 
-const BACKUP_PATTERN = /^mc-backup-(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})-v(\d+)\.db$/;
+const BACKUP_PATTERN = /^mc-backup-(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}(?:-\d{3})?)-v(\d+)\.db$/;
 
 function parseBackupFilename(filename: string): { timestamp: string; version: string } | null {
   const match = filename.match(BACKUP_PATTERN);
   if (!match) return null;
-  // Convert dashes back to colons for valid ISO timestamp
-  const timestamp = match[1].replace(/T(\d{2})-(\d{2})-(\d{2})$/, 'T$1:$2:$3');
+  // Convert filesystem-safe timestamp back to ISO timestamp.
+  const timestamp = match[1].replace(
+    /T(\d{2})-(\d{2})-(\d{2})(?:-(\d{3}))?$/,
+    (_full, hours, minutes, seconds, millis) =>
+      `T${hours}:${minutes}:${seconds}${millis ? `.${millis}` : ''}`
+  );
   return { timestamp, version: match[2] };
 }
 
 function formatTimestamp(date: Date): string {
   return date.toISOString()
     .replace(/:/g, '-')
-    .replace(/\..+$/, '');
+    .replace(/\.(\d{3})Z$/, '-$1');
 }
 
 // ---------------------------------------------------------------------------

@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
 import { handleStageTransition, handleStageFailure, getTaskWorkflow, drainQueue, populateTaskRolesFromAgents } from '@/lib/workflow-engine';
 import { hasStageEvidence, canUseBoardOverride, auditBoardOverride, taskCanBeDone, recordLearnerOnTransition } from '@/lib/task-governance';
 import { updateConvoyProgress, checkConvoyCompletion } from '@/lib/convoy';
+import { dispatchReadyConvoySubtasks } from '@/lib/convoy-dispatch';
 import { syncGatewayAgentsToCatalog } from '@/lib/agent-catalog-sync';
 import { triggerWorkspaceMerge } from '@/lib/workspace-isolation';
 import { UpdateTaskSchema } from '@/lib/validation';
@@ -438,7 +441,13 @@ export async function PATCH(
       try {
         updateConvoyProgress(existing.convoy_id);
         if (nextStatus === 'done') {
-          checkConvoyCompletion(existing.convoy_id);
+          const convoyDone = checkConvoyCompletion(existing.convoy_id);
+          // If convoy is still active, dispatch any newly-unblocked subtasks
+          if (!convoyDone) {
+            dispatchReadyConvoySubtasks(existing.convoy_id).catch(err =>
+              console.error('[Convoy] auto-dispatch failed:', err)
+            );
+          }
         }
       } catch (err) {
         console.error('[Convoy] progress update failed:', err);
@@ -447,6 +456,18 @@ export async function PATCH(
 
     // Extract skills from completed task (non-blocking, async)
     if (nextStatus === 'done' && existing.product_id) {
+      import('@/lib/skills').then(({ reportPendingSkillUsageForTask }) => {
+        const reported = reportPendingSkillUsageForTask({
+          taskId: id,
+          succeeded: true,
+        });
+        if (reported > 0) {
+          console.log(`[Skills] Reported ${reported} successful skill usage(s) for task ${id}`);
+        }
+      }).catch(err =>
+        console.error('[Skills] usage reporting failed:', err)
+      );
+
       import('@/lib/skill-extraction').then(({ extractSkillsFromTask }) =>
         extractSkillsFromTask(id).catch(err =>
           console.error('[Skills] extraction failed:', err)
@@ -456,6 +477,21 @@ export async function PATCH(
 
     // Drain the review queue when a task reaches 'done' (frees the verification slot)
     if (nextStatus === 'done') {
+      // Clean up temporary auth token file
+      const projectsPath = process.env.PROJECTS_PATH || '~/Documents/Shared/projects';
+      const projectDir = existing.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const taskProjectDir = existing.workspace_path || `${projectsPath}/${projectDir}`;
+      
+      try {
+        const tempEnvPath = path.join(taskProjectDir.replace(/^~/, process.env.HOME || ''), '.env.mc-token-temp');
+        if (fs.existsSync(tempEnvPath)) {
+          fs.unlinkSync(tempEnvPath);
+          console.log(`[Task PATCH] Cleaned up temporary auth file for task ${id}: ${tempEnvPath}`);
+        }
+      } catch (err) {
+        console.warn(`[Task PATCH] Failed to clean up temporary auth file:`, (err as Error).message);
+      }
+
       drainQueue(id, existing.workspace_id).catch(err =>
         console.error('[Workflow] drainQueue after done failed:', err)
       );

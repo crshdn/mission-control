@@ -1,3 +1,5 @@
+> **⚠️ Historical Document** — Written January 2026 before the v2.4.0 rebuild. The SSE architecture described here is still accurate, but specific file paths and feature claims may be outdated. See [VERIFICATION_CHECKLIST.md](VERIFICATION_CHECKLIST.md) for current trust status.
+
 # Real-Time Integration Implementation Summary
 
 **Date:** January 31, 2026  

@@ -1,5 +1,7 @@
 # Task Orchestration Workflow
 
+> Historical note only. This document describes an earlier orchestration helper pattern and is not the authoritative rebuilt v2.4.0 trust contract. Use [VERIFICATION_CHECKLIST.md](/Users/jordan/.openclaw/workspace/mission-control/VERIFICATION_CHECKLIST.md) for current verification requirements.
+
 This guide explains how the master agent should orchestrate sub-agents to properly integrate with Mission Control.
 
 ## Overview

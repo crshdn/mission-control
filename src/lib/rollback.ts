@@ -143,6 +143,179 @@ function parseGitHubPrUrl(prUrl: string): { owner: string; repo: string; number:
   return { owner: match[1], repo: match[2], number: parseInt(match[3], 10) };
 }
 
+type GitHubContentResponse = {
+  sha: string;
+  content?: string;
+  encoding?: string;
+};
+
+type GitHubCompareFile = {
+  filename: string;
+  previous_filename?: string;
+  status: 'added' | 'removed' | 'modified' | 'renamed' | string;
+};
+
+async function fetchGitHubJson<T>(url: string, headers: Record<string, string>, init?: RequestInit): Promise<T | null> {
+  const response = await fetch(url, {
+    ...init,
+    headers: {
+      ...headers,
+      ...(init?.headers || {}),
+    },
+  });
+
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    console.error('[Rollback] GitHub request failed:', response.status, await response.text());
+    return null;
+  }
+
+  return await response.json() as T;
+}
+
+async function fetchContentAtRef(
+  apiBase: string,
+  headers: Record<string, string>,
+  filePath: string,
+  ref: string,
+): Promise<GitHubContentResponse | null> {
+  const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
+  return fetchGitHubJson<GitHubContentResponse>(
+    `${apiBase}/contents/${encodedPath}?ref=${encodeURIComponent(ref)}`,
+    headers,
+  );
+}
+
+async function restoreFileOnBranch(params: {
+  apiBase: string;
+  headers: Record<string, string>;
+  branch: string;
+  filePath: string;
+  sourceRef: string;
+  commitMessage: string;
+}): Promise<boolean> {
+  const source = await fetchContentAtRef(params.apiBase, params.headers, params.filePath, params.sourceRef);
+  if (!source?.content) {
+    console.error('[Rollback] Missing source content for restore:', params.filePath, params.sourceRef);
+    return false;
+  }
+
+  const current = await fetchContentAtRef(params.apiBase, params.headers, params.filePath, params.branch);
+  const body = {
+    message: params.commitMessage,
+    content: source.content.replace(/\n/g, ''),
+    branch: params.branch,
+    sha: current?.sha,
+  };
+
+  const response = await fetch(`${params.apiBase}/contents/${params.filePath.split('/').map(encodeURIComponent).join('/')}`, {
+    method: 'PUT',
+    headers: { ...params.headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (response.ok) return true;
+  console.error('[Rollback] Failed to restore file on branch:', params.filePath, await response.text());
+  return false;
+}
+
+async function deleteFileOnBranch(params: {
+  apiBase: string;
+  headers: Record<string, string>;
+  branch: string;
+  filePath: string;
+  commitMessage: string;
+}): Promise<boolean> {
+  const current = await fetchContentAtRef(params.apiBase, params.headers, params.filePath, params.branch);
+  if (!current?.sha) {
+    return true;
+  }
+
+  const response = await fetch(`${params.apiBase}/contents/${params.filePath.split('/').map(encodeURIComponent).join('/')}`, {
+    method: 'DELETE',
+    headers: { ...params.headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: params.commitMessage,
+      branch: params.branch,
+      sha: current.sha,
+    }),
+  });
+
+  if (response.ok) return true;
+  console.error('[Rollback] Failed to delete file on branch:', params.filePath, await response.text());
+  return false;
+}
+
+async function applyRevertChanges(params: {
+  apiBase: string;
+  headers: Record<string, string>;
+  branch: string;
+  mergedCommitSha: string;
+  parentSha: string;
+  prNumber: number;
+}): Promise<boolean> {
+  const compare = await fetchGitHubJson<{ files?: GitHubCompareFile[] }>(
+    `${params.apiBase}/compare/${params.parentSha}...${params.mergedCommitSha}`,
+    params.headers,
+  );
+  const files = compare?.files || [];
+
+  if (files.length === 0) {
+    console.error('[Rollback] No changed files found to revert');
+    return false;
+  }
+
+  for (const file of files) {
+    const commitMessage = `Revert PR #${params.prNumber}: ${file.filename}`;
+
+    if (file.status === 'added') {
+      const deleted = await deleteFileOnBranch({
+        apiBase: params.apiBase,
+        headers: params.headers,
+        branch: params.branch,
+        filePath: file.filename,
+        commitMessage,
+      });
+      if (!deleted) return false;
+      continue;
+    }
+
+    if (file.status === 'renamed' && file.previous_filename) {
+      const deletedRenamedFile = await deleteFileOnBranch({
+        apiBase: params.apiBase,
+        headers: params.headers,
+        branch: params.branch,
+        filePath: file.filename,
+        commitMessage: `${commitMessage} (remove renamed path)`,
+      });
+      if (!deletedRenamedFile) return false;
+
+      const restoredPreviousFile = await restoreFileOnBranch({
+        apiBase: params.apiBase,
+        headers: params.headers,
+        branch: params.branch,
+        filePath: file.previous_filename,
+        sourceRef: params.parentSha,
+        commitMessage: `${commitMessage} (restore previous path)`,
+      });
+      if (!restoredPreviousFile) return false;
+      continue;
+    }
+
+    const restored = await restoreFileOnBranch({
+      apiBase: params.apiBase,
+      headers: params.headers,
+      branch: params.branch,
+      filePath: file.filename,
+      sourceRef: params.parentSha,
+      commitMessage,
+    });
+    if (!restored) return false;
+  }
+
+  return true;
+}
+
 export async function createRevertPR(
   mergedPrUrl: string,
   mergedCommitSha: string,
@@ -197,42 +370,28 @@ export async function createRevertPR(
       return null;
     }
 
-    // 2. Revert the commit on the revert branch using the merge API
-    //    We use the GitHub merge API to apply a revert
-    const revertRes = await fetch(`${apiBase}/merges`, {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        base: revertBranch,
-        head: `${mergedCommitSha}~1`,  // Parent of the merged commit
-        commit_message: `Revert: auto-rollback of PR #${prNumber}\n\nReason: ${reason}\n\nThis reverts commit ${mergedCommitSha}`,
-      }),
+    // 2. Recreate the parent version of every changed file on the revert branch.
+    const commitData = await fetchGitHubJson<{ parents?: Array<{ sha?: string }> }>(
+      `${apiBase}/commits/${mergedCommitSha}`,
+      headers,
+    );
+    const parentSha = commitData?.parents?.[0]?.sha;
+    if (!parentSha) {
+      console.error('[Rollback] Failed to resolve parent commit for rollback:', mergedCommitSha);
+      return null;
+    }
+
+    const reverted = await applyRevertChanges({
+      apiBase,
+      headers,
+      branch: revertBranch,
+      mergedCommitSha,
+      parentSha,
+      prNumber,
     });
-
-    // If merge approach doesn't work (common with revert), use the revert endpoint directly
-    if (!revertRes.ok) {
-      // Try git revert via creating a commit that undoes the changes
-      // Use the more reliable approach: create PR from the merge commit's parent
-      const parentRes = await fetch(`${apiBase}/commits/${mergedCommitSha}`, { headers });
-      if (!parentRes.ok) {
-        console.error('[Rollback] Failed to get commit info:', await parentRes.text());
-        return null;
-      }
-      const commitData = await parentRes.json();
-      const parentSha = commitData.parents?.[0]?.sha;
-
-      if (parentSha) {
-        // Update the revert branch to point to the parent commit
-        const updateRefRes = await fetch(`${apiBase}/git/refs/heads/${revertBranch}`, {
-          method: 'PATCH',
-          headers: { ...headers, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sha: parentSha, force: true }),
-        });
-        if (!updateRefRes.ok) {
-          console.error('[Rollback] Failed to update revert branch:', await updateRefRes.text());
-          return null;
-        }
-      }
+    if (!reverted) {
+      console.error('[Rollback] Failed to apply revert changes for PR:', prNumber);
+      return null;
     }
 
     // 3. Create the revert PR
@@ -284,35 +443,48 @@ export async function mergeRevertPR(prUrl: string): Promise<boolean> {
 
   const { owner, repo, number: prNumber } = parsed;
 
-  try {
-    const res = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/merge`,
-      {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          commit_title: `Auto-merge rollback: Revert PR #${prNumber}`,
-          merge_method: 'merge',
-        }),
+  let retries = 5;
+  while (retries > 0) {
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/merge`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            commit_title: `Auto-merge rollback: Revert PR #${prNumber}`,
+            merge_method: 'merge',
+          }),
+        }
+      );
+
+      if (res.ok) {
+        console.log(`[Rollback] Revert PR #${prNumber} merged successfully`);
+        return true;
       }
-    );
 
-    if (res.ok) {
-      console.log(`[Rollback] Revert PR #${prNumber} merged successfully`);
-      return true;
+      const resBody = await res.text();
+      
+      if (res.status === 405 && resBody.includes('Base branch was modified')) {
+        console.warn(`[Rollback] Revert PR #${prNumber} hit 405 mergeability delay, retrying (${retries - 1} left)...`);
+        retries--;
+        await new Promise(r => setTimeout(r, 2000));
+        continue;
+      }
+
+      console.error('[Rollback] Failed to merge revert PR:', resBody);
+      return false;
+    } catch (err) {
+      console.error('[Rollback] Error merging revert PR:', err);
+      return false;
     }
-
-    console.error('[Rollback] Failed to merge revert PR:', await res.text());
-    return false;
-  } catch (err) {
-    console.error('[Rollback] Error merging revert PR:', err);
-    return false;
   }
+  return false;
 }
 
 // ---------------------------------------------------------------------------

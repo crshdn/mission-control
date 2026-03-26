@@ -1,5 +1,7 @@
 # Real-Time Integration Testing Guide
 
+> Historical note only. This guide captures an older realtime test plan and is not the rebuilt local verification checklist. Use [VERIFICATION_CHECKLIST.md](/Users/jordan/.openclaw/workspace/mission-control/VERIFICATION_CHECKLIST.md) for the current required validation set.
+
 ## Quick Start
 
 ```bash

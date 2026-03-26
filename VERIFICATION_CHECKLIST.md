@@ -1,115 +1,84 @@
-# Real-Time Integration - Verification Checklist
+# Mission Control Verification Checklist
 
-## Pre-Deployment Checks
+This checklist is the current local trust gate for the rebuilt `v2.4.0` Cutline control plane.
 
-### Code Quality
-- [x] TypeScript compiles without errors (`npx tsc --noEmit`)
-- [x] All new files follow project structure
-- [x] Code is well-commented
-- [x] No console.log statements in production paths
-- [x] Error handling implemented
-- [x] Type safety maintained
+Real ideas stay out of Mission Control until every item in `Must Pass` is green on the running system.
 
-### Database
-- [x] Schema includes new tables (task_activities, task_deliverables)
-- [x] Indexes created for performance
-- [x] Foreign keys properly configured
-- [x] ON DELETE CASCADE set up
-- [x] Migration runs without errors
+## Must Pass
 
-### Backend
-- [x] SSE endpoint working (/api/events/stream)
-- [x] Activities API functional (GET/POST)
-- [x] Deliverables API functional (GET/POST)
-- [x] Sub-agent registration API functional (GET/POST)
-- [x] Event broadcasting implemented
-- [x] All task operations trigger SSE events
+- [x] Mission Control is running from upstream `v2.4.0` (`9379ce7`) on the rebuilt local branch.
+- [x] Secure mode works for local validation scripts with `MC_API_TOKEN`.
+- [x] OpenClaw Gateway auth is healthy and no longer uses the old embedded service-token install.
+- [x] Research runs through Gateway RPC (`agent` + `agent.wait` + `chat.history`) instead of the disabled OpenAI HTTP shim.
+- [x] Ideation completes successfully with JSON repair fallback for malformed model output.
+- [x] Product cost events record non-zero token usage and priced spend when local OpenClaw model pricing exists.
+- [x] Specialist Cutline agents have explicit `session_key_prefix` routing.
+- [x] Non-master agents no longer silently fall back to `agent:main:`.
+- [x] Agent `model` is no longer treated as an operator-editable dispatch control.
+- [x] `npm run test:smoke` passes on the rebuilt stack.
+- [x] `npm run cutline:telegram -- submit --lane build --build-mode idea --chat verification --text $'lane: build\ntitle: Verification Build Idea\ngoal: Verify the Telegram build gate.\nwhy now: We need a trusted local intake path.\nconstraints: Keep it local.\ndefinition of done: A preview or confirmed idea succeeds.\ntarget product: Mission Control\nuser problem: Incomplete Telegram ideas create cleanup work.\nrequested change: Keep Mission Control behind a real preview gate.' --confirm` creates both a Mission Control idea and a durable vault note.
+- [x] `npm run test:pr-validation` passes end to end with repo-backed workspace, planning, dispatch, workspace edits, task completion, and PR creation.
+- [x] `npm run test:self-improvement` passes with learner knowledge creation, later knowledge injection, skill extraction, later skill injection, and skill usage reporting.
+- [x] `npm run test:live-callback` passes with a real OpenClaw agent creating a proof artifact, performing authenticated Mission Control callbacks, and advancing task state without verifier-side callback impersonation.
+- [x] Learner verification is complete: a finished task produces a knowledge entry and later dispatches receive that knowledge.
+- [x] Skill loop verification is complete: a finished task extracts product skills and later dispatches receive matching skills.
+- [x] Backup create/list/restore is verified on the rebuilt runtime.
+- [x] Automation-tier verification is complete for `supervised`, `semi_auto`, `full_auto`, and rollback.
+- [x] Signed GitHub webhook enforcement is verified when `GITHUB_WEBHOOK_SECRET` is set: unsigned and invalidly signed requests are rejected with `401`.
 
-### Frontend
-- [x] useSSE hook implemented
-- [x] SSE connection auto-establishes
-- [x] Keep-alive pings working
-- [x] Auto-reconnect on disconnect
-- [x] ActivityLog component renders
-- [x] DeliverablesList component renders
-- [x] SessionsList component renders
-- [x] TaskModal tabs functional
-- [x] Agent counter displays
+## Current Notes
 
-### Testing
-- [x] Dev server starts successfully
-- [x] No TypeScript errors
-- [x] Database migrations tested
-- [x] SSE connection verified
-- [x] Multi-client sync tested
+- `npm run build` is part of the clean local baseline again as of 2026-03-24.
+- The disposable PR validation path surfaced and fixed two real issues:
+  - server-side retry dispatch used a relative URL
+  - secure-mode retry dispatch omitted bearer auth
+- The self-improvement loop is verified with `npm run test:self-improvement`, including learner knowledge creation, knowledge injection on a later dispatch, skill extraction, skill injection, and skill usage reporting with deduped per-task accounting.
+- `npm run test:live-callback` is the current direct proof that a live OpenClaw agent runtime can authenticate back into Mission Control using inherited `MC_API_TOKEN`.
+- Backup verification now uses the live API and confirms create/list/restore against the rebuilt runtime.
+- Telegram intake verification is green for the draft gate, confirmed build path, and durable vault note export.
+- `npm run test:automation-verification` is green: supervised skips monitors, semi-auto health failures roll back, CI failures roll back, rollback acknowledgement restores the tier, and `full_auto` currently follows the same webhook/rollback path as `semi_auto`.
+- When `GITHUB_WEBHOOK_SECRET` is set, the automation verifier also proves GitHub webhook signature rejection by requiring `401` for unsigned and invalidly signed requests before the signed scenarios run.
+- The merged GitHub webhook now marks matching task PRs as `merged`, so CI-failure rollback has a natural task lookup path after merge.
+- The latest consolidated evidence is captured in [docs/POST_REBUILD_VERIFICATION_REPORT_2026-03-24.md](/Users/jordan/.openclaw/workspace/mission-control/docs/POST_REBUILD_VERIFICATION_REPORT_2026-03-24.md).
+- The current machine-state reconciliation is captured in [docs/CUTLINE_RUNTIME_RECONCILIATION_2026-03-25.md](/Users/jordan/.openclaw/workspace/mission-control/docs/CUTLINE_RUNTIME_RECONCILIATION_2026-03-25.md).
+- Remaining documentation should be updated against this checklist, not against older “real-time integration” or pre-`v2.4.0` assumptions.
+- Convoy mode dispatch loop is now wired: subtask completion auto-dispatches unblocked siblings, agent-completion webhook triggers convoy progress, and SSE heartbeat sweeps active convoys every 2 minutes.
+- Product scheduling (`checkAndRunDueSchedules`) is now wired into the SSE heartbeat (60-second tick).
+- `full_auto` is documented as functionally identical to `semi_auto` for now. See [PRODUCTION_SETUP.md](PRODUCTION_SETUP.md).
+- Webhook signature validation uses timing-safe comparison. Secrets are still optional for dev; must be set for production. See [PRODUCTION_SETUP.md](PRODUCTION_SETUP.md).
+- Health endpoint no longer leaks version to unauthenticated requests.
 
-### Documentation
-- [x] CHANGELOG.md updated
-- [x] README.md reflects new features (if applicable)
-- [x] API documentation complete
-- [x] Testing guide created
-- [x] Quick start guide written
-- [x] Implementation summary documented
+## Known Limitations (Low Severity)
 
-### Git
-- [x] All changes committed
-- [x] Commit messages clear and descriptive
-- [x] No uncommitted changes
-- [x] Branch up to date
+- **Checkpoint recovery**: Checkpoints are on-demand only — agents must proactively call the checkpoint API. There is no automatic checkpoint on crash detection.
+- **S3 backup**: `@aws-sdk/client-s3` integration exists in `backup.ts` but has no automated test coverage.
+- **Batch review e2e**: Individual components and `batchSwipe()` exist; the full UI → API → state-change flow is not end-to-end tested.
+- **Webhook signature rejection helper**: `scripts/test-webhook-rejection.ts` still exists as a focused manual negative-path helper, but GitHub webhook signature rejection is now also covered by `npm run test:automation-verification` when `GITHUB_WEBHOOK_SECRET` is set.
+## Required Commands
 
-## Deployment on production server
+### Baseline Gate
 
-### Steps
-1. [ ] SSH into production server
-2. [ ] Navigate to project directory
-3. [ ] Pull latest from git (`git pull origin main`)
-4. [ ] Install dependencies (`npm install`)
-5. [ ] Backup existing database (if any)
-6. [ ] Start dev server (`npm run dev`)
-7. [ ] Verify SSE connection in browser console
-8. [ ] Test real-time updates with two browser windows
-9. [ ] Create test task and verify activity log
-10. [ ] Add test deliverable via API
-11. [ ] Check agent counter updates
+- `npm run lint`
+- `npm run typecheck`
+- `npm run build`
+- `npm test`
 
-### Success Criteria
-- [ ] Server starts without errors
-- [ ] SSE connection established (browser console: "[SSE] Connected")
-- [ ] Tasks update in real-time across windows
-- [ ] Activity log displays correctly
-- [ ] Deliverables tab works
-- [ ] Sessions tab works
-- [ ] Agent counter shows live count
-- [ ] No memory leaks after 1 hour runtime
+### Targeted Verifiers
 
-## Post-Deployment
+- `npm run test:smoke`
+- `npm run test:pr-validation`
+- `npm run test:self-improvement`
+- `npm run test:live-callback`
+- `npm run test:automation-verification`
+- `GITHUB_WEBHOOK_SECRET=<secret> npm run test:automation-verification`
+- `npm run cutline:telegram -- doctor`
+- `npm run cutline:telegram -- submit --lane build --build-mode idea --chat verification --text $'lane: build\ntitle: Verification Build Idea\ngoal: Verify the Telegram build gate.\nwhy now: We need a trusted local intake path.\nconstraints: Keep it local.\ndefinition of done: A preview or confirmed idea succeeds.\ntarget product: Mission Control\nuser problem: Incomplete Telegram ideas create cleanup work.\nrequested change: Keep Mission Control behind a real preview gate.' --confirm`
 
-### Monitoring
-- [ ] Check server logs for SSE connection count
-- [ ] Monitor memory usage
-- [ ] Verify database file size reasonable
-- [ ] Check for error logs
-- [ ] Test under normal load
+## Evidence To Capture
 
-### User Feedback
-- [ ] User can see real-time updates
-- [ ] Task detail tabs are intuitive
-- [ ] Activity log provides useful information
-- [ ] Agent counter is accurate
-- [ ] Performance is acceptable
-
-## Rollback Plan (if needed)
-
-If issues arise:
-1. Stop the server
-2. Git revert to previous commit
-3. Restart server
-4. Report issues
-
-Previous stable commit: (check `git log` before deployment)
-
----
-
-**Verified by:** _____________  
-**Date:** _____________  
-**Status:** _____________
+- Smoke output JSON with product, cycle, idea, and task IDs
+- Disposable PR validation output JSON with repo, workspace, and PR URL
+- Self-improvement output JSON with learner knowledge entry ID, extracted skill ID, injected skill context, and updated skill confidence
+- Live callback output JSON with task ID, session key, completion activity row, deliverable row, and final task state
+- Automation verification output JSON with scenario results, rollback IDs, revert PR URLs, and restored tier evidence
+- Backup artifact ID plus successful restore confirmation and pre-restore safety backup ID
