@@ -11,7 +11,7 @@
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
-import { bootstrapCoreAgentsRaw } from '@/lib/bootstrap-agents';
+import { alignDefaultWorkspaceBaselineRaw, bootstrapCoreAgentsRaw } from '@/lib/bootstrap-agents';
 
 interface Migration {
   id: string;
@@ -641,7 +641,7 @@ const migrations: Migration[] = [
 
       console.log('[Migration 013] Strict template is now default with reviewer role');
 
-      // 4. Bootstrap 4 core agents for the default workspace
+      // 4. Bootstrap the baseline agents for the default workspace
       // (bootstrapCoreAgentsRaw already guards against duplicate inserts — it checks
       // agent count and skips if the workspace already has agents)
       const missionControlUrl = process.env.MISSION_CONTROL_URL || 'http://localhost:4000';
@@ -1594,6 +1594,18 @@ const migrations: Migration[] = [
       db.exec(`CREATE INDEX IF NOT EXISTS idx_skill_reports_skill ON skill_reports(skill_id)`);
 
       console.log('[Migration 028] product_skills and skill_reports tables created');
+    }
+  },
+  {
+    id: '029',
+    name: 'align_default_workspace_baseline',
+    up: (db) => {
+      console.log('[Migration 029] Aligning default workspace baseline...');
+
+      const missionControlUrl = process.env.MISSION_CONTROL_URL || 'http://localhost:4000';
+      alignDefaultWorkspaceBaselineRaw(db, missionControlUrl);
+
+      console.log('[Migration 029] Default workspace baseline aligned');
     }
   }
 ];

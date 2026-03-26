@@ -1,185 +1,349 @@
 /**
  * Bootstrap Core Agents
  *
- * Creates the 4 core agents (Builder, Tester, Reviewer, Learner)
- * for a workspace if it has zero agents. Also clones workflow
- * templates from the default workspace to new workspaces.
+ * Seeds the governed generic workspace baseline used by the default workspace
+ * and cloned into any newly-created workspace.
  */
 
 import Database from 'better-sqlite3';
 import { getDb } from '@/lib/db';
 import { getMissionControlUrl } from '@/lib/config';
 
-// ── Agent Definitions ──────────────────────────────────────────────
+export const DEFAULT_WORKSPACE_ID = 'default';
+export const DEFAULT_LEGACY_ARCHIVE_WORKSPACE_ID = 'default-legacy-archive';
+
+interface AgentDef {
+  canonicalName: string;
+  legacyNames: string[];
+  role: string;
+  emoji: string;
+  description: string;
+  sessionKeyPrefix: string;
+  isMaster?: boolean;
+  soulMd: string;
+}
+
+interface ExistingAgentRow {
+  id: string;
+  name: string;
+}
 
 function sharedUserMd(missionControlUrl: string): string {
   return `# User Context
 
 ## Operating Environment
-- Platform: Autensa multi-agent task orchestration
+- Platform: Mission Control + OpenClaw orchestration
 - API Base: ${missionControlUrl}
-- Tasks are dispatched automatically by the workflow engine
-- Communication via OpenClaw Gateway
+- Tasks move through Mission Control workflow state
+- Communication runs through OpenClaw Gateway sessions
 
 ## The Human
-Manages overall system, sets priorities, defines tasks. Follow specifications precisely.
+Owns priorities, approvals, and product direction. Escalate only when a real decision or missing input blocks good execution.
 
 ## Communication Style
-- Be concise and action-oriented
-- Report results with evidence
-- Ask for clarification only when truly needed`;
+- Be concise and evidence-first
+- Keep Mission Control as the source of task state
+- Ask for clarification only when the spec or evidence is genuinely insufficient`;
 }
 
 const SHARED_AGENTS_MD = `# Team Roster
 
-## Builder Agent (🛠️)
-Creates deliverables from specs. Writes code, creates files, builds projects. When work comes back from failed QA, fixes all reported issues.
+## Coordinator (🎛️)
+Neutral master orchestrator for a workspace. Owns routing, approvals, and escalation. Keeps the pipeline moving without absorbing specialist work.
 
-## Tester Agent (🧪) — Front-End QA
-Tests the app from the user's perspective. Clicks elements, checks rendering, verifies images/links, tests forms. This is FRONT-END testing — does the app work when you use it?
+## Builder (🛠️)
+Implements the approved task, packages changed files, and reports the exact checks run.
 
-## Reviewer Agent (🔍) — Code QC
-Final quality gate. Reviews code quality, best practices, correctness, completeness. This is BACK-END/CODE review — is the code good? Works in the Verification column.
+## Tester (🧪)
+Validates runtime behavior and user-facing execution with reproducible evidence. Sends failures back with concrete steps.
 
-## Learner Agent (📚)
-Observes all transitions. Captures patterns and lessons learned. Feeds knowledge back to improve future work.
+## Reviewer (🔍)
+Owns code-quality and final implementation review. Blocks weak or incomplete work with file-level findings.
 
-## How We Work Together
-Builder → Tester (front-end QA) → Review Queue → Reviewer (code QC) → Done
-If Testing fails: back to Builder with front-end issues.
-If Verification fails: back to Builder with code issues.
-Learner watches all transitions and records lessons.
-Review is a queue — tasks wait there until the Reviewer is free.
-Only one task in Verification at a time.`;
+## Learner (📚)
+Captures durable lessons from passes and failures so later tasks start smarter.
 
-interface AgentDef {
-  name: string;
-  role: string;
-  emoji: string;
-  soulMd: string;
-  sessionKeyPrefix: string;
-}
+## Communication Contract
+- Mission Control is the system of record for task state, handoffs, approvals, and deliverables.
+- Every handoff must include the workspace path or branch when relevant, changed files or evidence artifacts, checks run, known gaps, and the exact next owner.
+- Operator feedback can arrive as queued notes, direct messages to an active session, or convoy mail between agents. Read it, incorporate it, and keep the updated state in Mission Control.
+- Failures route back with evidence, not vague dissatisfaction.
+- Do not invent company-specific policy inside the baseline workspace. Specialized workspaces are expected to add their own operating rules on top of this baseline.`;
 
-const CORE_AGENTS: AgentDef[] = [
+const BASELINE_AGENT_DEFS: AgentDef[] = [
   {
-    name: 'Builder Agent',
-    role: 'builder',
-    emoji: '🛠️',
-    sessionKeyPrefix: 'agent:coder:',
-    soulMd: `# Builder Agent
+    canonicalName: 'Coordinator',
+    legacyNames: ['Coordinator', 'Orchestrator'],
+    role: 'orchestrator',
+    emoji: '🎛️',
+    description: 'Neutral master orchestrator for the baseline workspace',
+    sessionKeyPrefix: 'agent:main:',
+    isMaster: true,
+    soulMd: `# Coordinator
 
-Expert builder. Follows specs exactly. Creates output in the designated project directory.
+Neutral master orchestrator for a generic Mission Control workspace.
 
 ## Core Responsibilities
-- Read the spec carefully before writing any code
-- Create all deliverables in the designated output directory
-- Register every deliverable via the API (POST .../deliverables)
-- Log activity when done (POST .../activities)
-- Update status to move the task forward (PATCH .../tasks/{id})
+- Route work to the right specialist without becoming the specialist
+- Keep approvals, task state, and handoffs in Mission Control
+- Surface the smallest real decision when escalation is necessary
 
-## Fail-Loopback
-When tasks come back from failed QA (testing or verification), read the failure reason carefully and fix ALL issues mentioned. Do not partially fix — address every single point.
+## Operating Rules
+- Do not absorb implementation, QA, or code review work that belongs with Builder, Tester, or Reviewer
+- Keep operator feedback explicit and tied to the active task
+- Use evidence from queued notes, direct messages, and convoy mail to unblock work without rewriting the process mid-flight
 
-## Quality Standards
-- Clean, well-structured code
-- Follow project conventions
-- No placeholder or stub code — everything must be functional
-- Test your work before marking complete`,
+## Quality Bar
+- Clear routing
+- Explicit ownership
+- No silent workflow drift`,
   },
   {
-    name: 'Tester Agent',
+    canonicalName: 'Builder',
+    legacyNames: ['Builder', 'Builder Agent'],
+    role: 'builder',
+    emoji: '🛠️',
+    description: 'Implementation specialist for the baseline workspace',
+    sessionKeyPrefix: 'agent:coder:',
+    soulMd: `# Builder
+
+Implementation specialist for a generic Mission Control workspace.
+
+## Core Responsibilities
+- Read the approved spec before writing code
+- Work only inside the assigned workspace or repo path
+- Register deliverables, activity, and the exact next owner when handing off
+
+## Handoff Requirements
+- Changed files or artifacts
+- Checks run and results
+- Known risks or unverified areas
+- Clear request for testing or review
+
+## Failure Loop
+- When work comes back from Tester or Reviewer, fix every reported issue instead of partially addressing the list
+- Escalate scope confusion instead of changing acceptance criteria on your own`,
+  },
+  {
+    canonicalName: 'Tester',
+    legacyNames: ['Tester', 'Tester Agent'],
     role: 'tester',
     emoji: '🧪',
+    description: 'Runtime QA specialist for the baseline workspace',
     sessionKeyPrefix: 'agent:worker:',
-    soulMd: `# Tester Agent — Front-End QA
+    soulMd: `# Tester
 
-Front-end QA specialist. Tests the app/project from the user's perspective.
+Runtime QA specialist for a generic Mission Control workspace.
 
-## What You Test
-- Click on UI elements — do they respond correctly?
-- Visual rendering — does it look right? Layout, spacing, colors?
-- Images — do they load? Are they the right ones?
-- Links — do they navigate to the right places?
-- Forms — do they submit? Validation messages?
-- Responsiveness — does it work on different screen sizes?
-- Basically: does it WORK when you USE it?
-
-## Decision Criteria
-- PASS only if everything works when you use it
-- FAIL with specific details: which element, what happened, what was expected
+## Core Responsibilities
+- Validate behavior through actual use, reproducible checks, or direct runtime evidence
+- Distinguish passed paths from untested paths
+- Send failures back with exact repro steps and strongest evidence
 
 ## Rules
-- Never fix issues yourself — that's the Builder's job
-- Be thorough — check every visible element and interaction
-- Report failures with evidence (what you clicked, what happened, what should have happened)`,
+- Do not rewrite the implementation yourself
+- Do not wave through untested behavior because the change looked small
+- Keep findings concrete enough that Builder can repair without guessing`,
   },
   {
-    name: 'Reviewer Agent',
+    canonicalName: 'Reviewer',
+    legacyNames: ['Reviewer', 'Reviewer Agent'],
     role: 'reviewer',
     emoji: '🔍',
+    description: 'Code review and final implementation gate for the baseline workspace',
     sessionKeyPrefix: 'agent:coder:',
-    soulMd: `# Reviewer Agent — Code Quality Gatekeeper
+    soulMd: `# Reviewer
 
-Reviews code structure, best practices, patterns, completeness, correctness, and security.
+Code-quality and final implementation-review specialist for a generic Mission Control workspace.
 
-## What You Review
-- Code quality — clean, well-structured, maintainable
-- Best practices — proper patterns, no anti-patterns
-- Completeness — does the code address ALL requirements in the spec?
-- Correctness — logic errors, edge cases, security issues
-- Standards — follows project conventions
+## Core Responsibilities
+- Review code quality, maintainability, spec fit, and security risks
+- Use Builder and Tester evidence instead of pretending context does not matter
+- Block weak work with file-level findings
 
-## Critical Rule
-You MUST fail tasks that have real code issues. A false pass wastes far more time than a false fail — the Builder gets re-dispatched with your notes, which is fast. But if bad code ships to Done, the whole pipeline failed.
-
-Never rubber-stamp. If the code is genuinely good, pass it. If there are real issues, fail it.
-
-## Failure Reports
-Explain every issue with:
-- File name and line number
-- What's wrong
-- What the fix should be
-
-Be specific. "Code quality could be better" is useless. "src/utils.ts:42 — missing null check on user input before database query" is actionable.`,
+## Rules
+- Do not rubber-stamp
+- Do not turn personal taste into a blocking defect unless it materially affects correctness or maintainability
+- Pass only when the implementation is genuinely ready for completion`,
   },
   {
-    name: 'Learner Agent',
+    canonicalName: 'Learner',
+    legacyNames: ['Learner', 'Learner Agent'],
     role: 'learner',
     emoji: '📚',
+    description: 'Knowledge capture specialist for the baseline workspace',
     sessionKeyPrefix: 'agent:worker:',
-    soulMd: `# Learner Agent
+    soulMd: `# Learner
 
-Observes all task transitions — both passes and failures. Captures lessons learned and writes them to the knowledge base.
+Knowledge capture specialist for a generic Mission Control workspace.
 
-## What You Capture
-- Failure patterns — what went wrong and why
-- Fix patterns — what the Builder did to fix failures
-- Checklists — recurring items that should be checked every time
-- Best practices — patterns that consistently lead to passes
+## Core Responsibilities
+- Observe task passes, failures, and repair loops
+- Record durable lessons, checklists, and repeatable patterns
+- Keep future dispatches from repeating the same avoidable mistakes
 
-## How to Record
-POST /api/workspaces/{workspace_id}/knowledge
-Body: {
-  "task_id": "the task id",
-  "category": "failure" | "fix" | "pattern" | "checklist",
-  "title": "Brief, searchable title",
-  "content": "Detailed description",
-  "tags": ["relevant", "tags"],
-  "confidence": 0.0-1.0
-}
-
-## Guidelines
-- Focus on actionable insights that help the team avoid repeating mistakes
-- Higher confidence for patterns seen multiple times
-- Lower confidence for first-time observations
-- Tag entries so they can be found and injected into future dispatches`,
+## Rules
+- Favor compact, reusable lessons over noisy transcripts
+- Tie lessons to observable evidence
+- Capture what will improve future execution, not just what happened once`,
   },
 ];
+
+const ACTIVE_DEFAULT_PRODUCT_PATTERNS = [
+  'Smoke Product %',
+  'Self Improvement Validation %',
+  'Disposable PR Validation %',
+];
+
+function insertAgent(
+  db: Database.Database,
+  workspaceId: string,
+  now: string,
+  userMd: string,
+  agentsMd: string,
+  def: AgentDef,
+): string {
+  const id = crypto.randomUUID();
+  db.prepare(`
+    INSERT INTO agents (
+      id, name, role, description, avatar_emoji, status, is_master, workspace_id,
+      soul_md, user_md, agents_md, source, session_key_prefix, created_at, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, 'standby', ?, ?, ?, ?, ?, 'local', ?, ?, ?)
+  `).run(
+    id,
+    def.canonicalName,
+    def.role,
+    def.description,
+    def.emoji,
+    def.isMaster ? 1 : 0,
+    workspaceId,
+    def.soulMd,
+    userMd,
+    agentsMd,
+    def.sessionKeyPrefix,
+    now,
+    now,
+  );
+  return id;
+}
+
+function selectMatchingAgents(
+  db: Database.Database,
+  workspaceId: string,
+  def: AgentDef,
+): ExistingAgentRow[] {
+  const placeholders = def.legacyNames.map(() => '?').join(', ');
+  return db.prepare(
+    `SELECT id, name
+     FROM agents
+     WHERE workspace_id = ?
+       AND name IN (${placeholders})
+     ORDER BY CASE WHEN name = ? THEN 0 ELSE 1 END, created_at ASC`
+  ).all(workspaceId, ...def.legacyNames, def.canonicalName) as ExistingAgentRow[];
+}
+
+function ensureArchiveWorkspace(db: Database.Database, now: string): void {
+  db.prepare(
+    `INSERT OR IGNORE INTO workspaces (id, name, slug, description, icon, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    DEFAULT_LEGACY_ARCHIVE_WORKSPACE_ID,
+    'Default Legacy Archive',
+    'default-legacy-archive',
+    'Historical agents moved out of the default baseline workspace to preserve completed task references.',
+    '🗃️',
+    now,
+    now,
+  );
+}
+
+function alignWorkspaceAgentsRaw(
+  db: Database.Database,
+  workspaceId: string,
+  missionControlUrl: string,
+): void {
+  const userMd = sharedUserMd(missionControlUrl);
+  const now = new Date().toISOString();
+  const canonicalIds = new Set<string>();
+
+  for (const def of BASELINE_AGENT_DEFS) {
+    const matches = selectMatchingAgents(db, workspaceId, def);
+    const chosen = matches[0];
+
+    if (chosen) {
+      db.prepare(`
+        UPDATE agents
+        SET name = ?,
+            role = ?,
+            description = ?,
+            avatar_emoji = ?,
+            status = 'standby',
+            is_master = ?,
+            soul_md = ?,
+            user_md = ?,
+            agents_md = ?,
+            source = 'local',
+            session_key_prefix = ?,
+            updated_at = ?
+        WHERE id = ?
+      `).run(
+        def.canonicalName,
+        def.role,
+        def.description,
+        def.emoji,
+        def.isMaster ? 1 : 0,
+        def.soulMd,
+        userMd,
+        SHARED_AGENTS_MD,
+        def.sessionKeyPrefix,
+        now,
+        chosen.id,
+      );
+      canonicalIds.add(chosen.id);
+      continue;
+    }
+
+    canonicalIds.add(insertAgent(db, workspaceId, now, userMd, SHARED_AGENTS_MD, def));
+  }
+
+  if (workspaceId !== DEFAULT_WORKSPACE_ID) {
+    return;
+  }
+
+  const canonicalIdsList = Array.from(canonicalIds);
+  const placeholders = canonicalIdsList.map(() => '?').join(', ');
+  const driftAgents = db.prepare(
+    `SELECT id
+     FROM agents
+     WHERE workspace_id = ?
+       AND id NOT IN (${placeholders})`
+  ).all(workspaceId, ...canonicalIdsList) as { id: string }[];
+
+  if (driftAgents.length > 0) {
+    ensureArchiveWorkspace(db, now);
+    db.prepare(
+      `UPDATE agents
+       SET workspace_id = ?, status = 'offline', updated_at = ?
+       WHERE workspace_id = ?
+         AND id NOT IN (${placeholders})`
+    ).run(DEFAULT_LEGACY_ARCHIVE_WORKSPACE_ID, now, workspaceId, ...canonicalIdsList);
+  }
+
+  const productFilters = ACTIVE_DEFAULT_PRODUCT_PATTERNS.map(() => 'name LIKE ?').join(' OR ');
+  db.prepare(
+    `UPDATE products
+     SET status = 'archived', updated_at = ?
+     WHERE workspace_id = ?
+       AND status = 'active'
+       AND (${productFilters})`
+  ).run(now, DEFAULT_WORKSPACE_ID, ...ACTIVE_DEFAULT_PRODUCT_PATTERNS);
+}
 
 // ── Public API ──────────────────────────────────────────────────────
 
 /**
- * Bootstrap core agents for a workspace using the normal getDb() accessor.
+ * Bootstrap baseline agents for a workspace using the normal getDb() accessor.
  * Safe to call from API routes (NOT from migrations — use bootstrapCoreAgentsRaw).
  */
 export function bootstrapCoreAgents(workspaceId: string): void {
@@ -189,7 +353,7 @@ export function bootstrapCoreAgents(workspaceId: string): void {
 }
 
 /**
- * Bootstrap core agents using a raw db handle.
+ * Bootstrap baseline agents using a raw db handle.
  * Use this inside migrations to avoid getDb() recursion.
  */
 export function bootstrapCoreAgentsRaw(
@@ -197,7 +361,6 @@ export function bootstrapCoreAgentsRaw(
   workspaceId: string,
   missionControlUrl: string,
 ): void {
-  // Only bootstrap if workspace has zero agents
   const count = db.prepare(
     'SELECT COUNT(*) as cnt FROM agents WHERE workspace_id = ?'
   ).get(workspaceId) as { cnt: number };
@@ -210,29 +373,22 @@ export function bootstrapCoreAgentsRaw(
   const userMd = sharedUserMd(missionControlUrl);
   const now = new Date().toISOString();
 
-  const insert = db.prepare(`
-    INSERT INTO agents (id, name, role, description, avatar_emoji, status, is_master, workspace_id, soul_md, user_md, agents_md, source, session_key_prefix, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, 'standby', 0, ?, ?, ?, ?, 'local', ?, ?, ?)
-  `);
-
-  for (const agent of CORE_AGENTS) {
-    const id = crypto.randomUUID();
-    insert.run(
-      id,
-      agent.name,
-      agent.role,
-      `${agent.name} — core team member`,
-      agent.emoji,
-      workspaceId,
-      agent.soulMd,
-      userMd,
-      SHARED_AGENTS_MD,
-      agent.sessionKeyPrefix,
-      now,
-      now,
-    );
-    console.log(`[Bootstrap] Created ${agent.name} (${agent.role}) for workspace ${workspaceId}`);
+  for (const agent of BASELINE_AGENT_DEFS) {
+    insertAgent(db, workspaceId, now, userMd, SHARED_AGENTS_MD, agent);
+    console.log(`[Bootstrap] Created ${agent.canonicalName} (${agent.role}) for workspace ${workspaceId}`);
   }
+}
+
+/**
+ * Normalize the default workspace back to the governed generic baseline.
+ * Preserves historical agent rows by repurposing the old core agents in place
+ * and moving drift agents out of the default workspace.
+ */
+export function alignDefaultWorkspaceBaselineRaw(
+  db: Database.Database,
+  missionControlUrl: string,
+): void {
+  alignWorkspaceAgentsRaw(db, DEFAULT_WORKSPACE_ID, missionControlUrl);
 }
 
 /**
@@ -240,8 +396,15 @@ export function bootstrapCoreAgentsRaw(
  */
 export function cloneWorkflowTemplates(db: Database.Database, targetWorkspaceId: string): void {
   const templates = db.prepare(
-    "SELECT * FROM workflow_templates WHERE workspace_id = 'default'"
-  ).all() as { id: string; name: string; description: string; stages: string; fail_targets: string; is_default: number }[];
+    `SELECT * FROM workflow_templates WHERE workspace_id = ?`
+  ).all(DEFAULT_WORKSPACE_ID) as {
+    id: string;
+    name: string;
+    description: string;
+    stages: string;
+    fail_targets: string;
+    is_default: number;
+  }[];
 
   if (templates.length === 0) return;
 

@@ -530,9 +530,23 @@ OPENCLAW_GATEWAY_TOKEN=your-shared-token
 
 ---
 
+## 🧭 Workspace Baseline
+
+The built-in `default` workspace is the generic Mission Control / OpenClaw baseline, not a company-specific operating model.
+
+- It seeds a neutral `Coordinator` plus `Builder`, `Tester`, `Reviewer`, and `Learner`
+- Every baseline agent gets explicit OpenClaw routing and non-empty workspace instructions
+- Platform capabilities such as operator chat, queued notes, direct messages, and convoy mail are available everywhere, but each workspace defines how those tools should be used
+
+Specialized workspaces are expected to layer their own governance on top of this baseline. In this repo, `Cutline` is the canonical example of that specialization.
+
+See [docs/DEFAULT_WORKSPACE_BASELINE.md](docs/DEFAULT_WORKSPACE_BASELINE.md) for the baseline contract and customization rules.
+
+---
+
 ## 🗄 Database
 
-SQLite database auto-created at `./mission-control.db`. Migrations run automatically on startup (21 migrations). As of v2.0.1, a timestamped backup is created before any pending migration runs.
+SQLite database auto-created at `./mission-control.db`. Migrations run automatically on startup (29 migrations). As of v2.0.1, a timestamped backup is created before any pending migration runs.
 
 ```bash
 # Reset (start fresh)
@@ -578,7 +592,7 @@ autensa/
 │   └── lib/
 │       ├── autopilot/          # Research, ideation, swipe, maybe-pool, scheduling
 │       ├── costs/              # Cost tracker, caps, reporting
-│       ├── db/                 # SQLite + 21 migrations
+│       ├── db/                 # SQLite + migration runner
 │       ├── openclaw/           # Gateway client + device identity
 │       ├── convoy.ts           # Convoy orchestration
 │       ├── agent-health.ts     # Health monitoring + auto-nudge
