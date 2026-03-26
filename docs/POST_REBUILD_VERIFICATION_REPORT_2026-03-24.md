@@ -2,7 +2,9 @@
 
 Date: 2026-03-24
 
-This report supersedes the earlier red-team audit as the latest local status artifact for the rebuilt Mission Control v2.4.0 branch.
+This report supersedes the earlier red-team audit for the 2026-03-24 rebuild pass.
+
+For the current machine-state truth after the March 25 OpenClaw/runtime reconciliation and external rehearsal pass, use [CUTLINE_RUNTIME_RECONCILIATION_2026-03-25.md](/Users/jordan/.openclaw/workspace/mission-control/docs/CUTLINE_RUNTIME_RECONCILIATION_2026-03-25.md).
 
 ## Current Result
 

@@ -443,35 +443,48 @@ export async function mergeRevertPR(prUrl: string): Promise<boolean> {
 
   const { owner, repo, number: prNumber } = parsed;
 
-  try {
-    const res = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/merge`,
-      {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          commit_title: `Auto-merge rollback: Revert PR #${prNumber}`,
-          merge_method: 'merge',
-        }),
+  let retries = 5;
+  while (retries > 0) {
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/merge`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            commit_title: `Auto-merge rollback: Revert PR #${prNumber}`,
+            merge_method: 'merge',
+          }),
+        }
+      );
+
+      if (res.ok) {
+        console.log(`[Rollback] Revert PR #${prNumber} merged successfully`);
+        return true;
       }
-    );
 
-    if (res.ok) {
-      console.log(`[Rollback] Revert PR #${prNumber} merged successfully`);
-      return true;
+      const resBody = await res.text();
+      
+      if (res.status === 405 && resBody.includes('Base branch was modified')) {
+        console.warn(`[Rollback] Revert PR #${prNumber} hit 405 mergeability delay, retrying (${retries - 1} left)...`);
+        retries--;
+        await new Promise(r => setTimeout(r, 2000));
+        continue;
+      }
+
+      console.error('[Rollback] Failed to merge revert PR:', resBody);
+      return false;
+    } catch (err) {
+      console.error('[Rollback] Error merging revert PR:', err);
+      return false;
     }
-
-    console.error('[Rollback] Failed to merge revert PR:', await res.text());
-    return false;
-  } catch (err) {
-    console.error('[Rollback] Error merging revert PR:', err);
-    return false;
   }
+  return false;
 }
 
 // ---------------------------------------------------------------------------

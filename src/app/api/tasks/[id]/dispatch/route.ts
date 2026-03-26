@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
@@ -16,7 +16,9 @@ import { getPendingNotesForDispatch } from '@/lib/task-notes';
 import { createTaskWorkspace, determineIsolationStrategy } from '@/lib/workspace-isolation';
 import { evaluateProductCostGuards } from '@/lib/costs/caps';
 import { buildAgentSessionKey } from '@/lib/openclaw/routing';
-import type { Task, Agent, Product, OpenClawSession, WorkflowStage, TaskImage } from '@/lib/types';
+import { buildMissionControlCurlCommand, buildTaskCompletionInstructions } from '@/lib/dispatch-instructions';
+import { ensureTaskSessionLink } from '@/lib/dispatch-session';
+import type { Task, Agent, Product, WorkflowStage, TaskImage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 interface RouteParams {
@@ -126,53 +128,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Get or create OpenClaw session for this agent
-    let session = queryOne<OpenClawSession>(
-      'SELECT * FROM openclaw_sessions WHERE agent_id = ? AND status = ?',
-      [agent.id, 'active']
-    );
-
     const now = new Date().toISOString();
+    const { session, created: createdSession } = ensureTaskSessionLink({
+      agentId: agent.id,
+      agentName: agent.name,
+      taskId: task.id,
+      now,
+    });
 
-    if (session && session.task_id !== task.id) {
-      run(
-        `UPDATE openclaw_sessions SET task_id = ?, updated_at = ? WHERE id = ?`,
-        [task.id, now, session.id]
-      );
-      session = queryOne<OpenClawSession>(
-        'SELECT * FROM openclaw_sessions WHERE id = ?',
-        [session.id]
-      );
-    }
-
-    if (!session) {
-      // Create session record
-      const sessionId = uuidv4();
-      const openclawSessionId = `mission-control-${agent.name.toLowerCase().replace(/\s+/g, '-')}`;
-      
-      run(
-        `INSERT INTO openclaw_sessions (id, agent_id, task_id, openclaw_session_id, channel, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [sessionId, agent.id, task.id, openclawSessionId, 'mission-control', 'active', now, now]
-      );
-
-      session = queryOne<OpenClawSession>(
-        'SELECT * FROM openclaw_sessions WHERE id = ?',
-        [sessionId]
-      );
-
-      // Log session creation
+    if (createdSession) {
       run(
         `INSERT INTO events (id, type, agent_id, message, created_at)
          VALUES (?, ?, ?, ?, ?)`,
         [uuidv4(), 'agent_status_changed', agent.id, `${agent.name} session created`, now]
-      );
-    }
-
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Failed to create agent session' },
-        { status: 500 }
       );
     }
 
@@ -213,7 +181,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     let taskProjectDir = `${projectsPath}/${projectDir}`;
     const missionControlUrl = getMissionControlUrl();
     const mcApiToken = process.env.MC_API_TOKEN;
-    const authHeader = mcApiToken ? ` -H 'Authorization: Bearer ${mcApiToken}'` : '';
 
     // Create isolated workspace if parallel builds are possible
     // Only for builder dispatches (assigned/in_progress), not tester/reviewer
@@ -232,18 +199,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         console.log(`[Dispatch] Created ${workspace.strategy} workspace for task ${task.id}: ${workspace.path}`);
       } catch (err) {
         console.warn(`[Dispatch] Workspace isolation failed, using default path:`, (err as Error).message);
-      }
-    }
-
-    // Write temporary secrets file for agent if needed
-    if (mcApiToken && taskProjectDir) {
-      const secretFileName = '.env.mc-token-temp';
-      const secretFilePath = path.join(taskProjectDir, secretFileName);
-      try {
-        fs.writeFileSync(secretFilePath, `MC_API_TOKEN=${mcApiToken}\n`, 'utf8');
-        console.log(`[Dispatch] Wrote temporary secrets file: ${secretFilePath}`);
-      } catch (err) {
-        console.warn(`[Dispatch] Failed to write temporary secrets file to ${secretFilePath}:`, (err as Error).message);
       }
     }
 
@@ -336,57 +291,55 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const isTester = currentStage?.role === 'tester';
     const isVerifier = currentStage?.role === 'verifier' || currentStage?.role === 'reviewer';
     const nextStatus = nextStage?.status || 'review';
-    const failEndpoint = `POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/fail`;
+
+    // Create temporary .env.mc-token-temp file for agent callback auth
+    if (mcApiToken) {
+      try {
+        if (!fs.existsSync(taskProjectDir)) {
+          fs.mkdirSync(taskProjectDir, { recursive: true });
+        }
+        const tempEnvPath = path.join(taskProjectDir, '.env.mc-token-temp');
+        fs.writeFileSync(tempEnvPath, `MC_API_TOKEN=${mcApiToken}\n`);
+        console.log(`[Dispatch] Created temporary auth file: ${tempEnvPath}`);
+      } catch (err) {
+        console.warn(`[Dispatch] Failed to create temporary auth file:`, (err as Error).message);
+      }
+    }
 
     let completionInstructions: string;
     if (isBuilder) {
-      completionInstructions = `**IMPORTANT:** After completing work, you MUST call these APIs:
-${mcApiToken ? `1. **Source API Token:** \`source ./.env.mc-token-temp\`\n` : ''}1. Log activity: POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/activities
-   Body: {"activity_type": "completed", "message": "Description of what was done"}
-2. Register deliverable: POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/deliverables
-   Body: {"deliverable_type": "file", "title": "File name", "path": "${taskProjectDir}/filename.html"}
-3. Update status: PATCH ${missionControlUrl}${authHeader}/api/tasks/${task.id}
-   Body: {"status": "${nextStatus}"}
-
-When complete, reply with:
-\`TASK_COMPLETE: [brief summary of what you did]\``;
+      completionInstructions = buildTaskCompletionInstructions({
+        role: 'builder',
+        authEnabled: Boolean(mcApiToken),
+        missionControlUrl,
+        taskId: task.id,
+        nextStatus,
+        outputPath: `${taskProjectDir}/filename.html`,
+      });
     } else if (isTester) {
-      completionInstructions = `**YOUR ROLE: TESTER** — Test the deliverables for this task.
-
-Review the output directory for deliverables and run any applicable tests.
-
-**If tests PASS:**
-${mcApiToken ? `1. **Source API Token:** \`source ./.env.mc-token-temp\`\n` : ''}1. Log activity: POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/activities
-   Body: {"activity_type": "completed", "message": "Tests passed: [summary]"}
-2. Update status: PATCH ${missionControlUrl}${authHeader}/api/tasks/${task.id}
-   Body: {"status": "${nextStatus}"}
-
-**If tests FAIL:**
-1. ${failEndpoint}
-   Body: {"reason": "Detailed description of what failed and what needs fixing"}
-
-Reply with: \`TEST_PASS: [summary]\` or \`TEST_FAIL: [what failed]\``;
+      completionInstructions = buildTaskCompletionInstructions({
+        role: 'tester',
+        authEnabled: Boolean(mcApiToken),
+        missionControlUrl,
+        taskId: task.id,
+        nextStatus,
+      });
     } else if (isVerifier) {
-      completionInstructions = `**YOUR ROLE: VERIFIER** — Verify that all work meets quality standards.
-
-Review deliverables, test results, and task requirements.
-
-**If verification PASSES:**
-${mcApiToken ? `1. **Source API Token:** \`source ./.env.mc-token-temp\`\n` : ''}1. Log activity: POST ${missionControlUrl}${authHeader}/api/tasks/${task.id}/activities
-   Body: {"activity_type": "completed", "message": "Verification passed: [summary]"}
-2. Update status: PATCH ${missionControlUrl}${authHeader}/api/tasks/${task.id}
-   Body: {"status": "${nextStatus}"}
-
-**If verification FAILS:**
-1. ${failEndpoint}
-   Body: {"reason": "Detailed description of what failed and what needs fixing"}
-
-Reply with: \`VERIFY_PASS: [summary]\` or \`VERIFY_FAIL: [what failed]\``;
+      completionInstructions = buildTaskCompletionInstructions({
+        role: 'verifier',
+        authEnabled: Boolean(mcApiToken),
+        missionControlUrl,
+        taskId: task.id,
+        nextStatus,
+      });
     } else {
-      // Fallback for unknown roles
-      completionInstructions = `**IMPORTANT:** After completing work:
-1. Update status: PATCH ${missionControlUrl}${authHeader}/api/tasks/${task.id}
-   Body: {"status": "${nextStatus}"}`;
+      completionInstructions = buildTaskCompletionInstructions({
+        role: 'fallback',
+        authEnabled: Boolean(mcApiToken),
+        missionControlUrl,
+        taskId: task.id,
+        nextStatus,
+      });
     }
 
     // Build image references section
@@ -422,8 +375,12 @@ Reply with: \`VERIFY_PASS: [summary]\` or \`VERIFY_FAIL: [what failed]\``;
 **GIT WORKFLOW:**
 1. First, verify you have git access: run \`git ls-remote ${repoUrl}\`
    - If this fails, report the error immediately via:
-     PATCH ${missionControlUrl}${authHeader}/api/tasks/${task.id}
-     Body: {"status_reason": "Git auth not configured: [error message]"}
+${buildMissionControlCurlCommand({
+  authEnabled: Boolean(mcApiToken),
+  method: 'PATCH',
+  url: `${missionControlUrl}/api/tasks/${task.id}`,
+  body: '{"status_reason":"Git auth not configured: [error message]"}',
+})}
      Then STOP — do not proceed without repo access.
 2. Clone the repo (or use existing local copy)
 3. Create branch \`${branchName}\` from \`${repoBranch}\`
@@ -437,12 +394,16 @@ Reply with: \`VERIFY_PASS: [summary]\` or \`VERIFY_FAIL: [what failed]\``;
   - What was built and why
   - Research backing (from the idea)
   - Technical approach taken
-  - Any risks or trade-offs
-  - Task ID: ${task.id}
+- Any risks or trade-offs
+- Task ID: ${task.id}
 - Target branch: ${repoBranch}
 - After creating PR, report the PR URL:
-  PATCH ${missionControlUrl}${authHeader}/api/tasks/${task.id}
-  Body: {"pr_url": "<github PR url>", "pr_status": "open"}
+${buildMissionControlCurlCommand({
+  authEnabled: Boolean(mcApiToken),
+  method: 'PATCH',
+  url: `${missionControlUrl}/api/tasks/${task.id}`,
+  body: '{"pr_url":"<github PR url>","pr_status":"open"}',
+})}
 `;
     }
 

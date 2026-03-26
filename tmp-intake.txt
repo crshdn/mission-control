@@ -1,9 +1,0 @@
-lane: build
-title: Improve Mission Control Telegram intake review
-goal: Make it easier to review Telegram-originated build ideas before they become Mission Control work.
-why now: I want to start using this flow for real ideas without sending low-context slop into the system.
-constraints: Keep it conservative, explicit, and easy to cancel if the draft is wrong.
-definition of done: I get a clear preview, I can confirm it safely, and Mission Control only receives sufficiently complete ideas.
-target product: Mission Control
-user problem: Rough ideas over chat can be incomplete and create cleanup work later.
-requested change: Keep the Telegram intake path focused on structured refinement and high-quality preview before submission.

@@ -166,3 +166,54 @@ test('runHealthCheckCycle auto-dispatches orphaned assigned tasks older than thr
     global.fetch = originalFetch;
   }
 });
+
+test('runHealthCheckCycle can await auto-nudge redispatch for zombie agents', async () => {
+  const workspaceId = `ws-${crypto.randomUUID()}`;
+  const agentId = crypto.randomUUID();
+  const taskId = crypto.randomUUID();
+
+  seedWorkspace(workspaceId);
+  seedAgent(agentId, workspaceId, 'working');
+  seedTask({ id: taskId, workspaceId, agentId, status: 'in_progress' });
+  run(
+    `INSERT INTO agent_health (id, agent_id, task_id, health_state, consecutive_stall_checks, updated_at)
+     VALUES (?, ?, ?, 'zombie', 2, datetime('now'))`,
+    [crypto.randomUUID(), agentId, taskId]
+  );
+
+  const dispatchedUrls: string[] = [];
+  const originalFetch = global.fetch;
+  global.fetch = async (input) => {
+    const url = String(input);
+    dispatchedUrls.push(url);
+    if (url.endsWith(`/api/tasks/${taskId}/dispatch`)) {
+      run(`UPDATE tasks SET status = 'in_progress', updated_at = datetime('now') WHERE id = ?`, [taskId]);
+    }
+    return new Response('{}', { status: 200 });
+  };
+
+  try {
+    await runHealthCheckCycle({ awaitNudges: true });
+
+    assert.ok(dispatchedUrls.some(url => url.endsWith(`/api/tasks/${taskId}/dispatch`)));
+    const task = queryOne<{ status: string }>('SELECT status FROM tasks WHERE id = ?', [taskId]);
+    assert.equal(task?.status, 'in_progress');
+
+    const health = queryOne<{ health_state: string; consecutive_stall_checks: number }>(
+      'SELECT health_state, consecutive_stall_checks FROM agent_health WHERE agent_id = ?',
+      [agentId]
+    );
+    assert.equal(health?.health_state, 'working');
+    assert.equal(health?.consecutive_stall_checks, 0);
+
+    const activity = queryOne<{ message: string }>(
+      `SELECT message FROM task_activities
+       WHERE task_id = ? AND message = 'Agent nudged — re-dispatching with checkpoint context'
+       ORDER BY created_at DESC LIMIT 1`,
+      [taskId]
+    );
+    assert.equal(activity?.message, 'Agent nudged — re-dispatching with checkpoint context');
+  } finally {
+    global.fetch = originalFetch;
+  }
+});

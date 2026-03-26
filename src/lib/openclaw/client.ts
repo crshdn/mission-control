@@ -477,11 +477,12 @@ export class OpenClawClient extends EventEmitter {
   }
 
   async getSessionHistory(sessionId: string): Promise<unknown[]> {
-    return this.call<unknown[]>('sessions.history', { session_id: sessionId });
+    const result = await this.call<{ messages?: unknown[] }>('chat.history', { sessionKey: sessionId });
+    return result?.messages || [];
   }
 
   async sendMessage(sessionId: string, content: string): Promise<void> {
-    await this.call('sessions.send', { session_id: sessionId, content });
+    await this.call('sessions.send', { sessionKey: sessionId, content });
   }
 
   async createSession(channel: string, peer?: string): Promise<OpenClawSessionInfo> {

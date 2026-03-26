@@ -37,133 +37,135 @@ async function main() {
   const baseUrl = missionControlUrl;
   const dbPath = path.join(repoRoot, process.env.DATABASE_PATH || 'mission-control.db');
   const db = new Database(dbPath, { readonly: false });
+  let client: ReturnType<typeof getOpenClawClient> | null = null;
 
-  const product = await request(baseUrl, '/api/products', {
-    method: 'POST',
-    body: JSON.stringify({
-      name: `Self Improvement Validation ${new Date().toISOString()}`,
-      description: 'Validates learner knowledge capture and skill extraction/injection/reporting.',
-      product_program: [
-        '# Product Program',
-        'Favor tiny deterministic edits for validation.',
-        'We want reusable procedures and durable lessons from each completed task.',
-      ].join('\n'),
-      build_mode: 'plan_first',
-      workspace_id: 'default',
-    }),
-  });
-  const productId = product.id as string;
-  assert(productId, 'Product creation did not return an id');
-
-  const builder = db.prepare(
-    `SELECT id, name, role, is_master, session_key_prefix
-     FROM agents
-     WHERE workspace_id = 'default' AND role = 'builder'
-     ORDER BY created_at ASC
-     LIMIT 1`
-  ).get() as DbAgent | undefined;
-  assert(builder?.id, 'Could not find a builder agent in the default workspace');
-
-  const createTask = async (title: string, description: string) => {
-    const created = await request(baseUrl, '/api/tasks', {
+  try {
+    const product = await request(baseUrl, '/api/products', {
       method: 'POST',
       body: JSON.stringify({
-        title,
-        description,
-        product_id: productId,
+        name: `Self Improvement Validation ${new Date().toISOString()}`,
+        description: 'Validates learner knowledge capture and skill extraction/injection/reporting.',
+        product_program: [
+          '# Product Program',
+          'Favor tiny deterministic edits for validation.',
+          'We want reusable procedures and durable lessons from each completed task.',
+        ].join('\n'),
+        build_mode: 'plan_first',
         workspace_id: 'default',
-        assigned_agent_id: builder.id,
-        priority: 'normal',
       }),
     });
-    return created.id as string;
-  };
+    const productId = product.id as string;
+    assert(productId, 'Product creation did not return an id');
 
-  const driveTaskToDone = async (taskId: string, filename: string, message: string) => {
-    await request(baseUrl, `/api/tasks/${taskId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        status: 'assigned',
-        assigned_agent_id: builder.id,
-      }),
-    });
+    const builder = db.prepare(
+      `SELECT id, name, role, is_master, session_key_prefix
+       FROM agents
+       WHERE workspace_id = 'default' AND role = 'builder'
+       ORDER BY created_at ASC
+       LIMIT 1`
+    ).get() as DbAgent | undefined;
+    assert(builder?.id, 'Could not find a builder agent in the default workspace');
 
-    await waitFor(
-      `task ${taskId} dispatch`,
-      () => request(baseUrl, `/api/tasks/${taskId}`),
-      (task: any) => ['assigned', 'in_progress'].includes(task?.status),
-      120_000,
-      1_500,
-    );
+    const createTask = async (title: string, description: string) => {
+      const created = await request(baseUrl, '/api/tasks', {
+        method: 'POST',
+        body: JSON.stringify({
+          title,
+          description,
+          product_id: productId,
+          workspace_id: 'default',
+          assigned_agent_id: builder.id,
+          priority: 'normal',
+        }),
+      });
+      return created.id as string;
+    };
 
-    let workspacePath = path.join(projectsPath, '.validation-self-improvement', taskId);
-    try {
-      const workspace = await waitFor(
-        `task ${taskId} workspace`,
-        () => request(baseUrl, `/api/tasks/${taskId}/workspace`),
-        (status: any) => Boolean(status?.path),
-        15_000,
+    const driveTaskToDone = async (taskId: string, filename: string, message: string) => {
+      await request(baseUrl, `/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'assigned',
+          assigned_agent_id: builder.id,
+        }),
+      });
+
+      await waitFor(
+        `task ${taskId} dispatch`,
+        () => request(baseUrl, `/api/tasks/${taskId}`),
+        (task: any) => ['assigned', 'in_progress'].includes(task?.status),
+        120_000,
         1_500,
       );
-      if (workspace?.path) {
-        workspacePath = workspace.path as string;
+
+      let workspacePath = path.join(projectsPath, '.validation-self-improvement', taskId);
+      try {
+        const workspace = await waitFor(
+          `task ${taskId} workspace`,
+          () => request(baseUrl, `/api/tasks/${taskId}/workspace`),
+          (status: any) => Boolean(status?.path),
+          15_000,
+          1_500,
+        );
+        if (workspace?.path) {
+          workspacePath = workspace.path as string;
+        }
+      } catch {
+        // Local/no-repo tasks may not persist a workspace path immediately. Use a
+        // deterministic validation directory so deliverable registration still works.
       }
-    } catch {
-      // Local/no-repo tasks may not persist a workspace path immediately. Use a
-      // deterministic validation directory so deliverable registration still works.
-    }
 
-    ensureDir(workspacePath);
-    const filePath = path.join(workspacePath, filename);
-    fs.writeFileSync(filePath, `${message}\n`);
+      ensureDir(workspacePath);
+      const filePath = path.join(workspacePath, filename);
+      fs.writeFileSync(filePath, `${message}\n`);
 
-    await request(baseUrl, `/api/tasks/${taskId}/activities`, {
-      method: 'POST',
-      body: JSON.stringify({
-        activity_type: 'completed',
-        message,
-        agent_id: builder.id,
-      }),
-    });
+      await request(baseUrl, `/api/tasks/${taskId}/activities`, {
+        method: 'POST',
+        body: JSON.stringify({
+          activity_type: 'completed',
+          message,
+          agent_id: builder.id,
+        }),
+      });
 
-    await request(baseUrl, `/api/tasks/${taskId}/deliverables`, {
-      method: 'POST',
-      body: JSON.stringify({
-        deliverable_type: 'file',
-        title: filename,
-        path: filePath,
-        description: message,
-      }),
-    });
+      await request(baseUrl, `/api/tasks/${taskId}/deliverables`, {
+        method: 'POST',
+        body: JSON.stringify({
+          deliverable_type: 'file',
+          title: filename,
+          path: filePath,
+          description: message,
+        }),
+      });
 
-    await request(baseUrl, `/api/tasks/${taskId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'done' }),
-    });
+      await request(baseUrl, `/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'done' }),
+      });
 
-    return { workspacePath, filePath };
-  };
+      return { workspacePath, filePath };
+    };
 
-  const taskOneId = await createTask(
-    'Validate learner knowledge capture',
-    [
-      'Create one tiny validation artifact so Mission Control can learn a durable build/test lesson for later tasks.',
-      'This task should demonstrate a reusable procedure:',
-      '1. Write a validation artifact file in the task workspace.',
-      '2. Log a completion activity describing what was validated.',
-      '3. Register the artifact as a task deliverable.',
-      '4. Mark the task done.',
-      'Future agents should be able to reuse this same validation-artifact workflow.',
-    ].join('\n'),
-  );
+    const taskOneId = await createTask(
+      'Validate learner knowledge capture',
+      [
+        'Create one tiny validation artifact so Mission Control can learn a durable build/test lesson for later tasks.',
+        'This task should demonstrate a reusable procedure:',
+        '1. Write a validation artifact file in the task workspace.',
+        '2. Log a completion activity describing what was validated.',
+        '3. Register the artifact as a task deliverable.',
+        '4. Mark the task done.',
+        'Future agents should be able to reuse this same validation-artifact workflow.',
+      ].join('\n'),
+    );
 
-  const taskOneResult = await driveTaskToDone(
-    taskOneId,
-    'learner-validation.txt',
-    'Recorded a validation artifact for learner/skills verification.',
-  );
+    const taskOneResult = await driveTaskToDone(
+      taskOneId,
+      'learner-validation.txt',
+      'Recorded a validation artifact for learner/skills verification.',
+    );
 
-  const knowledgeEntry = await waitFor(
+    const knowledgeEntry = await waitFor(
     'learner knowledge entry',
     async () =>
       db.prepare(
@@ -178,7 +180,7 @@ async function main() {
     2_000,
   );
 
-  const extractedSkill = await waitFor(
+    const extractedSkill = await waitFor(
     'extracted skill',
     async () =>
       db.prepare(
@@ -199,9 +201,9 @@ async function main() {
     120_000,
     2_000,
   );
-  assert(extractedSkill?.status === 'active', `Expected extracted skill to be active, got ${extractedSkill?.status}`);
+    assert(extractedSkill?.status === 'active', `Expected extracted skill to be active, got ${extractedSkill?.status}`);
 
-  const taskTwoId = await createTask(
+    const taskTwoId = await createTask(
     'Reuse the learned validation workflow',
     [
       'Apply the same lightweight validation artifact workflow again so the previous skill and learner note should be injected.',
@@ -209,7 +211,7 @@ async function main() {
     ].join('\n'),
   );
 
-  await request(baseUrl, `/api/tasks/${taskTwoId}`, {
+    await request(baseUrl, `/api/tasks/${taskTwoId}`, {
     method: 'PATCH',
     body: JSON.stringify({
       status: 'assigned',
@@ -217,7 +219,7 @@ async function main() {
     }),
   });
 
-  await waitFor(
+    await waitFor(
     `task ${taskTwoId} dispatch`,
     () => request(baseUrl, `/api/tasks/${taskTwoId}`),
     (task: any) => ['assigned', 'in_progress'].includes(task?.status),
@@ -225,7 +227,7 @@ async function main() {
     1_500,
   );
 
-  const skillContext = await waitFor(
+    const skillContext = await waitFor(
     'skill injection activity',
     async () =>
       db.prepare(
@@ -240,7 +242,7 @@ async function main() {
     1_500,
   );
 
-  const session = await waitFor(
+    const session = await waitFor(
     'builder session',
     async () =>
       db.prepare(
@@ -255,28 +257,29 @@ async function main() {
     1_000,
   );
 
-  const client = getOpenClawClient();
-  if (!client.isConnected()) {
-    await client.connect();
-  }
+    client = getOpenClawClient();
+    if (!client.isConnected()) {
+      await client.connect();
+    }
+    const connectedClient = client;
 
-  const sessionKey = buildAgentSessionKey(
-    {
-      id: builder.id,
-      name: builder.name,
-      is_master: Boolean(builder.is_master),
-      session_key_prefix: builder.session_key_prefix ?? undefined,
-    },
-    session!.openclaw_session_id,
-    { context: 'self-improvement-verification' },
-  );
+    const sessionKey = buildAgentSessionKey(
+      {
+        id: builder.id,
+        name: builder.name,
+        is_master: Boolean(builder.is_master),
+        session_key_prefix: builder.session_key_prefix ?? undefined,
+      },
+      session!.openclaw_session_id,
+      { context: 'self-improvement-verification' },
+    );
 
-  const dispatchMessage = await waitFor(
+    const dispatchMessage = await waitFor(
     'builder dispatch payload',
     async () => {
-      const history = await client.call<{
-        messages: Array<{ role?: string; content?: unknown }>;
-      }>('chat.history', {
+        const history = await connectedClient.call<{
+          messages: Array<{ role?: string; content?: unknown }>;
+        }>('chat.history', {
         sessionKey,
         limit: 50,
       });
@@ -294,13 +297,13 @@ async function main() {
     1_500,
   );
 
-  const taskTwoResult = await driveTaskToDone(
-    taskTwoId,
-    'learner-validation-second.txt',
-    'Reused the learned validation artifact workflow for follow-up verification.',
-  );
+    const taskTwoResult = await driveTaskToDone(
+      taskTwoId,
+      'learner-validation-second.txt',
+      'Reused the learned validation artifact workflow for follow-up verification.',
+    );
 
-  const skillReport = await waitFor(
+    const skillReport = await waitFor(
     'skill usage report',
     async () =>
       db.prepare(
@@ -315,45 +318,49 @@ async function main() {
     2_000,
   );
 
-  const updatedSkill = db.prepare(
-    `SELECT id, title, status, confidence, times_used, times_succeeded
-     FROM product_skills
-     WHERE id = ?`
-  ).get(extractedSkill.id) as {
-    id: string;
-    title: string;
-    status: string;
-    confidence: number;
-    times_used: number;
-    times_succeeded: number;
-  };
+    const updatedSkill = db.prepare(
+      `SELECT id, title, status, confidence, times_used, times_succeeded
+       FROM product_skills
+       WHERE id = ?`
+    ).get(extractedSkill.id) as {
+      id: string;
+      title: string;
+      status: string;
+      confidence: number;
+      times_used: number;
+      times_succeeded: number;
+    };
 
-  console.log(
-    JSON.stringify(
-      {
-        ok: true,
-        productId,
-        builderAgentId: builder.id,
-        firstTask: {
-          id: taskOneId,
-          workspacePath: taskOneResult.workspacePath,
-          knowledgeEntry,
-          extractedSkill,
+    console.log(
+      JSON.stringify(
+        {
+          ok: true,
+          productId,
+          builderAgentId: builder.id,
+          firstTask: {
+            id: taskOneId,
+            workspacePath: taskOneResult.workspacePath,
+            knowledgeEntry,
+            extractedSkill,
+          },
+          secondTask: {
+            id: taskTwoId,
+            workspacePath: taskTwoResult.workspacePath,
+            skillContextActivity: skillContext?.id,
+            dispatchIncludedSkills: dispatchMessage.includes('## Available Skills'),
+            dispatchIncludedKnowledge: dispatchMessage.includes('PREVIOUS LESSONS LEARNED'),
+            skillReport,
+            updatedSkill,
+          },
         },
-        secondTask: {
-          id: taskTwoId,
-          workspacePath: taskTwoResult.workspacePath,
-          skillContextActivity: skillContext?.id,
-          dispatchIncludedSkills: dispatchMessage.includes('## Available Skills'),
-          dispatchIncludedKnowledge: dispatchMessage.includes('PREVIOUS LESSONS LEARNED'),
-          skillReport,
-          updatedSkill,
-        },
-      },
-      null,
-      2,
-    ),
-  );
+        null,
+        2,
+      ),
+    );
+  } finally {
+    client?.disconnect();
+    db.close();
+  }
 }
 
 main().catch((error) => {

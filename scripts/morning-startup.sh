@@ -26,6 +26,27 @@ bootstrap_env() {
   fi
 }
 
+read_mission_control_env() {
+  local key="$1"
+  local env_file
+  for env_file in "$MISSION_CONTROL_DIR/.env.local" "$MISSION_CONTROL_DIR/.env"; do
+    if [[ -f "$env_file" ]]; then
+      local value
+      value="$(awk -F= -v target="$key" '
+        $1 == target {
+          sub(/^[^=]*=/, "", $0)
+          print $0
+          exit
+        }
+      ' "$env_file")"
+      if [[ -n "$value" ]]; then
+        printf '%s' "$value"
+        return 0
+      fi
+    fi
+  done
+}
+
 resolve_project_node_dir() {
   if [[ -f "$MISSION_CONTROL_DIR/.nvmrc" ]]; then
     local project_version
@@ -102,12 +123,10 @@ listening_pid() {
 mission_control_api_ready() {
   bootstrap_env
   local auth_header=()
-  if [[ -f "$MISSION_CONTROL_DIR/.env.local" ]]; then
-    local token
-    token="$(awk -F= '/^MC_API_TOKEN=/{print $2}' "$MISSION_CONTROL_DIR/.env.local" | tail -n 1)"
-    if [[ -n "$token" ]]; then
-      auth_header=(-H "Authorization: Bearer $token")
-    fi
+  local token
+  token="$(read_mission_control_env MC_API_TOKEN)"
+  if [[ -n "$token" ]]; then
+    auth_header=(-H "Authorization: Bearer $token")
   fi
 
   local code
@@ -175,7 +194,14 @@ NEXT_ENTRY="$MISSION_CONTROL_DIR/node_modules/next/dist/bin/next"
 TSX_ENTRY="$MISSION_CONTROL_DIR/node_modules/tsx/dist/cli.mjs"
 
 bootstrap_snippet='source ~/.zshrc >/dev/null 2>&1 || true; export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; nvm use default >/dev/null 2>&1 || true;'
-gateway_background_command="cd '$WORKSPACE_ROOT'; '$NODE_BIN' '$OPENCLAW_ENTRY' gateway start >'$GATEWAY_LOG' 2>&1"
+MC_API_TOKEN_VALUE="$(read_mission_control_env MC_API_TOKEN)"
+if [[ -n "$MC_API_TOKEN_VALUE" ]]; then
+  GATEWAY_ENV_PREFIX="MC_API_TOKEN=$(printf '%q' "$MC_API_TOKEN_VALUE") "
+else
+  GATEWAY_ENV_PREFIX=""
+fi
+
+gateway_background_command="cd '$WORKSPACE_ROOT'; ${GATEWAY_ENV_PREFIX}'$NODE_BIN' '$OPENCLAW_ENTRY' gateway start >'$GATEWAY_LOG' 2>&1"
 mission_control_background_command="cd '$MISSION_CONTROL_DIR'; PORT='$MISSION_CONTROL_PORT' '$NODE_BIN' '$NEXT_ENTRY' dev --turbo -p '$MISSION_CONTROL_PORT' >'$MISSION_CONTROL_LOG' 2>&1"
 mission_control_window_command="${bootstrap_snippet} cd '$MISSION_CONTROL_DIR'; echo 'Mission Control dev server log tail'; echo; echo 'Node binary: $NODE_BIN'; echo 'npm binary: $NPM_BIN'; echo; tail -n 40 -f '$MISSION_CONTROL_LOG'; exec zsh -l"
 doctor_command="${bootstrap_snippet} cd '$MISSION_CONTROL_DIR'; echo 'Mission Control morning check'; echo; echo 'Launcher: $LAUNCHER_NAME'; echo 'Expected branch: $DEFAULT_BRANCH'; echo 'Current branch:'; git branch --show-current; echo; echo 'Node:'; '$NODE_BIN' -v; echo 'npm:'; '$NPM_BIN' -v; echo; echo 'Doctor:'; '$NODE_BIN' '$TSX_ENTRY' scripts/cutline-telegram-intake.ts doctor; echo; echo 'Next command:'; echo 'npm run cutline:telegram -- submit --lane build --build-mode idea --product \"Mission Control\" --text \"Your request here\"'; echo; echo 'Reference note: $STARTUP_NOTE'; exec zsh -l"

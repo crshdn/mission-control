@@ -502,6 +502,8 @@ When `MC_API_TOKEN` is set:
 - External API calls require `Authorization: Bearer <token>`
 - Browser UI works automatically (same-origin requests are allowed)
 - SSE streams accept token as query param
+- OpenClaw agent runtimes that need to call Mission Control APIs should inherit the same `MC_API_TOKEN` in their process environment. Do not write the token into task workspaces or prompts.
+- On this Mac, if you use the managed OpenClaw LaunchAgent instead of a one-off shell launch, place `MC_API_TOKEN` in `~/.openclaw/.env` so the gateway service exposes it to agent runtimes.
 
 See [PRODUCTION_SETUP.md](PRODUCTION_SETUP.md) for the full production guide.
 
@@ -516,6 +518,8 @@ Run Autensa on one machine and OpenClaw on another:
 OPENCLAW_GATEWAY_URL=ws://YOUR_SERVER_IP:18789
 OPENCLAW_GATEWAY_TOKEN=your-shared-token
 ```
+
+If agents on the remote OpenClaw host need to call Mission Control APIs, also export `MC_API_TOKEN` in the environment that launches the OpenClaw gateway service on that machine. For launchd/systemd-style installs, keep that value in the service-readable env file or secret surface used by the OpenClaw host.
 
 ### With Tailscale (Recommended)
 

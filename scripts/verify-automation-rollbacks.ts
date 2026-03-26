@@ -4,7 +4,7 @@ import path from 'path';
 import net from 'net';
 import crypto from 'crypto';
 import { spawn, type ChildProcess } from 'child_process';
-import { ensureDir, loadLocalEnv, request, runCommand, waitFor, assert } from './_shared';
+import { ensureDir, loadLocalEnv, request, runCommand, runCommandWithRetry, waitFor, assert } from './_shared';
 
 type ScenarioStatus = 'pass' | 'blocked' | 'fail';
 
@@ -331,7 +331,7 @@ async function prepareRepoProfile(repoRoot: string): Promise<RepoProfile> {
 
   const repoExists = (() => {
     try {
-      runCommand(`gh repo view ${fullName} --json name`, seedDir);
+      runCommandWithRetry(`gh repo view ${fullName} --json name`, seedDir);
       return true;
     } catch {
       return false;
@@ -339,31 +339,31 @@ async function prepareRepoProfile(repoRoot: string): Promise<RepoProfile> {
   })();
 
   if (!repoExists) {
-    runCommand(`gh repo create ${fullName} --private --source . --remote origin --push`, seedDir);
+    runCommandWithRetry(`gh repo create ${fullName} --private --source . --remote origin --push`, seedDir);
   } else {
-    const remotes = runCommand('git remote', seedDir);
+    const remotes = runCommandWithRetry('git remote', seedDir);
     if (!remotes.split('\n').includes('origin')) {
-      runCommand(`git remote add origin https://github.com/${fullName}.git`, seedDir);
+      runCommandWithRetry(`git remote add origin https://github.com/${fullName}.git`, seedDir);
     }
-    runCommand('git push -u origin main', seedDir);
+    runCommandWithRetry('git push -u origin main', seedDir);
   }
 
   const featureBranch = `verifier/${nowStamp().toLowerCase()}`;
-  runCommand(`git checkout -b ${featureBranch}`, seedDir);
+  runCommandWithRetry(`git checkout -b ${featureBranch}`, seedDir);
   fs.appendFileSync(path.join(seedDir, 'index.html'), `\n<!-- verifier update ${new Date().toISOString()} -->\n`);
   fs.appendFileSync(path.join(seedDir, 'README.md'), `\n## Verifier Update\nUpdated at ${new Date().toISOString()}\n`);
-  runCommand('git add -A', seedDir);
-  runCommand('git commit -m "Verifier feature update"', seedDir);
-  runCommand(`git push -u origin ${featureBranch}`, seedDir);
+  runCommandWithRetry('git add -A', seedDir);
+  runCommandWithRetry('git commit -m "Verifier feature update"', seedDir);
+  runCommandWithRetry(`git push -u origin ${featureBranch}`, seedDir);
 
-  const prUrl = runCommand(
+  const prUrl = runCommandWithRetry(
     `gh pr create --title "Verifier automation proof" --body "Disposable PR for automation-tier verification" --base main --head ${featureBranch}`,
     seedDir,
   );
-  runCommand(`gh pr merge ${prUrl} --merge --delete-branch`, seedDir);
+  runCommandWithRetry(`gh pr merge ${prUrl} --merge --delete-branch`, seedDir);
 
   const mergedPr = JSON.parse(
-    runCommand(`gh pr view ${prUrl} --json url,mergeCommit,number`, seedDir),
+    runCommandWithRetry(`gh pr view ${prUrl} --json url,mergeCommit,number`, seedDir),
   ) as { url: string; mergeCommit?: { oid?: string }; number: number };
 
   const mergeCommitSha = mergedPr.mergeCommit?.oid || hashFallbackSha(prUrl);
@@ -411,13 +411,22 @@ async function triggerGitHubWebhook(
   webhookSecret?: string,
 ): Promise<{ status: number; body: any }> {
   const rawBody = JSON.stringify(payload);
+  return postGitHubWebhook(baseUrl, event, rawBody, webhookSecret ? createWebhookSignature(webhookSecret, rawBody) : undefined);
+}
+
+async function postGitHubWebhook(
+  baseUrl: string,
+  event: string,
+  rawBody: string,
+  signature?: string,
+): Promise<{ status: number; body: any }> {
   const headers: Record<string, string> = {
     'content-type': 'application/json',
     'x-github-event': event,
   };
 
-  if (webhookSecret) {
-    headers['x-hub-signature-256'] = createWebhookSignature(webhookSecret, rawBody);
+  if (signature) {
+    headers['x-hub-signature-256'] = signature;
   }
 
   const response = await fetch(`${baseUrl}/api/webhooks/github`, {
@@ -457,9 +466,11 @@ async function waitForRollbackSettlement(
       const rollback = Array.isArray(state?.rollbacks)
         ? state.rollbacks.find((entry: any) => entry?.id === rollbackId)
         : null;
-      return Boolean(rollback && rollback.revert_pr_status && rollback.revert_pr_status !== 'pending');
+      const rollbackSettled = rollback && ['merged', 'failed'].includes(rollback.revert_pr_status);
+      const tierSettled = state?.currentTier === 'supervised';
+      return Boolean(rollbackSettled && tierSettled);
     },
-    60_000,
+    120_000,
     1_500,
   );
 }
@@ -567,6 +578,44 @@ async function main() {
       },
     };
 
+    if (!webhookSecret) {
+      console.log('[automation-verifier] GITHUB_WEBHOOK_SECRET unset; skipping signed webhook enforcement preflight.');
+    } else {
+      const signatureProbeBody = JSON.stringify(pullRequestWebhook);
+      const unsignedWebhook = await postGitHubWebhook(server.baseUrl, 'pull_request', signatureProbeBody);
+      const invalidWebhook = await postGitHubWebhook(
+        server.baseUrl,
+        'pull_request',
+        signatureProbeBody,
+        createWebhookSignature(`${webhookSecret}-invalid`, signatureProbeBody),
+      );
+
+      if (unsignedWebhook.status !== 401 || invalidWebhook.status !== 401) {
+        results.push(failResult(
+          'webhook signature enforcement',
+          'GitHub webhook signature validation did not reject unsigned or incorrectly signed requests.',
+          [
+            `unsignedStatus=${unsignedWebhook.status}`,
+            `invalidStatus=${invalidWebhook.status}`,
+          ],
+          {
+            unsignedWebhook: unsignedWebhook.body,
+            invalidWebhook: invalidWebhook.body,
+          },
+        ));
+      } else {
+        results.push(passResult(
+          'webhook signature enforcement',
+          'Unsigned and invalidly signed GitHub webhook requests were both rejected with 401.',
+          [],
+          {
+            unsignedStatus: unsignedWebhook.status,
+            invalidStatus: invalidWebhook.status,
+          },
+        ));
+      }
+    }
+
     await setProductAutomation(server.baseUrl, productId, repoProfile.repoUrl, 'supervised', `${healthServer.baseUrl}/ok`);
     const supervisedBefore = await getRollbackState(server.baseUrl, productId);
     const supervisedWebhook = await triggerGitHubWebhook(server.baseUrl, 'pull_request', pullRequestWebhook, webhookSecret);
@@ -671,7 +720,7 @@ async function main() {
       ));
     } else {
       let latestRollback = failingResult.rollbacks[0];
-      if (latestRollback?.id && latestRollback.revert_pr_status === 'pending') {
+      if (latestRollback?.id) {
         const settledState = await waitForRollbackSettlement(server.baseUrl, productId, latestRollback.id).catch(() => null);
         if (settledState?.rollbacks?.length) {
           latestRollback = settledState.rollbacks[0];

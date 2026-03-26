@@ -115,3 +115,30 @@ export function assert(condition: unknown, message: string): asserts condition {
     throw new Error(message);
   }
 }
+
+export function runCommandWithRetry(command: string, cwd?: string, maxRetries = 5, delayMs = 2000): string {
+  let retries = maxRetries;
+  while (retries > 0) {
+    try {
+      return runCommand(command, cwd);
+    } catch (err: any) {
+      if (retries === 1) throw err;
+      const stderr = err.stderr?.toString() || '';
+      const stdout = err.stdout?.toString() || '';
+      const fullError = stdout + stderr;
+      if (
+        fullError.includes('Base branch was modified') ||
+        fullError.includes('mergeability') ||
+        fullError.includes('405')
+      ) {
+        console.warn(`[Retry] Command failed with mergeability error (405 or base branch changed), retrying (${retries - 1} left): ${command}`);
+        retries--;
+        const start = Date.now();
+        while (Date.now() - start < delayMs) {} // Sync sleep for simpler scripts
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error(`Command failed after ${maxRetries} retries: ${command}`);
+}

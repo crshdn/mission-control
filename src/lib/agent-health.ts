@@ -9,6 +9,10 @@ const STALL_THRESHOLD_MINUTES = 5;
 const STUCK_THRESHOLD_MINUTES = 15;
 const AUTO_NUDGE_AFTER_STALLS = 3;
 
+interface RunHealthCheckOptions {
+  awaitNudges?: boolean;
+}
+
 function parseDbTimestamp(value: string): number {
   if (!value) return Date.now();
   if (value.includes('T') || value.endsWith('Z')) {
@@ -71,7 +75,7 @@ export function checkAgentHealth(agentId: string): AgentHealthState {
 /**
  * Run a full health check cycle across all agents with active tasks.
  */
-export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
+export async function runHealthCheckCycle(options: RunHealthCheckOptions = {}): Promise<AgentHealth[]> {
   const activeAgents = queryAll<{ id: string }>(
     `SELECT DISTINCT assigned_agent_id as id FROM tasks WHERE status IN ('assigned', 'in_progress', 'testing', 'verification') AND assigned_agent_id IS NOT NULL`
   );
@@ -84,6 +88,7 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
   const allAgentIds = Array.from(new Set([...activeAgents.map(a => a.id), ...workingAgents.map(a => a.id)]));
   const results: AgentHealth[] = [];
   const now = new Date().toISOString();
+  const pendingNudges: Promise<void>[] = [];
 
   for (const agentId of allAgentIds) {
     const healthState = checkAgentHealth(agentId);
@@ -143,10 +148,17 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
     if (updatedHealth) {
       results.push(updatedHealth);
       if (updatedHealth.consecutive_stall_checks >= AUTO_NUDGE_AFTER_STALLS && (healthState === 'stuck' || healthState === 'zombie')) {
-        // Auto-nudge is fire-and-forget
-        nudgeAgent(agentId).catch(err =>
+        const nudgePromise = nudgeAgent(agentId).then(result => {
+          if (!result.success && result.error) {
+            console.error(`[Health] Auto-nudge failed for agent ${agentId}: ${result.error}`);
+          }
+        }).catch(err =>
           console.error(`[Health] Auto-nudge failed for agent ${agentId}:`, err)
         );
+
+        if (options.awaitNudges) {
+          pendingNudges.push(nudgePromise);
+        }
       }
     }
   }
@@ -212,6 +224,10 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
         [uuidv4(), agentId, now]
       );
     }
+  }
+
+  if (options.awaitNudges && pendingNudges.length > 0) {
+    await Promise.all(pendingNudges);
   }
 
   return results;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
@@ -195,19 +195,6 @@ export async function PATCH(
 
       if (nextStatus === 'done' && !boardOverrideAllowed && !taskCanBeDone(id)) {
         return NextResponse.json({ error: 'Cannot mark done: validation/evidence requirements not met' }, { status: 400 });
-      }
-
-      // Cleanup temporary secrets file when task is marked as done
-      if (nextStatus === 'done' && existing.workspace_path) {
-        const secretFilePath = path.join(existing.workspace_path, '.env.mc-token-temp');
-        try {
-          if (fs.existsSync(secretFilePath)) {
-            fs.unlinkSync(secretFilePath);
-            console.log(`[Cleanup] Removed temporary secrets file: ${secretFilePath}`);
-          }
-        } catch (err) {
-          console.warn(`[Cleanup] Failed to remove temporary secrets file ${secretFilePath}:`, (err as Error).message);
-        }
       }
 
       updates.push('status = ?');
@@ -490,6 +477,21 @@ export async function PATCH(
 
     // Drain the review queue when a task reaches 'done' (frees the verification slot)
     if (nextStatus === 'done') {
+      // Clean up temporary auth token file
+      const projectsPath = process.env.PROJECTS_PATH || '~/Documents/Shared/projects';
+      const projectDir = existing.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const taskProjectDir = existing.workspace_path || `${projectsPath}/${projectDir}`;
+      
+      try {
+        const tempEnvPath = path.join(taskProjectDir.replace(/^~/, process.env.HOME || ''), '.env.mc-token-temp');
+        if (fs.existsSync(tempEnvPath)) {
+          fs.unlinkSync(tempEnvPath);
+          console.log(`[Task PATCH] Cleaned up temporary auth file for task ${id}: ${tempEnvPath}`);
+        }
+      } catch (err) {
+        console.warn(`[Task PATCH] Failed to clean up temporary auth file:`, (err as Error).message);
+      }
+
       drainQueue(id, existing.workspace_id).catch(err =>
         console.error('[Workflow] drainQueue after done failed:', err)
       );
