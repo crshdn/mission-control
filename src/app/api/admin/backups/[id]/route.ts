@@ -11,10 +11,11 @@ export const dynamic = 'force-dynamic';
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const filename = decodeURIComponent(params.id);
+    const { id } = await params;
+    const filename = decodeURIComponent(id);
 
     if (!filename || typeof filename !== 'string') {
       return NextResponse.json(
