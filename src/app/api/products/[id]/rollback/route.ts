@@ -29,16 +29,17 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [params.id]);
+    const { id } = await params;
+    const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [id]);
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    const history = listRollbackHistory(params.id);
-    const unacknowledged = getUnacknowledgedRollbacks(params.id);
+    const history = listRollbackHistory(id);
+    const unacknowledged = getUnacknowledgedRollbacks(id);
 
     return NextResponse.json({
       rollbacks: history,
@@ -61,10 +62,11 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [params.id]);
+    const { id } = await params;
+    const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [id]);
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
@@ -80,10 +82,10 @@ export async function POST(
     }
 
     // Stop any active monitor for this product
-    stopMonitor(params.id);
+    stopMonitor(id);
 
     const result = await executeRollback({
-      productId: params.id,
+      productId: id,
       taskId: task_id,
       triggerType: 'manual',
       triggerDetails: reason || 'Manual rollback triggered via API',
@@ -112,10 +114,11 @@ export async function POST(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [params.id]);
+    const { id } = await params;
+    const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [id]);
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
@@ -135,7 +138,7 @@ export async function PATCH(
 
     // Optionally restore automation tier
     if (restore_tier && ['supervised', 'semi_auto', 'full_auto'].includes(restore_tier)) {
-      updateProductSettings(params.id, { automation_tier: restore_tier });
+      updateProductSettings(id, { automation_tier: restore_tier });
     }
 
     return NextResponse.json({
