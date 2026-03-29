@@ -3,12 +3,30 @@
  * Uses /v1/chat/completions for stateless prompt→response (no agent sessions).
  */
 
-const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL?.replace('ws://', 'http://').replace('wss://', 'https://') || 'http://127.0.0.1:18789';
-const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || '';
-const DEFAULT_MODEL = process.env.AUTOPILOT_MODEL || 'anthropic/claude-sonnet-4-6';
 const DEFAULT_TIMEOUT_MS = 300_000; // 5 minutes
 const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 5_000; // 5s, 10s, 20s exponential backoff
+const OPENCLAW_GATEWAY_MODEL = 'openclaw/default';
+
+function getGatewayUrl(): string {
+  return process.env.OPENCLAW_GATEWAY_URL?.replace('ws://', 'http://').replace('wss://', 'https://') || 'http://127.0.0.1:18789';
+}
+
+function getGatewayToken(): string {
+  return process.env.OPENCLAW_GATEWAY_TOKEN || '';
+}
+
+function getDefaultModel(): string {
+  return process.env.AUTOPILOT_MODEL || 'anthropic/claude-sonnet-4-6';
+}
+
+function resolveGatewayModel(model: string): { gatewayModel: string; modelOverride: string | null } {
+  if (model === 'openclaw' || model.startsWith('openclaw/')) {
+    return { gatewayModel: model, modelOverride: null };
+  }
+
+  return { gatewayModel: OPENCLAW_GATEWAY_MODEL, modelOverride: model };
+}
 
 export interface CompletionOptions {
   model?: string;
@@ -34,12 +52,13 @@ export interface CompletionResult {
  */
 export async function complete(prompt: string, options: CompletionOptions = {}): Promise<CompletionResult> {
   const {
-    model = DEFAULT_MODEL,
+    model = getDefaultModel(),
     systemPrompt,
     temperature = 0.7,
     maxTokens = 8192,
     timeoutMs = DEFAULT_TIMEOUT_MS,
   } = options;
+  const { gatewayModel, modelOverride } = resolveGatewayModel(model);
 
   const messages: Array<{ role: string; content: string }> = [];
   if (systemPrompt) {
@@ -60,14 +79,15 @@ export async function complete(prompt: string, options: CompletionOptions = {}):
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const response = await fetch(`${GATEWAY_URL}/v1/chat/completions`, {
+      const response = await fetch(`${getGatewayUrl()}/v1/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${GATEWAY_TOKEN}`,
+          'Authorization': `Bearer ${getGatewayToken()}`,
+          ...(modelOverride ? { 'x-openclaw-model': modelOverride } : {}),
         },
         body: JSON.stringify({
-          model,
+          model: gatewayModel,
           messages,
           temperature,
           max_tokens: maxTokens,
@@ -87,12 +107,13 @@ export async function complete(prompt: string, options: CompletionOptions = {}):
       };
 
       const content = data.choices?.[0]?.message?.content || '';
+      const resolvedModel = modelOverride || data.model || gatewayModel;
 
-      console.log(`[LLM] Response usage:`, JSON.stringify(data.usage || null), `model: ${data.model}`);
+      console.log(`[LLM] Response usage:`, JSON.stringify(data.usage || null), `model: ${resolvedModel}`);
 
       return {
         content,
-        model: data.model || model,
+        model: resolvedModel,
         usage: {
           promptTokens: data.usage?.prompt_tokens || 0,
           completionTokens: data.usage?.completion_tokens || 0,
