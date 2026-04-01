@@ -8,16 +8,17 @@ import { getProduct } from '@/lib/autopilot/products';
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const product = getProduct(params.id);
+    const { id } = await params;
+    const product = getProduct(id);
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
     const format = req.nextUrl.searchParams.get('format') || 'json';
-    const history = getScoreHistory(params.id, 30);
+    const history = getScoreHistory(id, 30);
 
     if (format === 'csv') {
       const headers = [
@@ -52,7 +53,7 @@ export async function GET(
 
     // Default: JSON
     return NextResponse.json({
-      product_id: params.id,
+      product_id: id,
       product_name: product.name,
       exported_at: new Date().toISOString(),
       history,
