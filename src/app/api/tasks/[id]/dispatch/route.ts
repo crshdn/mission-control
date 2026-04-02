@@ -445,9 +445,10 @@ If you need help or clarification, ask the orchestrator.`;
         idempotencyKey: `dispatch-${task.id}-${Date.now()}`
       });
 
-      // Only move to in_progress for builder dispatch (task is in 'assigned' status)
-      // For tester/reviewer/verifier, the task status is already correct
-      if (task.status === 'assigned') {
+      // Move builder tasks into the active queue once the message has been delivered.
+      // Direct dispatch from inbox should still surface as active work in the UI/health checks.
+      // For tester/reviewer/verifier, the task status is already correct.
+      if (task.status === 'assigned' || task.status === 'inbox') {
         run(
           'UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?',
           ['in_progress', now, id]
