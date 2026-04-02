@@ -1,12 +1,6 @@
 import { queryAll, queryOne, run, transaction } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
-
-interface GatewayAgent {
-  id?: string;
-  name?: string;
-  label?: string;
-  model?: string;
-}
+import { normalizeGatewayAgent } from '@/lib/openclaw/gateway-compat';
 
 const SYNC_INTERVAL_MS = Number(process.env.AGENT_CATALOG_SYNC_INTERVAL_MS || 60_000);
 let lastSyncAt = 0;
@@ -38,7 +32,9 @@ export async function syncGatewayAgentsToCatalog(options?: { force?: boolean; re
       await client.connect();
     }
 
-    const gatewayAgents = (await client.listAgents()) as GatewayAgent[];
+    const gatewayAgents = (await client.listAgents())
+      .map((agent) => normalizeGatewayAgent(agent))
+      .filter((agent): agent is NonNullable<typeof agent> => agent !== null);
     const existing = queryAll<{ id: string; gateway_agent_id: string | null }>(
       `SELECT id, gateway_agent_id FROM agents WHERE gateway_agent_id IS NOT NULL`
     );
@@ -49,10 +45,8 @@ export async function syncGatewayAgentsToCatalog(options?: { force?: boolean; re
 
     transaction(() => {
       for (const ga of gatewayAgents) {
-        const gatewayId = ga.id || ga.name;
-        if (!gatewayId) continue;
-
-        const name = ga.name || ga.label || gatewayId;
+        const gatewayId = ga.id;
+        const name = ga.name;
         const role = normalizeRole(name);
         const existingId = existingByGatewayId.get(gatewayId) || null;
 

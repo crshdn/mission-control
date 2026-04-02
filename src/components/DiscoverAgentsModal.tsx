@@ -215,6 +215,7 @@ export function DiscoverAgentsModal({ onClose, workspaceId }: DiscoverAgentsModa
                 {agents.map((agent) => {
                   const isSelected = selectedIds.has(agent.id);
                   const isImported = agent.already_imported;
+                  const modelText = typeof agent.model === 'string' ? agent.model : null;
 
                   return (
                     <div
@@ -257,7 +258,7 @@ export function DiscoverAgentsModal({ onClose, workspaceId }: DiscoverAgentsModa
                           )}
                         </div>
                         <div className="flex items-center gap-3 text-xs text-mc-text-secondary mt-0.5">
-                          {agent.model && <span>Model: {agent.model}</span>}
+                          {modelText && <span>Model: {modelText}</span>}
                           {agent.channel && <span>Channel: {agent.channel}</span>}
                           {agent.status && <span>Status: {agent.status}</span>}
                           <span className="text-mc-text-secondary/60">ID: {agent.id}</span>

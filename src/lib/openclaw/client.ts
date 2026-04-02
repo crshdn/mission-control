@@ -4,6 +4,7 @@ import { EventEmitter } from 'events';
 import type { OpenClawMessage, OpenClawSessionInfo } from '../types';
 import { loadOrCreateDeviceIdentity, signDevicePayload, buildDeviceAuthPayload, publicKeyRawBase64Url } from './device-identity';
 import { createHash } from 'crypto';
+import { extractGatewayAgents } from './gateway-compat';
 
 // Types for gateway model discovery (matches OpenClaw models.list response)
 export interface GatewayModelChoice {
@@ -482,16 +483,8 @@ export class OpenClawClient extends EventEmitter {
 
   // Agent methods
   async listAgents(): Promise<unknown[]> {
-    const result = await this.call<{ agents?: unknown[] }>('agents.list');
-    // Gateway returns { requester, allowAny, agents: [...] }
-    if (result && typeof result === 'object' && Array.isArray((result as Record<string, unknown>).agents)) {
-      return (result as Record<string, unknown>).agents as unknown[];
-    }
-    // Fallback: if the response is already an array
-    if (Array.isArray(result)) {
-      return result;
-    }
-    return [];
+    const result = await this.call<unknown>('agents.list');
+    return extractGatewayAgents(result);
   }
 
   // Node methods (device capabilities)

@@ -1,21 +1,11 @@
 import { NextResponse } from 'next/server';
 import { queryAll } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
+import { normalizeGatewayAgent } from '@/lib/openclaw/gateway-compat';
 import type { Agent, DiscoveredAgent } from '@/lib/types';
 
 // This route must always be dynamic - it queries live Gateway state + DB
 export const dynamic = 'force-dynamic';
-
-// Shape of an agent returned by the OpenClaw Gateway `agents.list` call
-interface GatewayAgent {
-  id?: string;
-  name?: string;
-  label?: string;
-  model?: string;
-  channel?: string;
-  status?: string;
-  [key: string]: unknown;
-}
 
 // GET /api/agents/discover - Discover existing agents from the OpenClaw Gateway
 export async function GET() {
@@ -33,9 +23,9 @@ export async function GET() {
       }
     }
 
-    let gatewayAgents: GatewayAgent[];
+    let gatewayAgents: unknown[];
     try {
-      gatewayAgents = (await client.listAgents()) as GatewayAgent[];
+      gatewayAgents = await client.listAgents();
     } catch (err) {
       console.error('Failed to list agents from Gateway:', err);
       return NextResponse.json(
@@ -60,20 +50,24 @@ export async function GET() {
     );
 
     // Map gateway agents to our DiscoveredAgent type
-    const discovered: DiscoveredAgent[] = gatewayAgents.map((ga) => {
-      const gatewayId = ga.id || ga.name || '';
-      const alreadyImported = importedGatewayIds.has(gatewayId);
-      return {
-        id: gatewayId,
-        name: ga.name || ga.label || gatewayId,
-        label: ga.label,
-        model: ga.model,
-        channel: ga.channel,
-        status: ga.status,
-        already_imported: alreadyImported,
-        existing_agent_id: alreadyImported ? importedGatewayIds.get(gatewayId) : undefined,
-      };
-    });
+    const discovered: DiscoveredAgent[] = gatewayAgents
+      .map((ga) => normalizeGatewayAgent(ga))
+      .filter((ga): ga is NonNullable<typeof ga> => ga !== null)
+      .map((ga) => {
+        const gatewayId = ga.id;
+        const alreadyImported = importedGatewayIds.has(gatewayId);
+        return {
+          id: gatewayId,
+          name: ga.name,
+          label: ga.label,
+          model: ga.model,
+          channel: ga.channel,
+          status: ga.status,
+          already_imported: alreadyImported,
+          existing_agent_id: alreadyImported ? importedGatewayIds.get(gatewayId) : undefined,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     return NextResponse.json({
       agents: discovered,
