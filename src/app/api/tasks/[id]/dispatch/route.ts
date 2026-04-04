@@ -29,6 +29,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
 
+    // Parse optional body (may contain review_fix_message for PR review auto-fix)
+    let reviewFixMessage: string | undefined;
+    try {
+      const body = await request.json();
+      reviewFixMessage = body?.review_fix_message;
+    } catch {
+      // No body or invalid JSON — that's fine for normal dispatches
+    }
+
     // Keep canonical agent catalog synced before every dispatch (best-effort)
     await syncGatewayAgentsToCatalog({ reason: 'dispatch' }).catch(err => {
       console.warn('[Dispatch] agent catalog sync failed:', err);
@@ -431,7 +440,12 @@ If you need help or clarification, ask the orchestrator.`;
 
     // Inject any pending operator notes (queued via /btw chat)
     const { formatted: pendingNotes } = getPendingNotesForDispatch(id);
-    const finalMessage = pendingNotes ? taskMessage + pendingNotes : taskMessage;
+    let finalMessage = pendingNotes ? taskMessage + pendingNotes : taskMessage;
+
+    // If this is a review-fix dispatch, prepend the review feedback
+    if (reviewFixMessage) {
+      finalMessage = `${reviewFixMessage}\n\n---\n\n${finalMessage}`;
+    }
 
     // Send message to agent's session using chat.send
     try {

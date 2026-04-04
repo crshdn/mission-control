@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   description TEXT,
-  status TEXT DEFAULT 'inbox' CHECK (status IN ('pending_dispatch', 'planning', 'inbox', 'assigned', 'in_progress', 'convoy_active', 'testing', 'review', 'verification', 'done')),
+  status TEXT DEFAULT 'inbox' CHECK (status IN ('pending_dispatch', 'planning', 'inbox', 'assigned', 'in_progress', 'convoy_active', 'testing', 'review', 'verification', 'review_fix', 'done')),
   priority TEXT DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
   assigned_agent_id TEXT REFERENCES agents(id),
   created_by_agent_id TEXT REFERENCES agents(id),
@@ -81,6 +81,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   workspace_base_commit TEXT,
   merge_status TEXT,
   merge_pr_url TEXT,
+  review_fix_count INTEGER DEFAULT 0,
+  review_fix_max INTEGER DEFAULT 3,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -338,6 +340,7 @@ CREATE TABLE IF NOT EXISTS products (
   cost_cap_monthly REAL,
   health_weight_config TEXT,
   batch_review_threshold INTEGER DEFAULT 10,
+  auto_fix_pr_reviews INTEGER DEFAULT 1,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
