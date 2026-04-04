@@ -6,12 +6,13 @@ import type { Agent, DiscoveredAgent } from '@/lib/types';
 // This route must always be dynamic - it queries live Gateway state + DB
 export const dynamic = 'force-dynamic';
 
-// Shape of an agent returned by the OpenClaw Gateway `agents.list` call
+// Shape of an agent returned by the OpenClaw Gateway `agents.list` call.
+// `model` may be a string or an object like { primary: "provider/model" }.
 interface GatewayAgent {
   id?: string;
   name?: string;
   label?: string;
-  model?: string;
+  model?: string | { primary?: string; [key: string]: unknown };
   channel?: string;
   status?: string;
   [key: string]: unknown;
@@ -67,7 +68,8 @@ export async function GET() {
         id: gatewayId,
         name: ga.name || ga.label || gatewayId,
         label: ga.label,
-        model: ga.model,
+        // Gateway may return model as { primary: "..." } — normalise to string
+        model: typeof ga.model === 'string' ? ga.model : ga.model?.primary,
         channel: ga.channel,
         status: ga.status,
         already_imported: alreadyImported,

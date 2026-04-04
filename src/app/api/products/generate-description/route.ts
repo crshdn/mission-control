@@ -121,8 +121,10 @@ ${context.join('\n\n')}
 
 Respond with ONLY the description text, nothing else. No quotes, no labels, no markdown.`;
 
+    // No explicit model — complete() reads AUTOPILOT_MODEL env var (default: anthropic/claude-sonnet-4-6).
+    // Do NOT hardcode a model here: OpenClaw's /v1/chat/completions only accepts
+    // 'openclaw' or 'openclaw/<agentId>', not raw provider model IDs (causes 400).
     const result = await complete(prompt, {
-      model: 'anthropic/claude-sonnet-4-6',
       temperature: 0.3,
       maxTokens: 300,
       timeoutMs: 30_000,
