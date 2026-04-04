@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { GitBranch, HardDrive, Merge, Trash2, Loader, AlertTriangle, Check, FolderOpen } from 'lucide-react';
 
 interface WorkspaceStatus {
@@ -29,7 +29,7 @@ export function WorkspaceTab({ taskId, taskStatus }: WorkspaceTabProps) {
   const [acting, setActing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadStatus = async () => {
+  const loadStatus = useCallback(async () => {
     try {
       const res = await fetch(`/api/tasks/${taskId}/workspace`);
       if (res.ok) setWorkspace(await res.json());
@@ -38,11 +38,11 @@ export function WorkspaceTab({ taskId, taskStatus }: WorkspaceTabProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [taskId]);
 
   useEffect(() => {
     loadStatus();
-  }, [taskId]);
+  }, [loadStatus]);
 
   const doAction = async (action: string, body?: object) => {
     setActing(action);

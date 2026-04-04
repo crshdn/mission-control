@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { IdeaCard } from './IdeaCard';
 import type { Idea, MaybePoolEntry } from '@/lib/types';
@@ -13,7 +13,7 @@ export function MaybePool({ productId }: MaybePoolProps) {
   const [entries, setEntries] = useState<(MaybePoolEntry & { idea: Idea })[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadPool = async () => {
+  const loadPool = useCallback(async () => {
     try {
       const res = await fetch(`/api/products/${productId}/maybe`);
       if (res.ok) setEntries(await res.json());
@@ -22,9 +22,9 @@ export function MaybePool({ productId }: MaybePoolProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [productId]);
 
-  useEffect(() => { loadPool(); }, [productId]);
+  useEffect(() => { loadPool(); }, [loadPool]);
 
   const handleResurface = async (ideaId: string) => {
     try {

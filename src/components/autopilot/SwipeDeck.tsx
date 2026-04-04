@@ -29,7 +29,7 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
   const [lastSwipe, setLastSwipe] = useState<LastSwipe | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
 
-  const loadDeck = async () => {
+  const loadDeck = useCallback(async () => {
     try {
       const res = await fetch(`/api/products/${productId}/swipe/deck`);
       if (res.ok) {
@@ -43,11 +43,11 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [productId]);
 
   useEffect(() => {
     loadDeck();
-  }, [productId]);
+  }, [loadDeck]);
 
   const handleSwipe = useCallback(async (action: SwipeAction, notes?: string) => {
     const idea = ideas[currentIndex];

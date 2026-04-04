@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface Props {
   score: number;
@@ -15,10 +15,11 @@ interface Props {
  */
 export function HealthBadge({ score, size = 44, showLabel = true }: Props) {
   const [animatedScore, setAnimatedScore] = useState(0);
+  const animatedScoreRef = useRef(0);
 
   useEffect(() => {
     // Animate from current to target score
-    const start = animatedScore;
+    const start = animatedScoreRef.current;
     const diff = score - start;
     const duration = 600;
     const startTime = performance.now();
@@ -28,7 +29,9 @@ export function HealthBadge({ score, size = 44, showLabel = true }: Props) {
       const progress = Math.min(elapsed / duration, 1);
       // Ease out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
-      setAnimatedScore(Math.round(start + diff * eased));
+      const current = Math.round(start + diff * eased);
+      setAnimatedScore(current);
+      animatedScoreRef.current = current;
       if (progress < 1) requestAnimationFrame(animate);
     }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CostCap } from '@/lib/types';
 
@@ -15,7 +15,7 @@ export function CostCapManager({ workspaceId, productId }: CostCapManagerProps) 
   const [showCreate, setShowCreate] = useState(false);
   const [newCap, setNewCap] = useState({ cap_type: 'monthly', limit_usd: 500 });
 
-  const loadCaps = async () => {
+  const loadCaps = useCallback(async () => {
     try {
       const params = new URLSearchParams({ workspace_id: workspaceId });
       if (productId) params.set('product_id', productId);
@@ -26,9 +26,9 @@ export function CostCapManager({ workspaceId, productId }: CostCapManagerProps) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [workspaceId, productId]);
 
-  useEffect(() => { loadCaps(); }, [workspaceId, productId]);
+  useEffect(() => { loadCaps(); }, [loadCaps]);
 
   const handleCreate = async () => {
     try {

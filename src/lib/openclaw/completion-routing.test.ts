@@ -50,10 +50,7 @@ test('findTaskForSessionCompletion prefers the session task_id over the latest t
   `);
 
   const task = findTaskForSessionCompletion(db, {
-    id: 'session-a',
     agent_id: 'agent-1',
-    openclaw_session_id: 'task:task-a',
-    status: 'active',
     task_id: 'task-a',
   });
 
@@ -72,11 +69,8 @@ test('findTaskForSessionCompletion falls back to agent-based lookup for legacy s
   `);
 
   const task = findTaskForSessionCompletion(db, {
-    id: 'legacy-session',
     agent_id: 'agent-1',
-    openclaw_session_id: 'mission-control-builder-agent',
-    status: 'active',
-    task_id: null,
+    task_id: undefined,
   });
 
   assert.ok(task);
