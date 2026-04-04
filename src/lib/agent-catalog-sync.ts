@@ -5,7 +5,8 @@ interface GatewayAgent {
   id?: string;
   name?: string;
   label?: string;
-  model?: string;
+  // Gateway may return model as a string or as { primary: "provider/model" }
+  model?: string | { primary?: string; [key: string]: unknown };
 }
 
 const SYNC_INTERVAL_MS = Number(process.env.AGENT_CATALOG_SYNC_INTERVAL_MS || 60_000);
@@ -54,18 +55,20 @@ export async function syncGatewayAgentsToCatalog(options?: { force?: boolean; re
 
         const name = ga.name || ga.label || gatewayId;
         const role = normalizeRole(name);
+        // Normalise model: Gateway may return { primary: "..." } instead of a string
+        const modelStr = typeof ga.model === 'string' ? ga.model : (ga.model?.primary ?? null);
         const existingId = existingByGatewayId.get(gatewayId) || null;
 
         if (existingId) {
           run(
             `UPDATE agents SET name = ?, role = ?, model = COALESCE(?, model), source = 'gateway', updated_at = ? WHERE id = ?`,
-            [name, role, ga.model || null, ts, existingId]
+            [name, role, modelStr, ts, existingId]
           );
         } else {
           run(
             `INSERT INTO agents (id, name, role, description, avatar_emoji, is_master, workspace_id, model, source, gateway_agent_id, created_at, updated_at)
              VALUES (lower(hex(randomblob(16))), ?, ?, ?, '🔗', 0, 'default', ?, 'gateway', ?, ?, ?)`,
-            [name, role, `Auto-synced from OpenClaw (${gatewayId})`, ga.model || null, gatewayId, ts, ts]
+            [name, role, `Auto-synced from OpenClaw (${gatewayId})`, modelStr, gatewayId, ts, ts]
           );
         }
         changed += 1;
