@@ -51,6 +51,28 @@ export function getDefaultOpenClawSessionId(agent: AgentRoutingShape | null | un
   return 'main';
 }
 
+export function getTaskOpenClawSessionId(
+  agent: AgentRoutingShape | null | undefined,
+  taskId: string
+): string {
+  const normalizedTaskId = slugify(taskId);
+  if (!normalizedTaskId) {
+    return getDefaultOpenClawSessionId(agent);
+  }
+
+  const gatewayAgentId = nonEmpty(agent?.gateway_agent_id);
+  if (gatewayAgentId) {
+    return `task:${normalizedTaskId}`;
+  }
+
+  const name = nonEmpty(agent?.name);
+  if (name) {
+    return `mission-control-${slugify(name)}-${normalizedTaskId}`;
+  }
+
+  return `task-${normalizedTaskId}`;
+}
+
 export function normalizeOpenClawSessionId(
   agent: AgentRoutingShape | null | undefined,
   sessionId?: string | null

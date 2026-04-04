@@ -1,8 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
-import { queryOne, queryAll, run } from '@/lib/db';
+import { getDb, queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
 import { buildCheckpointContext } from '@/lib/checkpoint';
+import { endTaskSession } from '@/lib/openclaw/task-session-registry';
 import type { Agent, AgentHealth, AgentHealthState, Task } from '@/lib/types';
 
 const STALL_THRESHOLD_MINUTES = 5;
@@ -225,10 +226,7 @@ export async function nudgeAgent(agentId: string): Promise<{ success: boolean; e
   const now = new Date().toISOString();
 
   // Kill current session
-  run(
-    `UPDATE openclaw_sessions SET status = 'ended', ended_at = ?, updated_at = ? WHERE agent_id = ? AND status = 'active'`,
-    [now, now, agentId]
-  );
+  endTaskSession(getDb(), agentId, activeTask.id, now);
 
   // Build checkpoint context
   const checkpointCtx = buildCheckpointContext(activeTask.id);

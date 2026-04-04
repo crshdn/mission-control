@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { queryOne, queryAll, run } from '@/lib/db';
+import { getDb, queryOne, queryAll, run } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
@@ -12,7 +12,8 @@ import { buildCheckpointContext } from '@/lib/checkpoint';
 import { formatMailForDispatch } from '@/lib/mailbox';
 import { getPendingNotesForDispatch } from '@/lib/task-notes';
 import { createTaskWorkspace, determineIsolationStrategy } from '@/lib/workspace-isolation';
-import { buildOpenClawSessionKey, getDefaultOpenClawSessionId } from '@/lib/openclaw/session-routing';
+import { buildOpenClawSessionKey } from '@/lib/openclaw/session-routing';
+import { ensureTaskSession, findActiveTaskSession } from '@/lib/openclaw/task-session-registry';
 import type { Task, Agent, Product, OpenClawSession, WorkflowStage, TaskImage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -124,28 +125,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Get or create OpenClaw session for this agent
-    let session = queryOne<OpenClawSession>(
-      'SELECT * FROM openclaw_sessions WHERE agent_id = ? AND status = ?',
-      [agent.id, 'active']
-    );
-
     const now = new Date().toISOString();
+    const existingSession = findActiveTaskSession(getDb(), agent.id, id);
+    let session = existingSession;
 
     if (!session) {
-      // Create session record
-      const sessionId = uuidv4();
-      const openclawSessionId = getDefaultOpenClawSessionId(agent);
-      
-      run(
-        `INSERT INTO openclaw_sessions (id, agent_id, openclaw_session_id, channel, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [sessionId, agent.id, openclawSessionId, 'mission-control', 'active', now, now]
-      );
-
-      session = queryOne<OpenClawSession>(
-        'SELECT * FROM openclaw_sessions WHERE id = ?',
-        [sessionId]
-      );
+      session = ensureTaskSession(getDb(), agent, id, now);
 
       // Log session creation
       run(
