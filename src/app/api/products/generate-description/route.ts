@@ -122,7 +122,6 @@ ${context.join('\n\n')}
 Respond with ONLY the description text, nothing else. No quotes, no labels, no markdown.`;
 
     const result = await complete(prompt, {
-      model: 'anthropic/claude-sonnet-4-6',
       temperature: 0.3,
       maxTokens: 300,
       timeoutMs: 30_000,
