@@ -5,7 +5,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync, existsSync } from 'fs';
-import path from 'path';
+import { getProjectsPath, getWorkspaceBasePath } from '@/lib/config';
+import { resolvePreviewPath, resolvePreviewRoots } from '@/lib/server-file-access';
 
 export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
@@ -20,30 +21,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Only HTML files can be previewed' }, { status: 400 });
   }
 
-  // Expand tilde and normalize
-  const expandedPath = filePath.replace(/^~/, process.env.HOME || '');
-  const normalizedPath = path.normalize(expandedPath);
+  const allowedRoots = resolvePreviewRoots([
+    { label: 'WORKSPACE_BASE_PATH', path: getWorkspaceBasePath() },
+    { label: 'PROJECTS_PATH', path: getProjectsPath() },
+  ]);
 
-  // Security check - only allow paths from environment config
-  const allowedPaths = [
-    process.env.WORKSPACE_BASE_PATH?.replace(/^~/, process.env.HOME || ''),
-    process.env.PROJECTS_PATH?.replace(/^~/, process.env.HOME || ''),
-  ].filter(Boolean) as string[];
-
-  const isAllowed = allowedPaths.some(allowed =>
-    normalizedPath.startsWith(path.normalize(allowed))
-  );
-
-  if (!isAllowed) {
-    return NextResponse.json({ error: 'Path not allowed' }, { status: 403 });
+  if (!allowedRoots.ok) {
+    return NextResponse.json({ error: allowedRoots.error }, { status: allowedRoots.status });
   }
 
-  if (!existsSync(normalizedPath)) {
-    return NextResponse.json({ error: 'File not found' }, { status: 404 });
+  const previewPath = resolvePreviewPath(filePath, allowedRoots.value);
+  if (!previewPath.ok) {
+    return NextResponse.json({ error: previewPath.error }, { status: previewPath.status });
   }
 
   try {
-    const content = readFileSync(normalizedPath, 'utf-8');
+    const content = readFileSync(previewPath.value, 'utf-8');
     return new NextResponse(content, {
       headers: {
         'Content-Type': 'text/html',

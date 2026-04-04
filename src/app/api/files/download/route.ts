@@ -6,14 +6,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync, existsSync, statSync, realpathSync } from 'fs';
+import { readFileSync, statSync } from 'fs';
 import path from 'path';
+import { getProjectsPath } from '@/lib/config';
+import { resolveDownloadTargetPath, resolveExistingBasePath } from '@/lib/server-file-access';
 
 export const dynamic = 'force-dynamic';
-
-// Base directory for all project files - must match upload endpoint
-// Set via PROJECTS_PATH env var (e.g., ~/projects or /var/www/projects)
-const PROJECTS_BASE = (process.env.PROJECTS_PATH || '~/projects').replace(/^~/, process.env.HOME || '');
 
 // MIME types for common file extensions
 const MIME_TYPES: Record<string, string> = {
@@ -45,66 +43,27 @@ const MIME_TYPES: Record<string, string> = {
  */
 export async function GET(request: NextRequest) {
   try {
+    const projectsBase = resolveExistingBasePath(getProjectsPath(), 'PROJECTS_PATH');
+    if (!projectsBase.ok) {
+      return NextResponse.json({ error: projectsBase.error }, { status: projectsBase.status });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const fullPathParam = searchParams.get('path');
     const relativePathParam = searchParams.get('relativePath');
     const raw = searchParams.get('raw') === 'true';
 
-    // Determine the target path
-    let targetPath: string;
+    const target = resolveDownloadTargetPath({
+      fullPathParam,
+      relativePathParam,
+      base: projectsBase.value,
+    });
 
-    if (fullPathParam) {
-      // Full path provided - validate it's under PROJECTS_BASE
-      targetPath = path.normalize(fullPathParam);
-    } else if (relativePathParam) {
-      // Relative path provided
-      const normalizedRelative = path.normalize(relativePathParam);
-      if (normalizedRelative.startsWith('..') || normalizedRelative.startsWith('/')) {
-        return NextResponse.json(
-          { error: 'Invalid path: must be relative and cannot traverse upward' },
-          { status: 400 }
-        );
-      }
-      targetPath = path.join(PROJECTS_BASE, normalizedRelative);
-    } else {
-      return NextResponse.json(
-        { error: 'Either path or relativePath query parameter is required' },
-        { status: 400 }
-      );
+    if (!target.ok) {
+      return NextResponse.json({ error: target.error }, { status: target.status });
     }
 
-    // Check file exists
-    if (!existsSync(targetPath)) {
-      return NextResponse.json(
-        { error: 'File not found' },
-        { status: 404 }
-      );
-    }
-
-    // Resolve real path and validate it's under PROJECTS_BASE
-    // This protects against symlink attacks and path traversal
-    let resolvedPath: string;
-    try {
-      resolvedPath = realpathSync(targetPath);
-      const resolvedBase = realpathSync(PROJECTS_BASE);
-      
-      if (!resolvedPath.startsWith(resolvedBase + path.sep) && resolvedPath !== resolvedBase) {
-        console.warn(`[SECURITY] Path traversal attempt blocked: ${targetPath} -> ${resolvedPath}`);
-        return NextResponse.json(
-          { error: 'Access denied' },
-          { status: 403 }
-        );
-      }
-    } catch (error) {
-      console.error('[FILE DOWNLOAD] Error resolving path:', error);
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      );
-    }
-
-    // Use resolved path for all subsequent operations
-    targetPath = resolvedPath;
+    const targetPath = target.value.path;
 
     // Check it's a file, not a directory
     const stats = statSync(targetPath);
@@ -143,7 +102,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       path: targetPath,
-      relativePath: path.relative(PROJECTS_BASE, targetPath),
+      relativePath: target.value.relativePath,
       size: stats.size,
       contentType,
       content: isText ? content : Buffer.from(content).toString('base64'),

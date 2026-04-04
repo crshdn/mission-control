@@ -6,14 +6,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { writeFileSync, mkdirSync } from 'fs';
 import path from 'path';
+import { getProjectsPath } from '@/lib/config';
+import { normalizeServerPath } from '@/lib/server-paths';
+import { resolveUploadTargetPath, resolveWritableBasePath } from '@/lib/server-file-access';
 
 export const dynamic = 'force-dynamic';
-
-// Base directory for all uploaded project files
-// Set via PROJECTS_PATH env var (e.g., ~/projects or /var/www/projects)
-const PROJECTS_BASE = (process.env.PROJECTS_PATH || '~/projects').replace(/^~/, process.env.HOME || '');
 
 interface UploadRequest {
   // Path relative to PROJECTS_BASE (e.g., "dashboard-redesign/index.html")
@@ -30,6 +29,11 @@ interface UploadRequest {
  */
 export async function POST(request: NextRequest) {
   try {
+    const projectsBase = resolveWritableBasePath(getProjectsPath(), 'PROJECTS_PATH');
+    if (!projectsBase.ok) {
+      return NextResponse.json({ error: projectsBase.error }, { status: projectsBase.status });
+    }
+
     const body: UploadRequest = await request.json();
     const { relativePath, content, encoding = 'utf-8' } = body;
 
@@ -40,28 +44,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Security: Prevent path traversal attacks
-    const normalizedPath = path.normalize(relativePath);
-    if (normalizedPath.startsWith('..') || normalizedPath.startsWith('/')) {
-      return NextResponse.json(
-        { error: 'Invalid path: must be relative and cannot traverse upward' },
-        { status: 400 }
-      );
+    const target = resolveUploadTargetPath(projectsBase.value, relativePath);
+    if (!target.ok) {
+      return NextResponse.json({ error: target.error }, { status: target.status });
     }
 
-    // Build full path
-    const fullPath = path.join(PROJECTS_BASE, normalizedPath);
-
-    // Ensure base directory exists
-    if (!existsSync(PROJECTS_BASE)) {
-      mkdirSync(PROJECTS_BASE, { recursive: true });
-    }
+    const fullPath = target.value.path;
 
     // Ensure parent directory exists
     const parentDir = path.dirname(fullPath);
-    if (!existsSync(parentDir)) {
-      mkdirSync(parentDir, { recursive: true });
-    }
+    mkdirSync(parentDir, { recursive: true });
 
     // Write the file
     writeFileSync(fullPath, content, { encoding });
@@ -71,7 +63,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       path: fullPath,
-      relativePath: normalizedPath,
+      relativePath: target.value.relativePath,
       size: Buffer.byteLength(content, encoding),
     }, { status: 201 });
   } catch (error) {
@@ -90,7 +82,7 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     description: 'File upload endpoint for remote agents',
-    basePath: PROJECTS_BASE,
+    basePath: normalizeServerPath(getProjectsPath()),
     usage: {
       method: 'POST',
       body: {
