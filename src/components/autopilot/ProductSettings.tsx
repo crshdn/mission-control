@@ -80,22 +80,22 @@ export function ProductSettings({ product, onSave }: Props) {
   }
 
   const inputClass =
-    'w-full bg-mc-bg border border-mc-border rounded-lg px-3 py-2 text-sm text-mc-text placeholder:text-mc-text-secondary/50 focus:outline-none focus:border-mc-accent';
-  const labelClass = 'block text-xs font-medium text-mc-text-secondary uppercase tracking-wider mb-1.5';
+    'w-full bg-autensa-bg border border-autensa-border rounded-lg px-3 py-2 text-sm text-autensa-text placeholder:text-autensa-text-secondary/50 focus:outline-none focus:border-autensa-accent';
+  const labelClass = 'block text-xs font-medium text-autensa-text-secondary uppercase tracking-wider mb-1.5';
 
   return (
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-mc-text">Product Settings</h2>
+        <h2 className="text-lg font-semibold text-autensa-text">Product Settings</h2>
         <button
           onClick={handleSave}
           disabled={saving || !hasChanges}
           className={`min-h-9 px-4 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
             hasChanges && !saving
-              ? 'bg-mc-accent text-white hover:bg-mc-accent/90'
+              ? 'bg-autensa-accent text-white hover:bg-autensa-accent/90'
               : saved
               ? 'bg-green-500/20 text-green-400'
-              : 'bg-mc-bg-tertiary text-mc-text-secondary cursor-not-allowed'
+              : 'bg-autensa-bg-tertiary text-autensa-text-secondary cursor-not-allowed'
           }`}
         >
           {saving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -110,8 +110,8 @@ export function ProductSettings({ product, onSave }: Props) {
       )}
 
       {/* Basic Info */}
-      <div className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4 space-y-4">
-        <h3 className="text-sm font-medium text-mc-text-secondary uppercase tracking-wider">Basic Info</h3>
+      <div className="bg-autensa-bg-secondary border border-autensa-border rounded-lg p-4 space-y-4">
+        <h3 className="text-sm font-medium text-autensa-text-secondary uppercase tracking-wider">Basic Info</h3>
 
         <div className="flex gap-3">
           <div className="w-16">
@@ -149,8 +149,8 @@ export function ProductSettings({ product, onSave }: Props) {
       </div>
 
       {/* Repository & URLs */}
-      <div className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4 space-y-4">
-        <h3 className="text-sm font-medium text-mc-text-secondary uppercase tracking-wider">Repository & URLs</h3>
+      <div className="bg-autensa-bg-secondary border border-autensa-border rounded-lg p-4 space-y-4">
+        <h3 className="text-sm font-medium text-autensa-text-secondary uppercase tracking-wider">Repository & URLs</h3>
 
         <div>
           <label className={labelClass}>Repository URL</label>
@@ -167,7 +167,7 @@ export function ProductSettings({ product, onSave }: Props) {
                 href={form.repo_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-9 px-3 flex items-center bg-mc-bg-tertiary border border-mc-border rounded-lg text-mc-text-secondary hover:text-mc-text"
+                className="min-h-9 px-3 flex items-center bg-autensa-bg-tertiary border border-autensa-border rounded-lg text-autensa-text-secondary hover:text-autensa-text"
               >
                 <ExternalLink className="w-4 h-4" />
               </a>
@@ -190,7 +190,7 @@ export function ProductSettings({ product, onSave }: Props) {
                 href={form.live_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-9 px-3 flex items-center bg-mc-bg-tertiary border border-mc-border rounded-lg text-mc-text-secondary hover:text-mc-text"
+                className="min-h-9 px-3 flex items-center bg-autensa-bg-tertiary border border-autensa-border rounded-lg text-autensa-text-secondary hover:text-autensa-text"
               >
                 <ExternalLink className="w-4 h-4" />
               </a>
@@ -211,8 +211,8 @@ export function ProductSettings({ product, onSave }: Props) {
       </div>
 
       {/* Build Configuration */}
-      <div className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4 space-y-4">
-        <h3 className="text-sm font-medium text-mc-text-secondary uppercase tracking-wider">Build Configuration</h3>
+      <div className="bg-autensa-bg-secondary border border-autensa-border rounded-lg p-4 space-y-4">
+        <h3 className="text-sm font-medium text-autensa-text-secondary uppercase tracking-wider">Build Configuration</h3>
 
         <div>
           <label className={labelClass}>Build Mode</label>
@@ -268,7 +268,7 @@ export function ProductSettings({ product, onSave }: Props) {
       </div>
 
       {/* Health Score Weights */}
-      <div className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4">
+      <div className="bg-autensa-bg-secondary border border-autensa-border rounded-lg p-4">
         <HealthWeightSliders
           productId={product.id}
           initialWeights={product.health_weight_config ? (() => {
@@ -280,8 +280,8 @@ export function ProductSettings({ product, onSave }: Props) {
       {/* Danger Zone */}
       <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
         <h3 className="text-sm font-medium text-red-400 uppercase tracking-wider mb-2">Status</h3>
-        <p className="text-xs text-mc-text-secondary mb-3">
-          Current status: <span className={product.status === 'active' ? 'text-green-400' : 'text-mc-text-secondary'}>{product.status}</span>
+        <p className="text-xs text-autensa-text-secondary mb-3">
+          Current status: <span className={product.status === 'active' ? 'text-green-400' : 'text-autensa-text-secondary'}>{product.status}</span>
         </p>
       </div>
     </div>

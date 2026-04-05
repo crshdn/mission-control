@@ -179,12 +179,12 @@ export default function WorkspacePage() {
 
   if (notFound) {
     return (
-      <div className="min-h-screen bg-mc-bg flex items-center justify-center">
+      <div className="min-h-screen bg-autensa-bg flex items-center justify-center">
         <div className="text-center">
           <div className="text-6xl mb-4">🔍</div>
           <h1 className="text-2xl font-bold mb-2">Workspace Not Found</h1>
-          <p className="text-mc-text-secondary mb-6">The workspace &ldquo;{slug}&rdquo; doesn&apos;t exist.</p>
-          <Link href="/" className="inline-flex items-center gap-2 px-6 py-3 bg-mc-accent text-mc-bg rounded-lg font-medium hover:bg-mc-accent/90">
+          <p className="text-autensa-text-secondary mb-6">The workspace &ldquo;{slug}&rdquo; doesn&apos;t exist.</p>
+          <Link href="/" className="inline-flex items-center gap-2 px-6 py-3 bg-autensa-accent text-autensa-bg rounded-lg font-medium hover:bg-autensa-accent/90">
             <ChevronLeft className="w-4 h-4" />
             Back to Dashboard
           </Link>
@@ -195,10 +195,10 @@ export default function WorkspacePage() {
 
   if (isLoading || !workspace) {
     return (
-      <div className="min-h-screen bg-mc-bg flex items-center justify-center">
+      <div className="min-h-screen bg-autensa-bg flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl mb-4 animate-pulse">🦞</div>
-          <p className="text-mc-text-secondary">Loading {slug}...</p>
+          <p className="text-autensa-text-secondary">Loading {slug}...</p>
         </div>
       </div>
     );
@@ -207,7 +207,7 @@ export default function WorkspacePage() {
   const showMobileBottomTabs = isPortrait;
 
   return (
-    <div className="h-screen flex flex-col bg-mc-bg overflow-hidden">
+    <div className="h-screen flex flex-col bg-autensa-bg overflow-hidden">
       <Header workspace={workspace} isPortrait={isPortrait} />
 
       <div className="hidden lg:flex flex-1 overflow-hidden">
@@ -243,19 +243,19 @@ export default function WorkspacePage() {
               <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => setMobileTab('agents')}
-                  className={`min-h-11 rounded-lg text-xs ${mobileTab === 'agents' ? 'bg-mc-accent text-mc-bg font-medium' : 'bg-mc-bg-secondary border border-mc-border text-mc-text-secondary'}`}
+                  className={`min-h-11 rounded-lg text-xs ${mobileTab === 'agents' ? 'bg-autensa-accent text-autensa-bg font-medium' : 'bg-autensa-bg-secondary border border-autensa-border text-autensa-text-secondary'}`}
                 >
                   Agents
                 </button>
                 <button
                   onClick={() => setMobileTab('feed')}
-                  className={`min-h-11 rounded-lg text-xs ${mobileTab === 'feed' ? 'bg-mc-accent text-mc-bg font-medium' : 'bg-mc-bg-secondary border border-mc-border text-mc-text-secondary'}`}
+                  className={`min-h-11 rounded-lg text-xs ${mobileTab === 'feed' ? 'bg-autensa-accent text-autensa-bg font-medium' : 'bg-autensa-bg-secondary border border-autensa-border text-autensa-text-secondary'}`}
                 >
                   Feed
                 </button>
                 <button
                   onClick={() => setMobileTab('settings')}
-                  className={`min-h-11 rounded-lg text-xs ${mobileTab === 'settings' ? 'bg-mc-accent text-mc-bg font-medium' : 'bg-mc-bg-secondary border border-mc-border text-mc-text-secondary'}`}
+                  className={`min-h-11 rounded-lg text-xs ${mobileTab === 'settings' ? 'bg-autensa-accent text-autensa-bg font-medium' : 'bg-autensa-bg-secondary border border-autensa-border text-autensa-text-secondary'}`}
                 >
                   Settings
                 </button>
@@ -276,7 +276,7 @@ export default function WorkspacePage() {
       </div>
 
       {showMobileBottomTabs && (
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-mc-border bg-mc-bg-secondary pb-[env(safe-area-inset-bottom)]">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-autensa-border bg-autensa-bg-secondary pb-[env(safe-area-inset-bottom)]">
           <div className="grid grid-cols-4 gap-1 p-2">
             <MobileTabButton label="Queue" active={mobileTab === 'queue'} icon={<ListTodo className="w-5 h-5" />} onClick={() => setMobileTab('queue')} />
             <MobileTabButton label="Agents" active={mobileTab === 'agents'} icon={<Users className="w-5 h-5" />} onClick={() => setMobileTab('agents')} />
@@ -296,7 +296,7 @@ function MobileTabButton({ label, active, icon, onClick }: { label: string; acti
     <button
       onClick={onClick}
       className={`min-h-11 rounded-lg flex flex-col items-center justify-center text-xs ${
-        active ? 'bg-mc-accent text-mc-bg font-medium' : 'text-mc-text-secondary'
+        active ? 'bg-autensa-accent text-autensa-bg font-medium' : 'text-autensa-text-secondary'
       }`}
     >
       {icon}
@@ -309,37 +309,37 @@ function MobileSettingsPanel({ workspace, denseLandscape = false }: { workspace:
   return (
     <div className={`h-full overflow-y-auto ${denseLandscape ? 'p-0 pb-[env(safe-area-inset-bottom)]' : 'p-3 pb-[calc(1rem+env(safe-area-inset-bottom))]'}`}>
       <div className="space-y-3">
-        <div className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4">
-          <div className="text-sm text-mc-text-secondary mb-2">Current workspace</div>
+        <div className="bg-autensa-bg-secondary border border-autensa-border rounded-lg p-4">
+          <div className="text-sm text-autensa-text-secondary mb-2">Current workspace</div>
           <div className="flex items-center gap-2 text-base font-medium">
             <span>{workspace.icon}</span>
             <span>{workspace.name}</span>
           </div>
-          <div className="text-xs text-mc-text-secondary mt-1">/{workspace.slug}</div>
+          <div className="text-xs text-autensa-text-secondary mt-1">/{workspace.slug}</div>
         </div>
 
 
-        <Link href={`/workspace/${workspace.slug}/activity`} className="w-full min-h-11 px-4 rounded-lg border border-mc-border bg-mc-bg-secondary flex items-center justify-between text-sm">
+        <Link href={`/workspace/${workspace.slug}/activity`} className="w-full min-h-11 px-4 rounded-lg border border-autensa-border bg-autensa-bg-secondary flex items-center justify-between text-sm">
           <span className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4" />
             Agent Activity Dashboard
           </span>
-          <ExternalLink className="w-4 h-4 text-mc-text-secondary" />
+          <ExternalLink className="w-4 h-4 text-autensa-text-secondary" />
         </Link>
-        <Link href="/settings" className="w-full min-h-11 px-4 rounded-lg border border-mc-border bg-mc-bg-secondary flex items-center justify-between text-sm">
+        <Link href="/settings" className="w-full min-h-11 px-4 rounded-lg border border-autensa-border bg-autensa-bg-secondary flex items-center justify-between text-sm">
           <span className="flex items-center gap-2">
             <SettingsIcon className="w-4 h-4" />
-            Open Mission Control Settings
+            Open Autensa Settings
           </span>
-          <ExternalLink className="w-4 h-4 text-mc-text-secondary" />
+          <ExternalLink className="w-4 h-4 text-autensa-text-secondary" />
         </Link>
 
-        <Link href="/" className="w-full min-h-11 px-4 rounded-lg border border-mc-border bg-mc-bg-secondary flex items-center justify-between text-sm">
+        <Link href="/" className="w-full min-h-11 px-4 rounded-lg border border-autensa-border bg-autensa-bg-secondary flex items-center justify-between text-sm">
           <span className="flex items-center gap-2">
             <Home className="w-4 h-4" />
             Back to Workspaces
           </span>
-          <ExternalLink className="w-4 h-4 text-mc-text-secondary" />
+          <ExternalLink className="w-4 h-4 text-autensa-text-secondary" />
         </Link>
       </div>
     </div>

@@ -212,6 +212,24 @@ export function checkConvoyCompletion(convoyId: string): boolean {
     run(`UPDATE convoys SET status = 'failed', failed_subtasks = ?, updated_at = ? WHERE id = ?`, [failed, now, convoyId]);
     run(`UPDATE tasks SET status = 'review', status_reason = 'Convoy failed: too many sub-task failures', updated_at = ? WHERE id = ?`, [now, convoy.parent_task_id]);
 
+    // Abort all active or pending sibling subtasks to prevent zombie agents
+    const activeSubtasks = queryAll<{ id: string, assigned_agent_id: string }>(
+      `SELECT t.id, t.assigned_agent_id FROM convoy_subtasks cs JOIN tasks t ON cs.task_id = t.id
+       WHERE cs.convoy_id = ? AND t.status IN ('inbox', 'assigned', 'in_progress', 'testing', 'verification')`,
+      [convoyId]
+    );
+
+    for (const sub of activeSubtasks) {
+      run(`UPDATE tasks SET status = 'review', status_reason = 'Convoy aborted due to sibling failures', updated_at = ? WHERE id = ?`, [now, sub.id]);
+      if (sub.assigned_agent_id) {
+        import('@/lib/openclaw/task-session-registry').then(({ endTaskSession }) => {
+          import('@/lib/db').then(({ getDb }) => {
+            endTaskSession(getDb(), sub.assigned_agent_id, sub.id, now);
+          });
+        }).catch(err => logger.error('[Convoy] Failed to end session for aborted subtask:', err));
+      }
+    }
+
     notifyLearner(convoy.parent_task_id, {
       previousStatus: 'convoy_active',
       newStatus: 'review',

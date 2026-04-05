@@ -8,7 +8,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
  * Uses hybrid approach: localStorage for immediate updates, API for ground truth.
  */
 
-const LOCAL_STORAGE_KEY = 'mc-task-reads';
+const LOCAL_STORAGE_KEY = 'autensa-task-reads';
 
 function getLocalReads(): Record<string, string> {
   if (typeof window === 'undefined') return {};

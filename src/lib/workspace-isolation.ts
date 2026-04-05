@@ -9,7 +9,7 @@ import { logger } from '@/lib/logger';
  */
 
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'fs';
 import { access } from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -74,9 +74,13 @@ const PORT_RANGE_START = 4200;
 const PORT_RANGE_END = 4299;
 
 export function allocatePort(taskId: string, productId?: string): number {
-  // Find the first available port in the range
+  // Find the first available port in the range, ensuring the associated task is still active
   const usedPorts = queryAll<{ port: number }>(
-    `SELECT port FROM workspace_ports WHERE status = 'active' ORDER BY port`
+    `SELECT wp.port FROM workspace_ports wp
+     JOIN tasks t ON wp.task_id = t.id
+     WHERE wp.status = 'active'
+     AND t.status IN ('assigned', 'in_progress', 'convoy_active', 'testing', 'review', 'verification')
+     ORDER BY wp.port`
   ).map(r => r.port);
 
   let port = PORT_RANGE_START;
@@ -188,6 +192,36 @@ export async function createTaskWorkspace(task: Task): Promise<WorkspaceInfo> {
   const workspacesRoot = getWorkspacesRoot(projectDir);
   mkdirSync(workspacesRoot, { recursive: true });
 
+  // Cleanup orphaned workspaces
+  try {
+    const entries = readdirSync(workspacesRoot, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory() && entry.name.startsWith('task-')) {
+        const entryTaskId = entry.name.replace('task-', '');
+        if (entryTaskId === task.id) continue;
+        
+        const entryTask = queryOne<{ status: string }>(
+          `SELECT status FROM tasks WHERE id = ?`,
+          [entryTaskId]
+        );
+        
+        const isActive = entryTask && ['assigned', 'in_progress', 'convoy_active', 'testing', 'review', 'verification'].includes(entryTask.status);
+        if (!isActive) {
+          logger.info(`[Workspace] Cleaning up orphaned workspace for task ${entryTaskId}`);
+          const orphanPath = path.join(workspacesRoot, entry.name);
+          try {
+            execSync(`git worktree remove "${orphanPath}" --force 2>/dev/null || rm -rf "${orphanPath}"`, { cwd: projectDir, stdio: 'pipe' });
+          } catch {
+            execSync(`rm -rf "${orphanPath}"`, { stdio: 'pipe' });
+          }
+          releasePort(entryTaskId);
+        }
+      }
+    }
+  } catch (err) {
+    logger.error('[Workspace] Orphan cleanup failed:', err);
+  }
+
   // Add .workspaces to .gitignore if it's a git repo
   const gitignorePath = path.join(projectDir, '.gitignore');
   if (existsSync(path.join(projectDir, '.git'))) {
@@ -222,7 +256,7 @@ export async function createTaskWorkspace(task: Task): Promise<WorkspaceInfo> {
     agentId: task.assigned_agent_id || undefined,
     isolatedPort: port,
   };
-  writeFileSync(path.join(workspaceDir, '.mc-workspace.json'), JSON.stringify(metadata, null, 2));
+  writeFileSync(path.join(workspaceDir, '.autensa-workspace.json'), JSON.stringify(metadata, null, 2));
 
   // Persist to DB
   const now = new Date().toISOString();
@@ -353,7 +387,7 @@ export async function getWorkspaceStatus(task: Task): Promise<WorkspaceStatus> {
   };
 
   // Read metadata for branch info
-  const metadataPath = path.join(workspacePath, '.mc-workspace.json');
+  const metadataPath = path.join(workspacePath, '.autensa-workspace.json');
   if (existsSync(metadataPath)) {
     try {
       const metadata: WorkspaceMetadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
@@ -386,7 +420,7 @@ export async function getWorkspaceStatus(task: Task): Promise<WorkspaceStatus> {
     const projectDir = path.dirname(path.dirname(workspacePath)); // Up from .workspaces/task-xxx
     try {
       const diff = execSync(
-        `diff -rq "${projectDir}" "${workspacePath}" --exclude='.workspaces' --exclude='node_modules' --exclude='.next' --exclude='.mc-workspace.json' 2>/dev/null | wc -l`,
+        `diff -rq "${projectDir}" "${workspacePath}" --exclude='.workspaces' --exclude='node_modules' --exclude='.next' --exclude='.autensa-workspace.json' 2>/dev/null | wc -l`,
         { encoding: 'utf-8', timeout: 10000 }
       ).trim();
       result.filesChanged = parseInt(diff) || 0;
@@ -434,7 +468,7 @@ async function mergeWorktree(
 
   // Read metadata for branch name
   let branch = `autopilot/${task.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50)}`;
-  const metadataPath = path.join(workspacePath, '.mc-workspace.json');
+  const metadataPath = path.join(workspacePath, '.autensa-workspace.json');
   if (existsSync(metadataPath)) {
     try {
       const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
@@ -525,7 +559,7 @@ async function mergeSandbox(
     let conflictFiles: string[] = [];
     try {
       const diff = execSync(
-        `diff -rq "${projectDir}" "${workspacePath}" --exclude='.workspaces' --exclude='node_modules' --exclude='.next' --exclude='.mc-workspace.json' --exclude='.git' --exclude='dist' --exclude='build' 2>/dev/null || true`,
+        `diff -rq "${projectDir}" "${workspacePath}" --exclude='.workspaces' --exclude='node_modules' --exclude='.next' --exclude='.autensa-workspace.json' --exclude='.git' --exclude='dist' --exclude='build' 2>/dev/null || true`,
         { encoding: 'utf-8', timeout: 30000 }
       );
       // Parse diff output for changed files
@@ -540,7 +574,7 @@ async function mergeSandbox(
       if (changedFiles.length > 0) {
         // rsync changes from workspace back to project
         execSync(
-          `rsync -a --exclude='.workspaces' --exclude='node_modules' --exclude='.next' --exclude='.mc-workspace.json' --exclude='.git' --exclude='dist' --exclude='build' "${workspacePath}/" "${projectDir}/"`,
+          `rsync -a --exclude='.workspaces' --exclude='node_modules' --exclude='.next' --exclude='.autensa-workspace.json' --exclude='.git' --exclude='dist' --exclude='build' "${workspacePath}/" "${projectDir}/"`,
           { stdio: 'pipe', timeout: 60000 }
         );
       }
@@ -589,7 +623,7 @@ export function cleanupWorkspace(task: Task): boolean {
       }
 
       // Try to delete the branch
-      const metadataPath = path.join(workspacePath, '.mc-workspace.json');
+      const metadataPath = path.join(workspacePath, '.autensa-workspace.json');
       if (existsSync(metadataPath)) {
         try {
           const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
@@ -614,7 +648,7 @@ export function cleanupWorkspace(task: Task): boolean {
     );
 
     // Update metadata status
-    const metadataPath = path.join(workspacePath, '.mc-workspace.json');
+    const metadataPath = path.join(workspacePath, '.autensa-workspace.json');
     if (existsSync(metadataPath)) {
       try {
         const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
@@ -653,9 +687,9 @@ export function getActiveWorkspaces(productId: string): Array<{
 
   return tasks.map(t => {
     let branch: string | undefined;
-    if (t.workspace_path && existsSync(path.join(t.workspace_path, '.mc-workspace.json'))) {
+    if (t.workspace_path && existsSync(path.join(t.workspace_path, '.autensa-workspace.json'))) {
       try {
-        const meta = JSON.parse(readFileSync(path.join(t.workspace_path, '.mc-workspace.json'), 'utf-8'));
+        const meta = JSON.parse(readFileSync(path.join(t.workspace_path, '.autensa-workspace.json'), 'utf-8'));
         branch = meta.branch;
       } catch { /* ignore */ }
     }

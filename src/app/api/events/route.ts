@@ -5,29 +5,20 @@ import { queryAll, run } from '@/lib/db';
 import type { Event } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
-// GET /api/events - List events (live feed)
+// GET /api/events - List events (initial feed load)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '50', 10);
-    const since = searchParams.get('since'); // ISO timestamp for polling
 
     let sql = `
       SELECT e.*, a.name as agent_name, a.avatar_emoji as agent_emoji, t.title as task_title
       FROM events e
       LEFT JOIN agents a ON e.agent_id = a.id
       LEFT JOIN tasks t ON e.task_id = t.id
-      WHERE 1=1
+      ORDER BY e.created_at DESC LIMIT ?
     `;
-    const params: unknown[] = [];
-
-    if (since) {
-      sql += ' AND e.created_at > ?';
-      params.push(since);
-    }
-
-    sql += ' ORDER BY e.created_at DESC LIMIT ?';
-    params.push(limit);
+    const params: unknown[] = [limit];
 
     const events = queryAll<Event & { agent_name?: string; agent_emoji?: string; task_title?: string }>(sql, params);
 

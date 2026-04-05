@@ -184,15 +184,15 @@ export default function NewProductPage() {
   };
 
   return (
-    <div className="min-h-screen bg-mc-bg">
-      <header className="border-b border-mc-border bg-mc-bg-secondary">
+    <div className="min-h-screen bg-autensa-bg">
+      <header className="border-b border-autensa-border bg-autensa-bg-secondary">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
-            <Link href="/autopilot" className="text-mc-text-secondary hover:text-mc-text">
+            <Link href="/autopilot" className="text-autensa-text-secondary hover:text-autensa-text">
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            <Rocket className="w-5 h-5 text-mc-accent-cyan" />
-            <h1 className="text-lg font-bold text-mc-text">New Product</h1>
+            <Rocket className="w-5 h-5 text-autensa-accent-cyan" />
+            <h1 className="text-lg font-bold text-autensa-text">New Product</h1>
           </div>
         </div>
       </header>
@@ -203,13 +203,13 @@ export default function NewProductPage() {
           {(['basics', 'program', 'schedule'] as const).map((s, i) => (
             <div key={s} className="flex items-center gap-2">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                step === s ? 'bg-mc-accent text-white' :
+                step === s ? 'bg-autensa-accent text-white' :
                 (['basics', 'program', 'schedule'].indexOf(step) > i) ? 'bg-green-500/20 text-green-400' :
-                'bg-mc-bg-tertiary text-mc-text-secondary'
+                'bg-autensa-bg-tertiary text-autensa-text-secondary'
               }`}>
                 {(['basics', 'program', 'schedule'].indexOf(step) > i) ? <Check className="w-4 h-4" /> : i + 1}
               </div>
-              {i < 2 && <div className="w-12 h-px bg-mc-border" />}
+              {i < 2 && <div className="w-12 h-px bg-autensa-border" />}
             </div>
           ))}
         </div>
@@ -217,21 +217,21 @@ export default function NewProductPage() {
         {step === 'basics' && (
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-mc-text mb-2">Product Name *</label>
+              <label className="block text-sm font-medium text-autensa-text mb-2">Product Name *</label>
               <input
                 type="text"
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                className="w-full bg-mc-bg-tertiary border border-mc-border rounded-lg px-4 py-3 text-mc-text focus:outline-none focus:border-mc-accent"
+                className="w-full bg-autensa-bg-tertiary border border-autensa-border rounded-lg px-4 py-3 text-autensa-text focus:outline-none focus:border-autensa-accent"
                 placeholder="My Product"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-mc-text mb-2">Description</label>
+              <label className="block text-sm font-medium text-autensa-text mb-2">Description</label>
               <textarea
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                className="w-full bg-mc-bg-tertiary border border-mc-border rounded-lg px-4 py-3 text-mc-text focus:outline-none focus:border-mc-accent resize-none"
+                className="w-full bg-autensa-bg-tertiary border border-autensa-border rounded-lg px-4 py-3 text-autensa-text focus:outline-none focus:border-autensa-accent resize-none"
                 rows={3}
                 placeholder="What does this product do?"
               />
@@ -240,7 +240,7 @@ export default function NewProductPage() {
                   <button
                     onClick={handleGenerateDescription}
                     disabled={generatingDesc}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-mc-bg-tertiary border border-mc-border rounded-lg text-mc-text-secondary hover:text-mc-accent hover:border-mc-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-autensa-bg-tertiary border border-autensa-border rounded-lg text-autensa-text-secondary hover:text-autensa-accent hover:border-autensa-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {generatingDesc ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                     {generatingDesc ? 'Generating...' : 'Auto-generate from repo & site'}
@@ -260,20 +260,20 @@ export default function NewProductPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-mc-text mb-2">Repo URL</label>
+                <label className="block text-sm font-medium text-autensa-text mb-2">Repo URL</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={form.repo_url}
                     onChange={e => setForm(f => ({ ...f, repo_url: e.target.value }))}
                     onBlur={() => { if (form.repo_url) validateRepoUrl(form.repo_url); }}
-                    className="flex-1 bg-mc-bg-tertiary border border-mc-border rounded-lg px-4 py-3 text-mc-text text-sm focus:outline-none focus:border-mc-accent"
+                    className="flex-1 bg-autensa-bg-tertiary border border-autensa-border rounded-lg px-4 py-3 text-autensa-text text-sm focus:outline-none focus:border-autensa-accent"
                     placeholder="https://github.com/..."
                   />
                   <button
                     onClick={() => handleScan(form.repo_url, 'repo')}
                     disabled={!isValidUrl(form.repo_url) || scanningRepo}
-                    className="shrink-0 px-3 py-3 bg-mc-bg-tertiary border border-mc-border rounded-lg text-mc-text-secondary hover:text-mc-text hover:border-mc-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="shrink-0 px-3 py-3 bg-autensa-bg-tertiary border border-autensa-border rounded-lg text-autensa-text-secondary hover:text-autensa-text hover:border-autensa-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     title="Scan repo — auto-fill name & description from README"
                   >
                     {scanningRepo ? <Loader className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
@@ -282,30 +282,30 @@ export default function NewProductPage() {
                 {repoWarning && (
                   <p className="text-[11px] text-amber-400 mt-1.5">{repoWarning}</p>
                 )}
-                <p className="text-[11px] text-mc-text-secondary mt-1.5">
+                <p className="text-[11px] text-autensa-text-secondary mt-1.5">
                   Scan repo to auto-fill name & description from README
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-mc-text mb-2">Live URL</label>
+                <label className="block text-sm font-medium text-autensa-text mb-2">Live URL</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={form.live_url}
                     onChange={e => setForm(f => ({ ...f, live_url: e.target.value }))}
-                    className="flex-1 bg-mc-bg-tertiary border border-mc-border rounded-lg px-4 py-3 text-mc-text text-sm focus:outline-none focus:border-mc-accent"
+                    className="flex-1 bg-autensa-bg-tertiary border border-autensa-border rounded-lg px-4 py-3 text-autensa-text text-sm focus:outline-none focus:border-autensa-accent"
                     placeholder="https://..."
                   />
                   <button
                     onClick={() => handleScan(form.live_url, 'site')}
                     disabled={!isValidUrl(form.live_url) || scanningSite}
-                    className="shrink-0 px-3 py-3 bg-mc-bg-tertiary border border-mc-border rounded-lg text-mc-text-secondary hover:text-mc-text hover:border-mc-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    className="shrink-0 px-3 py-3 bg-autensa-bg-tertiary border border-autensa-border rounded-lg text-autensa-text-secondary hover:text-autensa-text hover:border-autensa-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     title="Scan site — auto-fill name & description from website"
                   >
                     {scanningSite ? <Loader className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                   </button>
                 </div>
-                <p className="text-[11px] text-mc-text-secondary mt-1.5">
+                <p className="text-[11px] text-autensa-text-secondary mt-1.5">
                   Scan site to auto-fill name & description from website
                 </p>
               </div>
@@ -313,23 +313,23 @@ export default function NewProductPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-mc-text mb-2">When ideas are approved</label>
+                <label className="block text-sm font-medium text-autensa-text mb-2">When ideas are approved</label>
                 <select
                   value={form.build_mode}
                   onChange={e => setForm(f => ({ ...f, build_mode: e.target.value as 'plan_first' | 'auto_build' }))}
-                  className="w-full bg-mc-bg-tertiary border border-mc-border rounded-lg px-4 py-3 text-mc-text text-sm focus:outline-none focus:border-mc-accent"
+                  className="w-full bg-autensa-bg-tertiary border border-autensa-border rounded-lg px-4 py-3 text-autensa-text text-sm focus:outline-none focus:border-autensa-accent"
                 >
                   <option value="plan_first">Plan first — send to planning queue</option>
                   <option value="auto_build">Auto-build — dispatch to builder immediately</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-mc-text mb-2">Default Branch</label>
+                <label className="block text-sm font-medium text-autensa-text mb-2">Default Branch</label>
                 <input
                   type="text"
                   value={form.default_branch}
                   onChange={e => setForm(f => ({ ...f, default_branch: e.target.value }))}
-                  className="w-full bg-mc-bg-tertiary border border-mc-border rounded-lg px-4 py-3 text-mc-text text-sm focus:outline-none focus:border-mc-accent"
+                  className="w-full bg-autensa-bg-tertiary border border-autensa-border rounded-lg px-4 py-3 text-autensa-text text-sm focus:outline-none focus:border-autensa-accent"
                   placeholder="main"
                 />
               </div>
@@ -348,7 +348,7 @@ export default function NewProductPage() {
             <button
               onClick={handleCreate}
               disabled={!form.name.trim() || saving}
-              className="w-full min-h-11 bg-mc-accent text-white rounded-lg font-medium hover:bg-mc-accent/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full min-h-11 bg-autensa-accent text-white rounded-lg font-medium hover:bg-autensa-accent/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {saving ? 'Creating...' : 'Next: Product Program'}
               <ArrowRight className="w-4 h-4" />
@@ -359,8 +359,8 @@ export default function NewProductPage() {
         {step === 'program' && (
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-mc-text mb-2">Product Program</label>
-              <p className="text-sm text-mc-text-secondary mb-4">
+              <label className="block text-sm font-medium text-autensa-text mb-2">Product Program</label>
+              <p className="text-sm text-autensa-text-secondary mb-4">
                 This document instructs the research and ideation agents. Describe your product, target users, priorities, and what you want the agents to focus on.
               </p>
               {form.repo_url && (
@@ -368,7 +368,7 @@ export default function NewProductPage() {
                   <button
                     onClick={handleImportReadme}
                     disabled={importingReadme}
-                    className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-mc-bg-tertiary border border-mc-border rounded-lg text-mc-text-secondary hover:text-mc-text hover:border-mc-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-autensa-bg-tertiary border border-autensa-border rounded-lg text-autensa-text-secondary hover:text-autensa-text hover:border-autensa-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {importingReadme ? <Loader className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
                     {importingReadme ? 'Importing...' : 'Import from README.md'}
@@ -381,7 +381,7 @@ export default function NewProductPage() {
               <textarea
                 value={form.product_program}
                 onChange={e => setForm(f => ({ ...f, product_program: e.target.value }))}
-                className="w-full bg-mc-bg-tertiary border border-mc-border rounded-lg px-4 py-3 text-mc-text font-mono text-sm focus:outline-none focus:border-mc-accent resize-none"
+                className="w-full bg-autensa-bg-tertiary border border-autensa-border rounded-lg px-4 py-3 text-autensa-text font-mono text-sm focus:outline-none focus:border-autensa-accent resize-none"
                 rows={20}
                 placeholder={`# Product Program: ${form.name}\n\n## Purpose\nWhat this product does and who it's for.\n\n## Target Users\nWho uses this and what problems they have.\n\n## Priorities\nWhat matters most — growth, stability, features, UX, performance, etc.\n\n## Research Directives\nSpecific areas to focus research on.\n\n## Exclusions\nThings you do NOT want suggested.`}
               />
@@ -389,14 +389,14 @@ export default function NewProductPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setStep('schedule')}
-                className="flex-1 min-h-11 border border-mc-border text-mc-text-secondary rounded-lg hover:bg-mc-bg-tertiary"
+                className="flex-1 min-h-11 border border-autensa-border text-autensa-text-secondary rounded-lg hover:bg-autensa-bg-tertiary"
               >
                 Skip for now
               </button>
               <button
                 onClick={handleSaveProgram}
                 disabled={saving}
-                className="flex-1 min-h-11 bg-mc-accent text-white rounded-lg font-medium hover:bg-mc-accent/90 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 min-h-11 bg-autensa-accent text-white rounded-lg font-medium hover:bg-autensa-accent/90 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {saving ? 'Saving...' : 'Next: Schedules'}
                 <ArrowRight className="w-4 h-4" />
@@ -407,29 +407,29 @@ export default function NewProductPage() {
 
         {step === 'schedule' && (
           <div className="space-y-6">
-            <div className="bg-mc-bg-secondary border border-mc-border rounded-xl p-6">
-              <h3 className="font-semibold text-mc-text mb-4">Default Schedules</h3>
-              <p className="text-sm text-mc-text-secondary mb-6">
+            <div className="bg-autensa-bg-secondary border border-autensa-border rounded-xl p-6">
+              <h3 className="font-semibold text-autensa-text mb-4">Default Schedules</h3>
+              <p className="text-sm text-autensa-text-secondary mb-6">
                 These schedules run automatically. You can customize them later in product settings.
               </p>
               <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between py-2 border-b border-mc-border">
-                  <span className="text-mc-text">Research + Ideation</span>
-                  <span className="text-mc-text-secondary font-mono">Daily at 11pm</span>
+                <div className="flex items-center justify-between py-2 border-b border-autensa-border">
+                  <span className="text-autensa-text">Research + Ideation</span>
+                  <span className="text-autensa-text-secondary font-mono">Daily at 11pm</span>
                 </div>
-                <div className="flex items-center justify-between py-2 border-b border-mc-border">
-                  <span className="text-mc-text">Maybe Re-evaluation</span>
-                  <span className="text-mc-text-secondary font-mono">Weekly (Monday 10am)</span>
+                <div className="flex items-center justify-between py-2 border-b border-autensa-border">
+                  <span className="text-autensa-text">Maybe Re-evaluation</span>
+                  <span className="text-autensa-text-secondary font-mono">Weekly (Monday 10am)</span>
                 </div>
                 <div className="flex items-center justify-between py-2">
-                  <span className="text-mc-text">Preference Update</span>
-                  <span className="text-mc-text-secondary font-mono">Weekly (Monday 9am)</span>
+                  <span className="text-autensa-text">Preference Update</span>
+                  <span className="text-autensa-text-secondary font-mono">Weekly (Monday 9am)</span>
                 </div>
               </div>
             </div>
             <button
               onClick={() => router.push(`/autopilot/${productId}`)}
-              className="w-full min-h-11 bg-mc-accent text-white rounded-lg font-medium hover:bg-mc-accent/90 flex items-center justify-center gap-2"
+              className="w-full min-h-11 bg-autensa-accent text-white rounded-lg font-medium hover:bg-autensa-accent/90 flex items-center justify-center gap-2"
             >
               <Check className="w-4 h-4" />
               Go to Product Dashboard

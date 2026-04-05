@@ -2,7 +2,7 @@ import { logger } from '@/lib/logger';
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
-import { schema } from './schema';
+import { schema } from './baseline';
 import { runMigrations } from './migrations';
 import { ensureCatalogSyncScheduled } from '@/lib/agent-catalog-sync';
 
@@ -14,8 +14,9 @@ export function getDb(): Database.Database {
   if (!db) {
     const isNewDb = !fs.existsSync(DB_PATH);
     
-    db = new Database(DB_PATH);
+    db = new Database(DB_PATH, { timeout: 15000 }); // 15 seconds busy timeout
     db.pragma('journal_mode = WAL');
+    db.pragma('synchronous = NORMAL'); // Better performance with WAL
     db.pragma('foreign_keys = ON');
 
     // Initialize base schema (creates tables if they don't exist)
@@ -30,7 +31,7 @@ export function getDb(): Database.Database {
       recoverOrphanedCycles().catch(err => logger.warn('[Recovery] Failed:', err))
     );
 
-    // Keep Mission Control's agent catalog synced with OpenClaw-installed agents
+    // Keep Autensa's agent catalog synced with OpenClaw-installed agents
     ensureCatalogSyncScheduled();
     
     if (isNewDb) {

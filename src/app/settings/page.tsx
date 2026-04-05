@@ -1,6 +1,6 @@
 /**
  * Settings Page
- * Configure Mission Control paths, URLs, preferences, and database backups
+ * Configure Autensa paths, URLs, preferences, and database backups
  */
 
 'use client';
@@ -222,33 +222,33 @@ export default function SettingsPage() {
 
   if (!config) {
     return (
-      <div className="min-h-screen bg-mc-bg flex items-center justify-center">
-        <div className="text-mc-text-secondary">Loading settings...</div>
+      <div className="min-h-screen bg-autensa-bg flex items-center justify-center">
+        <div className="text-autensa-text-secondary">Loading settings...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-mc-bg">
+    <div className="min-h-screen bg-autensa-bg">
       {/* Header */}
-      <div className="border-b border-mc-border bg-mc-bg-secondary">
+      <div className="border-b border-autensa-border bg-autensa-bg-secondary">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push('/')}
-              className="p-2 hover:bg-mc-bg-tertiary rounded text-mc-text-secondary"
-              title="Back to Mission Control"
+              className="p-2 hover:bg-autensa-bg-tertiary rounded text-autensa-text-secondary"
+              title="Back to Autensa"
             >
               ← Back
             </button>
-            <Settings className="w-6 h-6 text-mc-accent" />
-            <h1 className="text-2xl font-bold text-mc-text">Settings</h1>
+            <Settings className="w-6 h-6 text-autensa-accent" />
+            <h1 className="text-2xl font-bold text-autensa-text">Settings</h1>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={handleReset}
-              className="px-4 py-2 border border-mc-border rounded hover:bg-mc-bg-tertiary text-mc-text-secondary flex items-center gap-2"
+              className="px-4 py-2 border border-autensa-border rounded hover:bg-autensa-bg-tertiary text-autensa-text-secondary flex items-center gap-2"
             >
               <RotateCcw className="w-4 h-4" />
               Reset to Defaults
@@ -256,7 +256,7 @@ export default function SettingsPage() {
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="px-4 py-2 bg-mc-accent text-mc-bg rounded hover:bg-mc-accent/90 flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 bg-autensa-accent text-autensa-bg rounded hover:bg-autensa-accent/90 flex items-center gap-2 disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               {isSaving ? 'Saving...' : 'Save Changes'}
@@ -282,18 +282,18 @@ export default function SettingsPage() {
         )}
 
         {/* Workspace Paths */}
-        <section className="mb-8 p-6 bg-mc-bg-secondary border border-mc-border rounded-lg">
+        <section className="mb-8 p-6 bg-autensa-bg-secondary border border-autensa-border rounded-lg">
           <div className="flex items-center gap-2 mb-4">
-            <FolderOpen className="w-5 h-5 text-mc-accent" />
-            <h2 className="text-xl font-semibold text-mc-text">Workspace Paths</h2>
+            <FolderOpen className="w-5 h-5 text-autensa-accent" />
+            <h2 className="text-xl font-semibold text-autensa-text">Workspace Paths</h2>
           </div>
-          <p className="text-sm text-mc-text-secondary mb-4">
-            Configure where Mission Control stores projects and deliverables.
+          <p className="text-sm text-autensa-text-secondary mb-4">
+            Configure where Autensa stores projects and deliverables.
           </p>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-mc-text mb-2">
+              <label className="block text-sm font-medium text-autensa-text mb-2">
                 Workspace Base Path
               </label>
               <input
@@ -301,15 +301,15 @@ export default function SettingsPage() {
                 value={config.workspaceBasePath}
                 onChange={(e) => handleChange('workspaceBasePath', e.target.value)}
                 placeholder="~/Documents/Shared"
-                className="w-full px-4 py-2 bg-mc-bg border border-mc-border rounded text-mc-text focus:border-mc-accent focus:outline-none"
+                className="w-full px-4 py-2 bg-autensa-bg border border-autensa-border rounded text-autensa-text focus:border-autensa-accent focus:outline-none"
               />
-              <p className="text-xs text-mc-text-secondary mt-1">
-                Base directory for all Mission Control files. Use ~ for home directory.
+              <p className="text-xs text-autensa-text-secondary mt-1">
+                Base directory for all Autensa files. Use ~ for home directory.
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-mc-text mb-2">
+              <label className="block text-sm font-medium text-autensa-text mb-2">
                 Projects Path
               </label>
               <input
@@ -317,15 +317,15 @@ export default function SettingsPage() {
                 value={config.projectsPath}
                 onChange={(e) => handleChange('projectsPath', e.target.value)}
                 placeholder="~/Documents/Shared/projects"
-                className="w-full px-4 py-2 bg-mc-bg border border-mc-border rounded text-mc-text focus:border-mc-accent focus:outline-none"
+                className="w-full px-4 py-2 bg-autensa-bg border border-autensa-border rounded text-autensa-text focus:border-autensa-accent focus:outline-none"
               />
-              <p className="text-xs text-mc-text-secondary mt-1">
+              <p className="text-xs text-autensa-text-secondary mt-1">
                 Directory where project folders are created. Each project gets its own folder.
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-mc-text mb-2">
+              <label className="block text-sm font-medium text-autensa-text mb-2">
                 Default Project Name
               </label>
               <input
@@ -333,9 +333,9 @@ export default function SettingsPage() {
                 value={config.defaultProjectName}
                 onChange={(e) => handleChange('defaultProjectName', e.target.value)}
                 placeholder="mission-control"
-                className="w-full px-4 py-2 bg-mc-bg border border-mc-border rounded text-mc-text focus:border-mc-accent focus:outline-none"
+                className="w-full px-4 py-2 bg-autensa-bg border border-autensa-border rounded text-autensa-text focus:border-autensa-accent focus:outline-none"
               />
-              <p className="text-xs text-mc-text-secondary mt-1">
+              <p className="text-xs text-autensa-text-secondary mt-1">
                 Default name for new projects. Can be changed per project.
               </p>
             </div>
@@ -343,54 +343,54 @@ export default function SettingsPage() {
         </section>
 
         {/* API Configuration */}
-        <section className="mb-8 p-6 bg-mc-bg-secondary border border-mc-border rounded-lg">
+        <section className="mb-8 p-6 bg-autensa-bg-secondary border border-autensa-border rounded-lg">
           <div className="flex items-center gap-2 mb-4">
-            <LinkIcon className="w-5 h-5 text-mc-accent" />
-            <h2 className="text-xl font-semibold text-mc-text">API Configuration</h2>
+            <LinkIcon className="w-5 h-5 text-autensa-accent" />
+            <h2 className="text-xl font-semibold text-autensa-text">API Configuration</h2>
           </div>
-          <p className="text-sm text-mc-text-secondary mb-4">
-            Configure Mission Control API URL for agent orchestration.
+          <p className="text-sm text-autensa-text-secondary mb-4">
+            Configure Autensa API URL for agent orchestration.
           </p>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-mc-text mb-2">
-                Mission Control URL
+              <label className="block text-sm font-medium text-autensa-text mb-2">
+                Autensa URL
               </label>
               <input
                 type="text"
                 value={config.missionControlUrl}
                 onChange={(e) => handleChange('missionControlUrl', e.target.value)}
                 placeholder="http://localhost:4000"
-                className="w-full px-4 py-2 bg-mc-bg border border-mc-border rounded text-mc-text focus:border-mc-accent focus:outline-none"
+                className="w-full px-4 py-2 bg-autensa-bg border border-autensa-border rounded text-autensa-text focus:border-autensa-accent focus:outline-none"
               />
-              <p className="text-xs text-mc-text-secondary mt-1">
-                URL where Mission Control is running. Auto-detected by default. Change for remote access.
+              <p className="text-xs text-autensa-text-secondary mt-1">
+                URL where Autensa is running. Auto-detected by default. Change for remote access.
               </p>
             </div>
           </div>
         </section>
 
         {/* Kanban UX */}
-        <section className="mb-8 p-6 bg-mc-bg-secondary border border-mc-border rounded-lg">
+        <section className="mb-8 p-6 bg-autensa-bg-secondary border border-autensa-border rounded-lg">
           <div className="flex items-center gap-2 mb-4">
-            <Home className="w-5 h-5 text-mc-accent" />
-            <h2 className="text-xl font-semibold text-mc-text">Kanban UX</h2>
+            <Home className="w-5 h-5 text-autensa-accent" />
+            <h2 className="text-xl font-semibold text-autensa-text">Kanban UX</h2>
           </div>
-          <p className="text-sm text-mc-text-secondary mb-4">
+          <p className="text-sm text-autensa-text-secondary mb-4">
             Tune board density and lane sizing behavior.
           </p>
 
-          <label className="flex items-start gap-3 p-3 bg-mc-bg border border-mc-border rounded cursor-pointer">
+          <label className="flex items-start gap-3 p-3 bg-autensa-bg border border-autensa-border rounded cursor-pointer">
             <input
               type="checkbox"
               checked={config.kanbanCompactEmptyColumns}
               onChange={(e) => handleChange('kanbanCompactEmptyColumns', e.target.checked)}
-              className="mt-1 h-4 w-4 accent-[var(--mc-accent)]"
+              className="mt-1 h-4 w-4 accent-[var(--autensa-accent)]"
             />
             <div>
-              <div className="text-sm font-medium text-mc-text">Compact empty columns</div>
-              <div className="text-xs text-mc-text-secondary mt-1">
+              <div className="text-sm font-medium text-autensa-text">Compact empty columns</div>
+              <div className="text-xs text-autensa-text-secondary mt-1">
                 When enabled, empty Kanban columns shrink to header width while columns with tasks keep a wider, dynamic width.
               </div>
             </div>
@@ -400,13 +400,13 @@ export default function SettingsPage() {
         {/* ============================================================== */}
         {/* Database Backups Section                                        */}
         {/* ============================================================== */}
-        <section className="mb-8 p-6 bg-mc-bg-secondary border border-mc-border rounded-lg">
+        <section className="mb-8 p-6 bg-autensa-bg-secondary border border-autensa-border rounded-lg">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <HardDrive className="w-5 h-5 text-mc-accent" />
-              <h2 className="text-xl font-semibold text-mc-text">Database Backups</h2>
+              <HardDrive className="w-5 h-5 text-autensa-accent" />
+              <h2 className="text-xl font-semibold text-autensa-text">Database Backups</h2>
             </div>
-            <div className="flex items-center gap-3 text-xs text-mc-text-secondary">
+            <div className="flex items-center gap-3 text-xs text-autensa-text-secondary">
               {s3Status.configured ? (
                 <span className="flex items-center gap-1 text-green-400">
                   <Cloud className="w-3.5 h-3.5" /> S3 connected
@@ -420,7 +420,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <p className="text-sm text-mc-text-secondary mb-4">
+          <p className="text-sm text-autensa-text-secondary mb-4">
             Create on-demand backups of your SQLite database. Backups include a WAL checkpoint for consistency.
             Restoring always creates a safety backup of the current database first.
           </p>
@@ -430,7 +430,7 @@ export default function SettingsPage() {
             <button
               onClick={handleCreateBackup}
               disabled={isCreatingBackup}
-              className="px-4 py-2 bg-mc-accent text-mc-bg rounded hover:bg-mc-accent/90 flex items-center gap-2 disabled:opacity-50 text-sm font-medium"
+              className="px-4 py-2 bg-autensa-accent text-autensa-bg rounded hover:bg-autensa-accent/90 flex items-center gap-2 disabled:opacity-50 text-sm font-medium"
             >
               {isCreatingBackup ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -442,7 +442,7 @@ export default function SettingsPage() {
             <button
               onClick={fetchBackups}
               disabled={isLoadingBackups}
-              className="px-3 py-2 border border-mc-border rounded hover:bg-mc-bg-tertiary text-mc-text-secondary flex items-center gap-1.5 text-sm"
+              className="px-3 py-2 border border-autensa-border rounded hover:bg-autensa-bg-tertiary text-autensa-text-secondary flex items-center gap-1.5 text-sm"
             >
               <RotateCw className={`w-3.5 h-3.5 ${isLoadingBackups ? 'animate-spin' : ''}`} />
               Refresh
@@ -465,43 +465,43 @@ export default function SettingsPage() {
 
           {/* Backup list table */}
           {isLoadingBackups && backups.length === 0 ? (
-            <div className="py-8 text-center text-mc-text-secondary text-sm">
+            <div className="py-8 text-center text-autensa-text-secondary text-sm">
               <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
               Loading backups...
             </div>
           ) : backups.length === 0 ? (
-            <div className="py-8 text-center text-mc-text-secondary text-sm border border-mc-border rounded bg-mc-bg">
+            <div className="py-8 text-center text-autensa-text-secondary text-sm border border-autensa-border rounded bg-autensa-bg">
               No backups yet. Click &quot;Create Backup Now&quot; to create your first backup.
             </div>
           ) : (
-            <div className="border border-mc-border rounded overflow-hidden">
+            <div className="border border-autensa-border rounded overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-mc-bg-tertiary border-b border-mc-border">
-                    <th className="text-left px-4 py-2.5 text-mc-text-secondary font-medium">Backup</th>
-                    <th className="text-left px-4 py-2.5 text-mc-text-secondary font-medium w-20">Size</th>
-                    <th className="text-left px-4 py-2.5 text-mc-text-secondary font-medium w-24">Created</th>
-                    <th className="text-left px-4 py-2.5 text-mc-text-secondary font-medium w-16">Version</th>
-                    <th className="text-left px-4 py-2.5 text-mc-text-secondary font-medium w-20">Location</th>
-                    <th className="text-right px-4 py-2.5 text-mc-text-secondary font-medium w-32">Actions</th>
+                  <tr className="bg-autensa-bg-tertiary border-b border-autensa-border">
+                    <th className="text-left px-4 py-2.5 text-autensa-text-secondary font-medium">Backup</th>
+                    <th className="text-left px-4 py-2.5 text-autensa-text-secondary font-medium w-20">Size</th>
+                    <th className="text-left px-4 py-2.5 text-autensa-text-secondary font-medium w-24">Created</th>
+                    <th className="text-left px-4 py-2.5 text-autensa-text-secondary font-medium w-16">Version</th>
+                    <th className="text-left px-4 py-2.5 text-autensa-text-secondary font-medium w-20">Location</th>
+                    <th className="text-right px-4 py-2.5 text-autensa-text-secondary font-medium w-32">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {backups.map((backup) => (
-                    <tr key={backup.filename} className="border-b border-mc-border last:border-0 hover:bg-mc-bg-tertiary/50">
+                    <tr key={backup.filename} className="border-b border-autensa-border last:border-0 hover:bg-autensa-bg-tertiary/50">
                       <td className="px-4 py-2.5">
-                        <div className="text-mc-text font-mono text-xs truncate max-w-[300px]" title={backup.filename}>
+                        <div className="text-autensa-text font-mono text-xs truncate max-w-[300px]" title={backup.filename}>
                           {backup.filename}
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-mc-text-secondary text-xs">
+                      <td className="px-4 py-2.5 text-autensa-text-secondary text-xs">
                         {formatBytes(backup.size)}
                       </td>
-                      <td className="px-4 py-2.5 text-mc-text-secondary text-xs" title={new Date(backup.timestamp).toLocaleString()}>
+                      <td className="px-4 py-2.5 text-autensa-text-secondary text-xs" title={new Date(backup.timestamp).toLocaleString()}>
                         {timeAgo(backup.timestamp)}
                       </td>
                       <td className="px-4 py-2.5">
-                        <span className="text-xs font-mono px-1.5 py-0.5 bg-mc-bg rounded text-mc-text-secondary">
+                        <span className="text-xs font-mono px-1.5 py-0.5 bg-autensa-bg rounded text-autensa-text-secondary">
                           v{backup.migrationVersion}
                         </span>
                       </td>
@@ -515,7 +515,7 @@ export default function SettingsPage() {
                             <Cloud className="w-3 h-3" /> S3
                           </span>
                         ) : (
-                          <span className="text-mc-text-secondary">Local</span>
+                          <span className="text-autensa-text-secondary">Local</span>
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-right">
@@ -555,10 +555,10 @@ export default function SettingsPage() {
           )}
 
           {/* S3 Configuration (collapsible) */}
-          <div className="mt-4 border border-mc-border rounded">
+          <div className="mt-4 border border-autensa-border rounded">
             <button
               onClick={() => setShowS3Config(!showS3Config)}
-              className="w-full flex items-center justify-between px-4 py-3 text-sm text-mc-text-secondary hover:bg-mc-bg-tertiary/50"
+              className="w-full flex items-center justify-between px-4 py-3 text-sm text-autensa-text-secondary hover:bg-autensa-bg-tertiary/50"
             >
               <span className="flex items-center gap-2">
                 <Shield className="w-4 h-4" />
@@ -567,42 +567,42 @@ export default function SettingsPage() {
               {showS3Config ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </button>
             {showS3Config && (
-              <div className="px-4 pb-4 border-t border-mc-border">
-                <p className="text-xs text-mc-text-secondary mt-3 mb-3">
+              <div className="px-4 pb-4 border-t border-autensa-border">
+                <p className="text-xs text-autensa-text-secondary mt-3 mb-3">
                   Configure S3-compatible storage (AWS S3, MinIO, Backblaze B2, etc.) for off-site backup storage.
-                  Set these values as environment variables in your <code className="px-1 py-0.5 bg-mc-bg rounded">.env.local</code> file:
+                  Set these values as environment variables in your <code className="px-1 py-0.5 bg-autensa-bg rounded">.env.local</code> file:
                 </p>
                 <div className="space-y-2 text-xs font-mono">
-                  <div className="flex items-center gap-2 p-2 bg-mc-bg rounded">
-                    <span className="text-mc-accent w-28">S3_ENDPOINT</span>
-                    <span className="text-mc-text-secondary">
+                  <div className="flex items-center gap-2 p-2 bg-autensa-bg rounded">
+                    <span className="text-autensa-accent w-28">S3_ENDPOINT</span>
+                    <span className="text-autensa-text-secondary">
                       {s3Status.endpoint || '(not set)'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 p-2 bg-mc-bg rounded">
-                    <span className="text-mc-accent w-28">S3_BUCKET</span>
-                    <span className="text-mc-text-secondary">
+                  <div className="flex items-center gap-2 p-2 bg-autensa-bg rounded">
+                    <span className="text-autensa-accent w-28">S3_BUCKET</span>
+                    <span className="text-autensa-text-secondary">
                       {s3Status.bucket || '(not set)'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 p-2 bg-mc-bg rounded">
-                    <span className="text-mc-accent w-28">S3_ACCESS_KEY</span>
-                    <span className="text-mc-text-secondary">
+                  <div className="flex items-center gap-2 p-2 bg-autensa-bg rounded">
+                    <span className="text-autensa-accent w-28">S3_ACCESS_KEY</span>
+                    <span className="text-autensa-text-secondary">
                       {s3Status.configured ? '••••••••' : '(not set)'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 p-2 bg-mc-bg rounded">
-                    <span className="text-mc-accent w-28">S3_SECRET_KEY</span>
-                    <span className="text-mc-text-secondary">
+                  <div className="flex items-center gap-2 p-2 bg-autensa-bg rounded">
+                    <span className="text-autensa-accent w-28">S3_SECRET_KEY</span>
+                    <span className="text-autensa-text-secondary">
                       {s3Status.configured ? '••••••••' : '(not set)'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 p-2 bg-mc-bg rounded">
-                    <span className="text-mc-accent w-28">S3_REGION</span>
-                    <span className="text-mc-text-secondary">us-east-1 (default)</span>
+                  <div className="flex items-center gap-2 p-2 bg-autensa-bg rounded">
+                    <span className="text-autensa-accent w-28">S3_REGION</span>
+                    <span className="text-autensa-text-secondary">us-east-1 (default)</span>
                   </div>
                 </div>
-                <p className="text-xs text-mc-text-secondary mt-3">
+                <p className="text-xs text-autensa-text-secondary mt-3">
                   When configured, backups will be automatically uploaded to S3 after creation.
                   Credentials are stored server-side only — never in the browser.
                 </p>
@@ -614,42 +614,42 @@ export default function SettingsPage() {
         {/* Restore Confirmation Dialog */}
         {confirmRestore && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="bg-mc-bg-secondary border border-mc-border rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <div className="bg-autensa-bg-secondary border border-autensa-border rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-amber-500/10 rounded-full">
                   <AlertTriangle className="w-6 h-6 text-amber-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-mc-text">Confirm Restore</h3>
+                <h3 className="text-lg font-semibold text-autensa-text">Confirm Restore</h3>
               </div>
 
-              <p className="text-sm text-mc-text-secondary mb-4">
+              <p className="text-sm text-autensa-text-secondary mb-4">
                 This will create a safety backup of your current database, then restore from the selected backup.
                 The application may need to be restarted after restoration.
               </p>
 
-              <div className="p-3 bg-mc-bg rounded border border-mc-border mb-4 text-xs space-y-1.5">
+              <div className="p-3 bg-autensa-bg rounded border border-autensa-border mb-4 text-xs space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="text-mc-text-secondary">Backup:</span>
-                  <span className="text-mc-text font-mono">{confirmRestore.filename}</span>
+                  <span className="text-autensa-text-secondary">Backup:</span>
+                  <span className="text-autensa-text font-mono">{confirmRestore.filename}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-mc-text-secondary">Size:</span>
-                  <span className="text-mc-text">{formatBytes(confirmRestore.size)}</span>
+                  <span className="text-autensa-text-secondary">Size:</span>
+                  <span className="text-autensa-text">{formatBytes(confirmRestore.size)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-mc-text-secondary">Created:</span>
-                  <span className="text-mc-text">{new Date(confirmRestore.timestamp).toLocaleString()}</span>
+                  <span className="text-autensa-text-secondary">Created:</span>
+                  <span className="text-autensa-text">{new Date(confirmRestore.timestamp).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-mc-text-secondary">Migration Version:</span>
-                  <span className="text-mc-text font-mono">v{confirmRestore.migrationVersion}</span>
+                  <span className="text-autensa-text-secondary">Migration Version:</span>
+                  <span className="text-autensa-text font-mono">v{confirmRestore.migrationVersion}</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 justify-end">
                 <button
                   onClick={() => setConfirmRestore(null)}
-                  className="px-4 py-2 text-sm border border-mc-border rounded hover:bg-mc-bg-tertiary text-mc-text-secondary"
+                  className="px-4 py-2 text-sm border border-autensa-border rounded hover:bg-autensa-bg-tertiary text-autensa-text-secondary"
                 >
                   Cancel
                 </button>
@@ -671,7 +671,7 @@ export default function SettingsPage() {
             📝 Environment Variables
           </h3>
           <p className="text-sm text-blue-300 mb-3">
-            Some settings are also configurable via environment variables in <code className="px-2 py-1 bg-mc-bg rounded">.env.local</code>:
+            Some settings are also configurable via environment variables in <code className="px-2 py-1 bg-autensa-bg rounded">.env.local</code>:
           </p>
           <ul className="text-sm text-blue-300 space-y-1 ml-4 list-disc">
             <li><code>MISSION_CONTROL_URL</code> - API URL override</li>

@@ -2,9 +2,9 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Log warning at startup if auth is disabled
-const MC_API_TOKEN = process.env.MC_API_TOKEN;
-if (!MC_API_TOKEN) {
-  logger.warn('[SECURITY WARNING] MC_API_TOKEN not set - API authentication is DISABLED (local dev mode)');
+const AUTENSA_API_TOKEN = process.env.AUTENSA_API_TOKEN;
+if (!AUTENSA_API_TOKEN) {
+  logger.warn('[SECURITY WARNING] AUTENSA_API_TOKEN not set - API authentication is DISABLED (local dev mode)');
 }
 
 /**
@@ -90,8 +90,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // If MC_API_TOKEN is not set, auth is disabled (dev mode)
-  if (!MC_API_TOKEN) {
+  // If AUTENSA_API_TOKEN is not set, auth is disabled (dev mode)
+  if (!AUTENSA_API_TOKEN) {
     return NextResponse.next();
   }
 
@@ -103,7 +103,7 @@ export function proxy(request: NextRequest) {
   // Special case: /api/events/stream (SSE) - allow token as query param
   if (pathname === '/api/events/stream') {
     const queryToken = request.nextUrl.searchParams.get('token');
-    if (queryToken && queryToken === MC_API_TOKEN) {
+    if (queryToken && queryToken === AUTENSA_API_TOKEN) {
       return NextResponse.next();
     }
     // Fall through to header check below
@@ -121,7 +121,7 @@ export function proxy(request: NextRequest) {
 
   const token = authHeader.substring(7); // Remove 'Bearer ' prefix
   
-  if (token !== MC_API_TOKEN) {
+  if (token !== AUTENSA_API_TOKEN) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }

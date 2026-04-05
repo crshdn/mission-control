@@ -105,9 +105,10 @@ export async function complete(prompt: string, options: CompletionOptions = {}):
       lastError = error instanceof Error ? error : new Error(String(error));
       const isAbort = lastError.name === 'AbortError' || lastError.message.includes('aborted');
       const isNetwork = lastError.message.includes('fetch failed') || lastError.message.includes('ECONNREFUSED') || lastError.message.includes('ECONNRESET');
+      const isProviderOutage = lastError.message.includes('(50') || lastError.message.includes('(429');
 
-      if (isAbort || isNetwork) {
-        logger.error(`[LLM] Attempt ${attempt + 1} failed (${isAbort ? 'timeout/abort' : 'network'}): ${lastError.message}`);
+      if (isAbort || isNetwork || isProviderOutage) {
+        logger.error(`[LLM] Attempt ${attempt + 1} failed (${isAbort ? 'timeout/abort' : isProviderOutage ? 'provider outage' : 'network'}): ${lastError.message}`);
         continue; // retry
       }
 

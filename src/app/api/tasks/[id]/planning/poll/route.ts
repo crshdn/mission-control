@@ -142,8 +142,8 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
 
     try {
       const dispatchHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (process.env.MC_API_TOKEN) {
-        dispatchHeaders['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
+      if (process.env.AUTENSA_API_TOKEN) {
+        dispatchHeaders['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
       }
 
       const dispatchRes = await fetch(dispatchUrl, {

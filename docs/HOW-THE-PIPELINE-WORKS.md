@@ -1,6 +1,6 @@
 # How the Pipeline Works
 
-Mission Control uses a multi-agent pipeline to take a task from idea to done — automatically. Each stage has a dedicated agent with a specific job, and the system handles all the handoffs between them.
+Autensa uses a multi-agent pipeline to take a task from idea to done — automatically. Each stage has a dedicated agent with a specific job, and the system handles all the handoffs between them.
 
 ---
 

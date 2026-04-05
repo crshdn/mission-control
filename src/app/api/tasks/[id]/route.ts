@@ -307,8 +307,8 @@ export async function PATCH(
         // No workflow template or no role for this stage — fall back to legacy dispatch
         const missionControlUrl = getMissionControlUrl();
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (process.env.MC_API_TOKEN) {
-          headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
+        if (process.env.AUTENSA_API_TOKEN) {
+          headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
         }
 
         try {
@@ -371,8 +371,8 @@ export async function PATCH(
 
       const missionControlUrl = getMissionControlUrl();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (process.env.MC_API_TOKEN) {
-        headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
+      if (process.env.AUTENSA_API_TOKEN) {
+        headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
       }
       try {
         const dispatchRes = await fetch(`${missionControlUrl}/api/tasks/${id}/dispatch`, {

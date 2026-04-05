@@ -9,12 +9,12 @@ export default function SwipePage() {
   const { productId } = useParams<{ productId: string }>();
 
   return (
-    <div className="min-h-screen bg-mc-bg flex flex-col">
-      <header className="border-b border-mc-border bg-mc-bg-secondary px-4 py-3 flex items-center gap-3">
-        <Link href={`/autopilot/${productId}`} className="text-mc-text-secondary hover:text-mc-text">
+    <div className="min-h-screen bg-autensa-bg flex flex-col">
+      <header className="border-b border-autensa-border bg-autensa-bg-secondary px-4 py-3 flex items-center gap-3">
+        <Link href={`/autopilot/${productId}`} className="text-autensa-text-secondary hover:text-autensa-text">
           <ArrowLeft className="w-5 h-5" />
         </Link>
-        <h1 className="font-semibold text-mc-text">Swipe Deck</h1>
+        <h1 className="font-semibold text-autensa-text">Swipe Deck</h1>
       </header>
       <main className="flex-1 flex items-center justify-center p-4">
         <SwipeDeck productId={productId} />

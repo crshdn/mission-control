@@ -15,7 +15,7 @@ export function hasStageEvidence(taskId: string): boolean {
 
 export function canUseBoardOverride(request: Request): boolean {
   if (process.env.BOARD_OVERRIDE_ENABLED !== 'true') return false;
-  return request.headers.get('x-mc-board-override') === 'true';
+  return request.headers.get('x-autensa-board-override') === 'true';
 }
 
 export function auditBoardOverride(taskId: string, fromStatus: string, toStatus: string, reason?: string): void {

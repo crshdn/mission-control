@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { queryAll, queryOne, run } from '@/lib/db';
 import type { Agent, CreateAgentRequest } from '@/lib/types';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 5;
 // GET /api/agents - List all agents
 export async function GET(request: NextRequest) {
   try {

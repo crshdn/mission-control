@@ -47,24 +47,24 @@ export function IdeaCard({ idea, onAction, showActions = true, compact = false }
     idea.similarity_flag ? (() => { try { return JSON.parse(idea.similarity_flag); } catch { return []; } })() : [];
 
   return (
-    <div className="bg-mc-bg-secondary border border-mc-border rounded-xl p-5 space-y-4 max-w-md w-full mx-auto">
+    <div className="bg-autensa-bg-secondary border border-autensa-border rounded-xl p-5 space-y-4 max-w-md w-full mx-auto">
       {/* Header: category + complexity */}
       <div className="flex items-center justify-between">
-        <span className={`text-xs font-medium px-2 py-1 rounded ${categoryColors[idea.category] || 'bg-mc-bg-tertiary text-mc-text-secondary'}`}>
+        <span className={`text-xs font-medium px-2 py-1 rounded ${categoryColors[idea.category] || 'bg-autensa-bg-tertiary text-autensa-text-secondary'}`}>
           {idea.category}
         </span>
         {idea.complexity && (
-          <span className={`text-sm font-bold ${complexityColors[idea.complexity] || 'text-mc-text-secondary'}`}>
+          <span className={`text-sm font-bold ${complexityColors[idea.complexity] || 'text-autensa-text-secondary'}`}>
             {idea.complexity}
           </span>
         )}
       </div>
 
       {/* Title */}
-      <h3 className="text-lg font-semibold text-mc-text leading-tight">{idea.title}</h3>
+      <h3 className="text-lg font-semibold text-autensa-text leading-tight">{idea.title}</h3>
 
       {/* Description */}
-      <p className="text-sm text-mc-text-secondary leading-relaxed">
+      <p className="text-sm text-autensa-text-secondary leading-relaxed">
         {compact && idea.description.length > 200
           ? idea.description.slice(0, 200) + '...'
           : idea.description}
@@ -75,16 +75,16 @@ export function IdeaCard({ idea, onAction, showActions = true, compact = false }
         <div className="flex items-center gap-4 text-sm">
           {idea.impact_score && (
             <div className="flex items-center gap-1.5">
-              <Target className="w-3.5 h-3.5 text-mc-accent-cyan" />
-              <span className="text-mc-text-secondary">Impact:</span>
-              <span className="font-semibold text-mc-text">{idea.impact_score.toFixed(1)}</span>
+              <Target className="w-3.5 h-3.5 text-autensa-accent-cyan" />
+              <span className="text-autensa-text-secondary">Impact:</span>
+              <span className="font-semibold text-autensa-text">{idea.impact_score.toFixed(1)}</span>
             </div>
           )}
           {idea.feasibility_score && (
             <div className="flex items-center gap-1.5">
-              <Code2 className="w-3.5 h-3.5 text-mc-accent-green" />
-              <span className="text-mc-text-secondary">Feasibility:</span>
-              <span className="font-semibold text-mc-text">{idea.feasibility_score.toFixed(1)}</span>
+              <Code2 className="w-3.5 h-3.5 text-autensa-accent-green" />
+              <span className="text-autensa-text-secondary">Feasibility:</span>
+              <span className="font-semibold text-autensa-text">{idea.feasibility_score.toFixed(1)}</span>
             </div>
           )}
         </div>
@@ -106,12 +106,12 @@ export function IdeaCard({ idea, onAction, showActions = true, compact = false }
               approved: 'text-green-400',
               rejected: 'text-red-400',
               maybe: 'text-amber-400',
-              pending: 'text-mc-text-secondary',
+              pending: 'text-autensa-text-secondary',
               building: 'text-blue-400',
               built: 'text-cyan-400',
               shipped: 'text-emerald-400',
             };
-            const statusColor = statusColors[sim.status] || 'text-mc-text-secondary';
+            const statusColor = statusColors[sim.status] || 'text-autensa-text-secondary';
             return (
               <div key={i} className="flex items-start gap-1.5 text-xs bg-violet-500/15 text-violet-300 px-2 py-1.5 rounded border border-violet-500/20">
                 <Copy className="w-3 h-3 mt-0.5 flex-shrink-0" />
@@ -160,8 +160,8 @@ export function IdeaCard({ idea, onAction, showActions = true, compact = false }
 
       {/* Revenue potential */}
       {idea.revenue_potential && (
-        <div className="flex items-start gap-1.5 text-sm text-mc-text-secondary">
-          <DollarSign className="w-3.5 h-3.5 mt-0.5 text-mc-accent-green" />
+        <div className="flex items-start gap-1.5 text-sm text-autensa-text-secondary">
+          <DollarSign className="w-3.5 h-3.5 mt-0.5 text-autensa-accent-green" />
           <span>{idea.revenue_potential}</span>
         </div>
       )}
@@ -170,7 +170,7 @@ export function IdeaCard({ idea, onAction, showActions = true, compact = false }
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {tags.map(tag => (
-            <span key={tag} className="text-xs bg-mc-bg-tertiary text-mc-text-secondary px-2 py-0.5 rounded">
+            <span key={tag} className="text-xs bg-autensa-bg-tertiary text-autensa-text-secondary px-2 py-0.5 rounded">
               {tag}
             </span>
           ))}
@@ -224,17 +224,17 @@ function CollapsibleSection({
   content: string;
 }) {
   return (
-    <div className="border border-mc-border rounded-lg overflow-hidden">
+    <div className="border border-autensa-border rounded-lg overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-mc-text-secondary hover:bg-mc-bg-tertiary transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-autensa-text-secondary hover:bg-autensa-bg-tertiary transition-colors"
       >
         {icon}
         <span className="flex-1 text-left">{label}</span>
         {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
       </button>
       {expanded && (
-        <div className="px-3 pb-3 text-sm text-mc-text-secondary whitespace-pre-wrap">
+        <div className="px-3 pb-3 text-sm text-autensa-text-secondary whitespace-pre-wrap">
           {content}
         </div>
       )}

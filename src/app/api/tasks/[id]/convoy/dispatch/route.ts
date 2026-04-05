@@ -48,8 +48,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const missionControlUrl = getMissionControlUrl();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (process.env.MC_API_TOKEN) {
-      headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
+    if (process.env.AUTENSA_API_TOKEN) {
+      headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
     }
 
     const results: Array<{ taskId: string; success: boolean; error?: string }> = [];

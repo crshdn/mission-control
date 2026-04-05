@@ -1,10 +1,10 @@
 # Task Orchestration Workflow
 
-This guide explains how the master agent should orchestrate sub-agents to properly integrate with Mission Control.
+This guide explains how the master agent should orchestrate sub-agents to properly integrate with Autensa.
 
 ## Overview
 
-When the orchestrator spawns a sub-agent to work on a task, **all activities, deliverables, and session info must be logged** to Mission Control so the UI shows real-time progress.
+When the orchestrator spawns a sub-agent to work on a task, **all activities, deliverables, and session info must be logged** to Autensa so the UI shows real-time progress.
 
 ## Import the Helper
 
@@ -23,7 +23,7 @@ import * as orchestrator from '@/lib/orchestration';
 
 ```typescript
 await orchestrator.onSubAgentSpawned({
-  taskId: 'task-abc123',                           // From Mission Control task
+  taskId: 'task-abc123',                           // From Autensa task
   sessionId: 'agent:main:subagent:xyz789',         // Sub-agent's OpenClaw session ID
   agentName: 'fix-mission-control-integration',    // Descriptive name
   description: 'Fix real-time updates and logging', // Optional details
@@ -210,7 +210,7 @@ await orchestrator.onSubAgentSpawned({
   taskId: task.id,
   sessionId: sessionId,
   agentName: 'fix-integration',
-  description: 'Fix Mission Control integration'
+  description: 'Fix Autensa integration'
 });
 
 // 3. Monitor and log progress
@@ -241,4 +241,4 @@ if (hasDeliverables) {
 
 ---
 
-**Remember:** Every sub-agent action should be visible in Mission Control. If it's not logged, it didn't happen!
+**Remember:** Every sub-agent action should be visible in Autensa. If it's not logged, it didn't happen!

@@ -160,8 +160,8 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
     
     const missionControlUrl = getMissionControlUrl();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (process.env.MC_API_TOKEN) {
-      headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
+    if (process.env.AUTENSA_API_TOKEN) {
+      headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
     }
 
     try {
@@ -249,8 +249,8 @@ export async function nudgeAgent(agentId: string): Promise<{ success: boolean; e
   // Re-dispatch via API
   const missionControlUrl = getMissionControlUrl();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (process.env.MC_API_TOKEN) {
-    headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
+  if (process.env.AUTENSA_API_TOKEN) {
+    headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
   }
 
   try {

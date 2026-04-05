@@ -139,13 +139,13 @@ export function MentionInput({
     <div className="relative">
       {/* Mention Dropdown */}
       {showMentions && filteredAgents.length > 0 && (
-        <div className="absolute bottom-full left-0 right-0 mb-1 bg-mc-bg-secondary border border-mc-border rounded-lg shadow-xl max-h-[200px] overflow-y-auto z-10">
+        <div className="absolute bottom-full left-0 right-0 mb-1 bg-autensa-bg-secondary border border-autensa-border rounded-lg shadow-xl max-h-[200px] overflow-y-auto z-10">
           {filteredAgents.map((agent, i) => (
             <button
               key={agent.id}
               onClick={() => insertMention(agent)}
-              className={`w-full px-3 py-2 flex items-center gap-2 text-left text-xs hover:bg-mc-bg-tertiary transition-colors ${
-                i === selectedIndex ? 'bg-mc-bg-tertiary' : ''
+              className={`w-full px-3 py-2 flex items-center gap-2 text-left text-xs hover:bg-autensa-bg-tertiary transition-colors ${
+                i === selectedIndex ? 'bg-autensa-bg-tertiary' : ''
               }`}
             >
               <span className="text-base">{agent.avatar_emoji}</span>
@@ -153,7 +153,7 @@ export function MentionInput({
                 <div className="flex items-center gap-1.5">
                   <span className="font-medium">{agent.name}</span>
                   {agent.is_assigned && (
-                    <span className="text-[9px] px-1 py-0.5 bg-mc-accent/20 text-mc-accent rounded">assigned</span>
+                    <span className="text-[9px] px-1 py-0.5 bg-autensa-accent/20 text-autensa-accent rounded">assigned</span>
                   )}
                   {agent.is_convoy_member && (
                     <span className="text-[9px] px-1 py-0.5 bg-cyan-500/20 text-cyan-400 rounded">convoy</span>
@@ -162,7 +162,7 @@ export function MentionInput({
                     <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
                   )}
                 </div>
-                <span className="text-mc-text-secondary truncate block">{agent.role}</span>
+                <span className="text-autensa-text-secondary truncate block">{agent.role}</span>
               </div>
             </button>
           ))}
@@ -176,13 +176,13 @@ export function MentionInput({
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="flex-1 bg-mc-bg border border-mc-border rounded-lg px-2.5 py-1.5 text-xs text-mc-text resize-none focus:outline-none focus:border-mc-accent/60"
+          className="flex-1 bg-autensa-bg border border-autensa-border rounded-lg px-2.5 py-1.5 text-xs text-autensa-text resize-none focus:outline-none focus:border-autensa-accent/60"
           rows={2}
         />
         <button
           onClick={onSend}
           disabled={!value.trim() || sending}
-          className="self-end min-h-9 min-w-9 flex items-center justify-center rounded-lg bg-mc-accent text-white hover:bg-mc-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="self-end min-h-9 min-w-9 flex items-center justify-center rounded-lg bg-autensa-accent text-white hover:bg-autensa-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {sending ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
         </button>

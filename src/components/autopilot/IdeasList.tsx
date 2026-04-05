@@ -41,7 +41,7 @@ export function IdeasList({ productId }: IdeasListProps) {
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
-          className="bg-mc-bg-tertiary border border-mc-border rounded-lg px-3 py-2 text-sm text-mc-text"
+          className="bg-autensa-bg-tertiary border border-autensa-border rounded-lg px-3 py-2 text-sm text-autensa-text"
         >
           {statuses.map(s => (
             <option key={s} value={s}>{s || 'All statuses'}</option>
@@ -50,19 +50,19 @@ export function IdeasList({ productId }: IdeasListProps) {
         <select
           value={categoryFilter}
           onChange={e => setCategoryFilter(e.target.value)}
-          className="bg-mc-bg-tertiary border border-mc-border rounded-lg px-3 py-2 text-sm text-mc-text"
+          className="bg-autensa-bg-tertiary border border-autensa-border rounded-lg px-3 py-2 text-sm text-autensa-text"
         >
           {categories.map(c => (
             <option key={c} value={c}>{c || 'All categories'}</option>
           ))}
         </select>
-        <span className="text-sm text-mc-text-secondary self-center">{ideas.length} ideas</span>
+        <span className="text-sm text-autensa-text-secondary self-center">{ideas.length} ideas</span>
       </div>
 
       {loading ? (
-        <div className="text-mc-text-secondary animate-pulse py-8 text-center">Loading ideas...</div>
+        <div className="text-autensa-text-secondary animate-pulse py-8 text-center">Loading ideas...</div>
       ) : ideas.length === 0 ? (
-        <div className="text-center py-12 text-mc-text-secondary">No ideas found</div>
+        <div className="text-center py-12 text-autensa-text-secondary">No ideas found</div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {ideas.map(idea => (

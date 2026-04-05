@@ -57,7 +57,7 @@ Expected: every command and linked path matches an existing repository file.
 - [ ] **Step 1: Draft the minimal entrypoint**
 
 ```md
-# Mission Control Agent Notes
+# Autensa Agent Notes
 
 Start with `.github/copilot-instructions.md` for workspace-wide guidance.
 ```

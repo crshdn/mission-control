@@ -1,4 +1,4 @@
-# Mission Control Integration Fixes
+# Autensa Integration Fixes
 
 **Date:** January 31, 2025  
 **Status:** ✅ COMPLETE
@@ -162,7 +162,7 @@ All criteria met:
 
 ## Usage for the orchestrator
 
-When spawning a sub-agent to work on Mission Control tasks:
+When spawning a sub-agent to work on Autensa tasks:
 
 ```typescript
 import * as orchestrator from '@/lib/orchestration';

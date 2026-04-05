@@ -2,7 +2,7 @@ import { logger } from '@/lib/logger';
 /**
  * Configuration Management
  * 
- * Handles user-configurable settings for Mission Control.
+ * Handles user-configurable settings for Autensa.
  * Settings are stored in localStorage for client-side access.
  * 
  * NEVER commit hardcoded IPs, paths, or sensitive data!
@@ -13,7 +13,7 @@ export interface MissionControlConfig {
   workspaceBasePath: string; // e.g., ~/Documents/Shared
   projectsPath: string; // e.g., ${workspaceBasePath}/projects
   
-  // Mission Control API URL (for orchestration)
+  // Autensa API URL (for orchestration)
   missionControlUrl: string; // Auto-detected or manually set
   
   // OpenClaw Gateway settings (these come from .env on server)
@@ -98,7 +98,7 @@ export function updateConfig(updates: Partial<MissionControlConfig>): void {
     try {
       new URL(updates.missionControlUrl);
     } catch {
-      throw new Error('Invalid Mission Control URL');
+      throw new Error('Invalid Autensa URL');
     }
   }
 
@@ -135,7 +135,7 @@ export function expandPath(path: string): string {
 }
 
 /**
- * Get Mission Control URL for API calls
+ * Get Autensa URL for API calls
  * Used by orchestration module and other server-side modules
  */
 export function getMissionControlUrl(): string {

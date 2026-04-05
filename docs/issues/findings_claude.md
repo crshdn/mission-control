@@ -43,7 +43,7 @@ The `.env.local` file contains hardcoded credentials. User indicated this is not
 ### 2. No API Authentication Middleware
 **Files:** `src/app/api/**/*.ts`
 
-Despite the `MC_API_TOKEN` environment variable existing, most API routes do not validate it.
+Despite the `AUTENSA_API_TOKEN` environment variable existing, most API routes do not validate it.
 
 ### 3. SQL Injection via String Interpolation
 **File:** `src/lib/workspace-isolation.ts` (lines 178-180)

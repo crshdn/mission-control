@@ -280,7 +280,7 @@ export function getPendingCount(productId: string): number {
 }
 
 /**
- * Create a Mission Control task from an approved idea.
+ * Create a Autensa task from an approved idea.
  */
 function createTaskFromIdea(idea: Idea, opts?: { urgent?: boolean; notes?: string }): Task {
   const taskId = uuidv4();
@@ -359,8 +359,8 @@ function createTaskFromIdea(idea: Idea, opts?: { urgent?: boolean; notes?: strin
 function queueDispatch(taskId: string): void {
   const url = getMissionControlUrl();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (process.env.MC_API_TOKEN) {
-    headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
+  if (process.env.AUTENSA_API_TOKEN) {
+    headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
   }
   fetch(`${url}/api/tasks/${taskId}/dispatch`, { method: 'POST', headers, signal: AbortSignal.timeout(30_000) })
     .then(res => { if (!res.ok) logger.error('[AutoDispatch] Failed:', res.status); })

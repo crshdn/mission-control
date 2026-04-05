@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
         } catch (error) {
           // Client disconnected
           clearInterval(keepAliveInterval);
+          unregisterClient(controller);
         }
       }, SSE_KEEPALIVE_INTERVAL_MS);
 

@@ -1,13 +1,13 @@
 import { logger } from '@/lib/logger';
 /**
  * Debug Logging Utility
- * Enable with localStorage.setItem('MC_DEBUG', 'true')
+ * Enable with localStorage.setItem('AUTENSA_DEBUG', 'true')
  * Or run mcDebug.enable() in browser console
  */
 
 const isDebugEnabled = (): boolean => {
   if (typeof window === 'undefined') return true; // Always log server-side
-  return localStorage.getItem('MC_DEBUG') === 'true';
+  return localStorage.getItem('AUTENSA_DEBUG') === 'true';
 };
 
 export const debug = {
@@ -41,14 +41,14 @@ export const debug = {
 // Enable debug mode helper
 export const enableDebug = () => {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('MC_DEBUG', 'true');
+    localStorage.setItem('AUTENSA_DEBUG', 'true');
     logger.info('[DEBUG] Debug mode enabled. Refresh to see all logs.');
   }
 };
 
 export const disableDebug = () => {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('MC_DEBUG');
+    localStorage.removeItem('AUTENSA_DEBUG');
     logger.info('[DEBUG] Debug mode disabled.');
   }
 };

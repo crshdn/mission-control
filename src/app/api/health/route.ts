@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
  * GET /api/health
  *
  * Unauthenticated: returns summary {status, uptime_seconds, version}
- * Authenticated (Bearer MC_API_TOKEN) or same-origin: returns full detail payload.
+ * Authenticated (Bearer AUTENSA_API_TOKEN) or same-origin: returns full detail payload.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
  * bypasses the global auth middleware.
  */
 function isAuthenticated(request: NextRequest): boolean {
-  const token = process.env.MC_API_TOKEN;
+  const token = process.env.AUTENSA_API_TOKEN;
 
   // If no token is configured, treat all requests as authenticated (dev mode)
   if (!token) return true;

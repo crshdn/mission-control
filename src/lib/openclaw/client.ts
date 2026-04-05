@@ -57,32 +57,34 @@ export class OpenClawClient extends EventEmitter {
   private token: string;
   private deviceIdentity: { deviceId: string; publicKeyPem: string; privateKeyPem: string } | null = null;
   private messageHandlers = new Set<(event: MessageEvent) => void>(); // Track all message handlers for cleanup
-  private readonly MAX_PROCESSED_EVENTS = 1000; // Limit the size of the processed events cache
-  private readonly CLEANUP_THRESHOLD = 100; // Number of entries to remove when limit exceeded
-  private readonly CACHE_ENTRY_TTL_MS = 60 * 60 * 1000; // 1 hour TTL for cache entries
+  private readonly MAX_PROCESSED_EVENTS = 500; // Limit the size of the processed events cache
+  private readonly CLEANUP_THRESHOLD = 50; // Number of entries to remove when limit exceeded
+  private readonly CACHE_ENTRY_TTL_MS = 5 * 60 * 1000; // 5 minutes TTL for cache entries
   private readonly PERIODIC_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // Cleanup every 5 minutes
   private periodicCleanupTimer: NodeJS.Timeout | null = null;
 
   /**
-   * Generate a unique event ID using content hashing for proper deduplication.
-   * Uses SHA-256 hash of event type, sequence/run ID, and payload content.
-   * This prevents collision from Date.now() and ensures events with same
-   * structure but different content are not incorrectly deduplicated.
+   * Generate a unique event ID using stable identifiers for proper deduplication.
+   * This avoids hashing complex nested payloads to prevent incorrectly ignoring updates.
    */
   private generateEventId(data: any): string {
-    // Create a canonical string representation of the event
-    const canonical = JSON.stringify({
-      type: data.type,
-      seq: data.seq,
-      runId: data.payload?.runId,
-      stream: data.payload?.stream,
-      event: data.event,
-      // Include hash of payload for content-aware deduplication
-      payloadHash: data.payload ? createHash('sha256').update(JSON.stringify(data.payload)).digest('hex').slice(0, 16) : null
-    });
+    // If gateway provided an explicit event ID, use it directly
+    if (data.id && typeof data.id === 'string' && data.id.startsWith('evt_')) {
+      return data.id;
+    }
+
+    // Create a canonical string representation using stable identifiers
+    const canonical = [
+      data.type,
+      data.event,
+      data.seq,
+      data.payload?.runId,
+      data.payload?.stream,
+      data.timestamp || ''
+    ].filter(Boolean).join('|');
 
     // Hash the canonical representation for a fixed-length ID
-    return createHash('sha256').update(canonical).digest('hex').slice(0, 32);
+    return createHash('sha256').update(canonical || Date.now().toString()).digest('hex').slice(0, 32);
   }
 
   /**

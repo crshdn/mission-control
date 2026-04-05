@@ -1,4 +1,4 @@
-// Core types for Mission Control
+// Core types for Autensa
 
 export type AgentStatus = 'standby' | 'working' | 'offline';
 

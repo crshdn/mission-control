@@ -1,7 +1,7 @@
 # Real-Time Integration Specification
 
 ## Goal
-Full transparency and real-time updates for Mission Control task orchestration.
+Full transparency and real-time updates for Autensa task orchestration.
 
 ## Requirements
 
@@ -177,7 +177,7 @@ await fetch(`http://localhost:4000/api/tasks/${task.id}`, {
 // 4. Spawn sub-agent
 const { childSessionKey } = await spawnSubAgent(task);
 
-// 5. Register sub-agent in Mission Control
+// 5. Register sub-agent in Autensa
 await fetch(`http://localhost:4000/api/tasks/${task.id}/subagent`, {
   method: 'POST',
   body: JSON.stringify({

@@ -106,10 +106,10 @@ export default function HealthDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-mc-bg flex items-center justify-center">
+      <div className="min-h-screen bg-autensa-bg flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl mb-4 animate-pulse">💊</div>
-          <p className="text-mc-text-secondary">Loading health data...</p>
+          <p className="text-autensa-text-secondary">Loading health data...</p>
         </div>
       </div>
     );
@@ -117,10 +117,10 @@ export default function HealthDashboardPage() {
 
   if (!health || !product) {
     return (
-      <div className="min-h-screen bg-mc-bg flex items-center justify-center">
+      <div className="min-h-screen bg-autensa-bg flex items-center justify-center">
         <div className="text-center">
-          <p className="text-mc-text-secondary">Product not found</p>
-          <Link href="/autopilot" className="text-mc-accent hover:underline mt-2 inline-block">
+          <p className="text-autensa-text-secondary">Product not found</p>
+          <Link href="/autopilot" className="text-autensa-accent hover:underline mt-2 inline-block">
             ← Back to products
           </Link>
         </div>
@@ -133,22 +133,22 @@ export default function HealthDashboardPage() {
     overallScore >= 70 ? 'text-green-400' : overallScore >= 40 ? 'text-yellow-400' : 'text-red-400';
 
   return (
-    <div className="min-h-screen bg-mc-bg">
+    <div className="min-h-screen bg-autensa-bg">
       {/* Header */}
-      <header className="border-b border-mc-border bg-mc-bg-secondary sticky top-0 z-10">
+      <header className="border-b border-autensa-border bg-autensa-bg-secondary sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => router.push(`/autopilot/${productId}`)}
-                className="p-2 rounded-lg hover:bg-mc-bg-tertiary text-mc-text-secondary hover:text-mc-text transition-colors"
+                className="p-2 rounded-lg hover:bg-autensa-bg-tertiary text-autensa-text-secondary hover:text-autensa-text transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <span className="text-2xl">{product.icon}</span>
               <div>
-                <h1 className="text-lg font-bold text-mc-text">{product.name}</h1>
-                <p className="text-xs text-mc-text-secondary">Health Dashboard</p>
+                <h1 className="text-lg font-bold text-autensa-text">{product.name}</h1>
+                <p className="text-xs text-autensa-text-secondary">Health Dashboard</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -158,26 +158,26 @@ export default function HealthDashboardPage() {
                   fetchHealth();
                 }}
                 disabled={refreshing}
-                className="min-h-9 px-3 rounded-lg border border-mc-border bg-mc-bg text-mc-text-secondary hover:text-mc-text hover:bg-mc-bg-tertiary flex items-center gap-2 text-sm"
+                className="min-h-9 px-3 rounded-lg border border-autensa-border bg-autensa-bg text-autensa-text-secondary hover:text-autensa-text hover:bg-autensa-bg-tertiary flex items-center gap-2 text-sm"
               >
                 <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                 Refresh
               </button>
               <div className="relative group">
-                <button className="min-h-9 px-3 rounded-lg border border-mc-border bg-mc-bg text-mc-text-secondary hover:text-mc-text hover:bg-mc-bg-tertiary flex items-center gap-2 text-sm">
+                <button className="min-h-9 px-3 rounded-lg border border-autensa-border bg-autensa-bg text-autensa-text-secondary hover:text-autensa-text hover:bg-autensa-bg-tertiary flex items-center gap-2 text-sm">
                   <Download className="w-4 h-4" />
                   Export
                 </button>
-                <div className="absolute right-0 top-full mt-1 bg-mc-bg-secondary border border-mc-border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
+                <div className="absolute right-0 top-full mt-1 bg-autensa-bg-secondary border border-autensa-border rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
                   <button
                     onClick={() => handleExport('csv')}
-                    className="block w-full text-left px-4 py-2 text-sm text-mc-text hover:bg-mc-bg-tertiary rounded-t-lg"
+                    className="block w-full text-left px-4 py-2 text-sm text-autensa-text hover:bg-autensa-bg-tertiary rounded-t-lg"
                   >
                     Export CSV
                   </button>
                   <button
                     onClick={() => handleExport('json')}
-                    className="block w-full text-left px-4 py-2 text-sm text-mc-text hover:bg-mc-bg-tertiary rounded-b-lg"
+                    className="block w-full text-left px-4 py-2 text-sm text-autensa-text hover:bg-autensa-bg-tertiary rounded-b-lg"
                   >
                     Export JSON
                   </button>
@@ -190,15 +190,15 @@ export default function HealthDashboardPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         {/* Overall Score Card */}
-        <div className="bg-mc-bg-secondary border border-mc-border rounded-xl p-6">
+        <div className="bg-autensa-bg-secondary border border-autensa-border rounded-xl p-6">
           <div className="flex items-center gap-6">
             <HealthBadge score={overallScore} size={80} />
             <div>
-              <h2 className="text-2xl font-bold text-mc-text">
+              <h2 className="text-2xl font-bold text-autensa-text">
                 Overall Health: <span className={scoreColor}>{overallScore}</span>
-                <span className="text-mc-text-secondary text-lg">/100</span>
+                <span className="text-autensa-text-secondary text-lg">/100</span>
               </h2>
-              <p className="text-sm text-mc-text-secondary mt-1">
+              <p className="text-sm text-autensa-text-secondary mt-1">
                 Composite score based on {health.components.filter((c) => c.effectiveWeight > 0).length} active components
               </p>
             </div>
@@ -207,7 +207,7 @@ export default function HealthDashboardPage() {
           {/* Overall trend chart */}
           {health.history.length > 0 && (
             <div className="mt-6">
-              <h3 className="text-sm font-medium text-mc-text-secondary uppercase tracking-wider mb-3">
+              <h3 className="text-sm font-medium text-autensa-text-secondary uppercase tracking-wider mb-3">
                 30-Day Trend
               </h3>
               <HealthChart
@@ -231,10 +231,10 @@ export default function HealthDashboardPage() {
             return (
               <div
                 key={comp.name}
-                className={`bg-mc-bg-secondary border rounded-xl p-5 transition-all ${
+                className={`bg-autensa-bg-secondary border rounded-xl p-5 transition-all ${
                   isDisabled
-                    ? 'border-mc-border/50 opacity-60'
-                    : 'border-mc-border hover:border-mc-border/80'
+                    ? 'border-autensa-border/50 opacity-60'
+                    : 'border-autensa-border hover:border-autensa-border/80'
                 }`}
               >
                 <div className="flex items-center justify-between mb-4">
@@ -246,15 +246,15 @@ export default function HealthDashboardPage() {
                       <Icon className="w-4 h-4" style={{ color: config?.color }} />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-mc-text">{comp.label}</h3>
-                      <p className="text-xs text-mc-text-secondary">{comp.description}</p>
+                      <h3 className="text-sm font-semibold text-autensa-text">{comp.label}</h3>
+                      <p className="text-xs text-autensa-text-secondary">{comp.description}</p>
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-xl font-bold" style={{ color: config?.color }}>
                       {comp.score}
                     </div>
-                    <div className="text-[10px] text-mc-text-secondary">
+                    <div className="text-[10px] text-autensa-text-secondary">
                       {isDisabled ? 'DISABLED' : `${Math.round(comp.effectiveWeight)}% weight`}
                     </div>
                   </div>
@@ -271,7 +271,7 @@ export default function HealthDashboardPage() {
                 )}
 
                 {health.history.length === 0 && (
-                  <div className="h-[220px] flex items-center justify-center text-mc-text-secondary text-sm">
+                  <div className="h-[220px] flex items-center justify-center text-autensa-text-secondary text-sm">
                     No historical data yet — scores are snapshotted daily
                   </div>
                 )}
@@ -281,8 +281,8 @@ export default function HealthDashboardPage() {
         </div>
 
         {/* Weight Configuration Summary */}
-        <div className="bg-mc-bg-secondary border border-mc-border rounded-xl p-5">
-          <h3 className="text-sm font-medium text-mc-text-secondary uppercase tracking-wider mb-4">
+        <div className="bg-autensa-bg-secondary border border-autensa-border rounded-xl p-5">
+          <h3 className="text-sm font-medium text-autensa-text-secondary uppercase tracking-wider mb-4">
             Weight Configuration
           </h3>
           <div className="grid grid-cols-5 gap-3">
@@ -293,7 +293,7 @@ export default function HealthDashboardPage() {
                 <div
                   key={comp.name}
                   className={`text-center p-3 rounded-lg ${
-                    isDisabled ? 'bg-mc-bg/50' : 'bg-mc-bg'
+                    isDisabled ? 'bg-autensa-bg/50' : 'bg-autensa-bg'
                   }`}
                 >
                   <div
@@ -302,7 +302,7 @@ export default function HealthDashboardPage() {
                   >
                     {comp.weight}%
                   </div>
-                  <div className="text-xs text-mc-text-secondary mt-1">{comp.label}</div>
+                  <div className="text-xs text-autensa-text-secondary mt-1">{comp.label}</div>
                   {isDisabled && (
                     <div className="text-[10px] text-red-400 mt-0.5">disabled</div>
                   )}
@@ -310,11 +310,11 @@ export default function HealthDashboardPage() {
               );
             })}
           </div>
-          <p className="text-xs text-mc-text-secondary mt-3">
+          <p className="text-xs text-autensa-text-secondary mt-3">
             Adjust weights in{' '}
             <Link
               href={`/autopilot/${productId}`}
-              className="text-mc-accent hover:underline"
+              className="text-autensa-accent hover:underline"
             >
               Product Settings
             </Link>

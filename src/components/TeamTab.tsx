@@ -173,7 +173,7 @@ export function TeamTab({ taskId, workspaceId }: TeamTabProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-5 h-5 text-mc-text-secondary animate-spin" />
+        <RefreshCw className="w-5 h-5 text-autensa-text-secondary animate-spin" />
       </div>
     );
   }
@@ -204,7 +204,7 @@ export function TeamTab({ taskId, workspaceId }: TeamTabProps) {
         <select
           value={selectedWorkflow}
           onChange={(e) => handleWorkflowChange(e.target.value)}
-          className="w-full min-h-11 bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
+          className="w-full min-h-11 bg-autensa-bg border border-autensa-border rounded px-3 py-2 text-sm focus:outline-none focus:border-autensa-accent"
         >
           <option value="">No workflow (single agent)</option>
           {workflows.map(wf => (
@@ -224,14 +224,14 @@ export function TeamTab({ taskId, workspaceId }: TeamTabProps) {
               <div key={stage.id} className="flex items-center gap-1 flex-shrink-0">
                 <div className={`px-3 py-1.5 rounded-full text-xs font-medium ${
                   stage.role
-                    ? 'bg-mc-accent/10 border border-mc-accent/30 text-mc-accent'
-                    : 'bg-mc-bg-tertiary border border-mc-border text-mc-text-secondary'
+                    ? 'bg-autensa-accent/10 border border-autensa-accent/30 text-autensa-accent'
+                    : 'bg-autensa-bg-tertiary border border-autensa-border text-autensa-text-secondary'
                 }`}>
                   {stage.label}
                   {stage.role && <span className="ml-1 opacity-60">({stage.role})</span>}
                 </div>
                 {i < currentWorkflow.stages.length - 1 && (
-                  <span className="text-mc-text-secondary/40 text-xs">→</span>
+                  <span className="text-autensa-text-secondary/40 text-xs">→</span>
                 )}
               </div>
             ))}
@@ -265,13 +265,13 @@ export function TeamTab({ taskId, workspaceId }: TeamTabProps) {
             const assignment = roles.find(r => normalizeRole(r.role) === normalizeRole(role));
             return (
               <div key={role} className="flex items-center gap-3">
-                <div className="w-24 text-xs font-medium text-mc-text-secondary capitalize flex-shrink-0">
+                <div className="w-24 text-xs font-medium text-autensa-text-secondary capitalize flex-shrink-0">
                   {role}
                 </div>
                 <select
                   value={assignment?.agent_id || ''}
                   onChange={(e) => handleRoleAgentChange(role, e.target.value)}
-                  className="flex-1 min-h-11 bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
+                  className="flex-1 min-h-11 bg-autensa-bg border border-autensa-border rounded px-3 py-2 text-sm focus:outline-none focus:border-autensa-accent"
                 >
                   <option value="">Unassigned</option>
                   {agents.map(agent => (
@@ -287,13 +287,13 @@ export function TeamTab({ taskId, workspaceId }: TeamTabProps) {
           {/* Custom role slots (not from workflow) - role names are catalog-driven (not editable text) */}
           {roles.filter(r => !uniqueRoles.includes(normalizeRole(r.role)) && r.role).map((r, i) => (
             <div key={`custom-${i}`} className="flex items-center gap-3">
-              <div className="w-24 text-xs font-medium text-mc-text-secondary capitalize flex-shrink-0">
+              <div className="w-24 text-xs font-medium text-autensa-text-secondary capitalize flex-shrink-0">
                 {normalizeRole(r.role)}
               </div>
               <select
                 value={r.agent_id}
                 onChange={(e) => handleRoleAgentChange(r.role, e.target.value)}
-                className="flex-1 min-h-11 bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
+                className="flex-1 min-h-11 bg-autensa-bg border border-autensa-border rounded px-3 py-2 text-sm focus:outline-none focus:border-autensa-accent"
               >
                 <option value="">Unassigned</option>
                 {agents.map(agent => (
@@ -308,7 +308,7 @@ export function TeamTab({ taskId, workspaceId }: TeamTabProps) {
           <button
             onClick={addCustomRole}
             disabled={addableRoles.length === 0}
-            className="text-xs text-mc-accent hover:text-mc-accent/80 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="text-xs text-autensa-accent hover:text-autensa-accent/80 disabled:opacity-40 disabled:cursor-not-allowed"
             title={addableRoles.length === 0 ? 'No additional role types available to add' : 'Add custom role from agent catalog'}
           >
             + Add custom role
@@ -334,7 +334,7 @@ export function TeamTab({ taskId, workspaceId }: TeamTabProps) {
       <button
         onClick={handleSave}
         disabled={saving}
-        className="w-full min-h-11 flex items-center justify-center gap-2 bg-mc-accent text-mc-bg rounded text-sm font-medium hover:bg-mc-accent/90 disabled:opacity-50"
+        className="w-full min-h-11 flex items-center justify-center gap-2 bg-autensa-accent text-autensa-bg rounded text-sm font-medium hover:bg-autensa-accent/90 disabled:opacity-50"
       >
         <Save className="w-4 h-4" />
         {saving ? 'Saving...' : 'Save Team'}

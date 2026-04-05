@@ -217,8 +217,8 @@ export async function handleStageTransition(
   const missionControlUrl = getMissionControlUrl();
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (process.env.MC_API_TOKEN) {
-      headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
+    if (process.env.AUTENSA_API_TOKEN) {
+      headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
     }
 
     const dispatchRes = await fetch(`${missionControlUrl}/api/tasks/${taskId}/dispatch`, {

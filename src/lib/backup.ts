@@ -3,9 +3,9 @@ import { logger } from '@/lib/logger';
  * Database Backup Service
  * 
  * Handles on-demand backup creation, listing, restoration, and optional S3 upload
- * for the Mission Control SQLite database.
+ * for the Autensa SQLite database.
  * 
- * Backup naming convention: mc-backup-{ISO-timestamp}-v{migration-version}.db
+ * Backup naming convention: autensa-backup-{ISO-timestamp}-v{migration-version}.db
  * Timestamps use dashes instead of colons for filesystem safety.
  * 
  * Safety: restore always creates a pre-restore safety backup first.
@@ -63,7 +63,7 @@ function ensureBackupDir(): string {
 // Backup filename parsing
 // ---------------------------------------------------------------------------
 
-const BACKUP_PATTERN = /^mc-backup-(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})-v(\d+)\.db$/;
+const BACKUP_PATTERN = /^autensa-backup-(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})-v(\d+)\.db$/;
 
 function parseBackupFilename(filename: string): { timestamp: string; version: string } | null {
   const match = filename.match(BACKUP_PATTERN);
@@ -96,7 +96,7 @@ export async function createBackup(): Promise<BackupResult> {
 
   // 3. Build filename
   const timestamp = formatTimestamp(new Date());
-  const filename = `mc-backup-${timestamp}-v${currentVersion}.db`;
+  const filename = `autensa-backup-${timestamp}-v${currentVersion}.db`;
   const filepath = path.join(backupDir, filename);
 
   // 4. Copy database file

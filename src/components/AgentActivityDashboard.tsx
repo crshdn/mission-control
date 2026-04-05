@@ -191,33 +191,33 @@ export function AgentActivityDashboard({ workspace }: AgentActivityDashboardProp
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-mc-bg flex items-center justify-center">
+      <div className="min-h-screen bg-autensa-bg flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl mb-3 animate-pulse">🦞</div>
-          <p className="text-mc-text-secondary">Loading activity dashboard...</p>
+          <p className="text-autensa-text-secondary">Loading activity dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-mc-bg pb-[calc(1rem+env(safe-area-inset-bottom))]">
-      <header className="border-b border-mc-border bg-mc-bg-secondary px-4 sm:px-6 py-3">
+    <div className="min-h-screen bg-autensa-bg pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <header className="border-b border-autensa-border bg-autensa-bg-secondary px-4 sm:px-6 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <Link href={workspace ? `/workspace/${workspace.slug}` : '/'} className="min-h-11 min-w-11 px-3 rounded-lg border border-mc-border bg-mc-bg flex items-center justify-center hover:bg-mc-bg-tertiary">
+            <Link href={workspace ? `/workspace/${workspace.slug}` : '/'} className="min-h-11 min-w-11 px-3 rounded-lg border border-autensa-border bg-autensa-bg flex items-center justify-center hover:bg-autensa-bg-tertiary">
               <ArrowLeft className="w-4 h-4" />
             </Link>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-semibold truncate">Agent Activity Dashboard</h1>
-              <p className="text-xs sm:text-sm text-mc-text-secondary truncate">
+              <p className="text-xs sm:text-sm text-autensa-text-secondary truncate">
                 {workspace ? `${workspace.icon} ${workspace.name}` : 'All workspaces'} · {sseConnected ? 'Live (SSE)' : 'Polling fallback'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className={`px-2.5 min-h-11 rounded-lg border text-xs flex items-center gap-2 ${sseConnected ? 'text-mc-accent-green border-mc-accent-green/40 bg-mc-accent-green/10' : 'text-mc-accent-yellow border-mc-accent-yellow/40 bg-mc-accent-yellow/10'}`}>
+            <div className={`px-2.5 min-h-11 rounded-lg border text-xs flex items-center gap-2 ${sseConnected ? 'text-autensa-accent-green border-autensa-accent-green/40 bg-autensa-accent-green/10' : 'text-autensa-accent-yellow border-autensa-accent-yellow/40 bg-autensa-accent-yellow/10'}`}>
               <RefreshCw className="w-3.5 h-3.5" />
               {sseConnected ? 'LIVE' : 'FALLBACK'}
             </div>
@@ -233,23 +233,23 @@ export function AgentActivityDashboard({ workspace }: AgentActivityDashboardProp
           <MetricCard label="Active Tasks" value={String(activeTasks.length)} />
         </section>
 
-        <section className="bg-mc-bg-secondary border border-mc-border rounded-xl p-4">
+        <section className="bg-autensa-bg-secondary border border-autensa-border rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Activity className="w-4 h-4 text-mc-accent" />
+            <Activity className="w-4 h-4 text-autensa-accent" />
             <h2 className="font-semibold">Now Working</h2>
           </div>
           {nowWorking.length === 0 ? (
-            <div className="text-sm text-mc-text-secondary">No agents currently marked as working.</div>
+            <div className="text-sm text-autensa-text-secondary">No agents currently marked as working.</div>
           ) : (
             <div className="space-y-2">
               {nowWorking.map(({ agent, currentTask }) => (
-                <div key={agent.id} className="border border-mc-border rounded-lg p-3 bg-mc-bg min-h-11">
+                <div key={agent.id} className="border border-autensa-border rounded-lg p-3 bg-autensa-bg min-h-11">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <div className="font-medium text-sm truncate">{agent.avatar_emoji} {agent.name}</div>
-                      <div className="text-xs text-mc-text-secondary truncate">{currentTask?.title || 'No active task linked'}</div>
+                      <div className="text-xs text-autensa-text-secondary truncate">{currentTask?.title || 'No active task linked'}</div>
                     </div>
-                    <div className="text-xs text-mc-text-secondary whitespace-nowrap flex items-center gap-1">
+                    <div className="text-xs text-autensa-text-secondary whitespace-nowrap flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {formatDistanceToNow(new Date(currentTask?.updated_at || agent.updated_at), { addSuffix: true })}
                     </div>
@@ -262,12 +262,12 @@ export function AgentActivityDashboard({ workspace }: AgentActivityDashboardProp
 
         <section>
           <div className="flex flex-wrap items-center gap-2 mb-3">
-            <Filter className="w-4 h-4 text-mc-text-secondary" />
+            <Filter className="w-4 h-4 text-autensa-text-secondary" />
             {(['all', 'working', 'blocked', 'idle'] as ActivityFilter[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setFilter(tab)}
-                className={`min-h-11 px-4 rounded-full border text-sm capitalize ${filter === tab ? 'bg-mc-accent text-mc-bg border-mc-accent' : 'bg-mc-bg-secondary text-mc-text-secondary border-mc-border'}`}
+                className={`min-h-11 px-4 rounded-full border text-sm capitalize ${filter === tab ? 'bg-autensa-accent text-autensa-bg border-autensa-accent' : 'bg-autensa-bg-secondary text-autensa-text-secondary border-autensa-border'}`}
               >
                 {tab}
               </button>
@@ -280,36 +280,36 @@ export function AgentActivityDashboard({ workspace }: AgentActivityDashboardProp
               const isBlocked = blockedAgentIds.has(agent.id);
 
               return (
-                <article key={agent.id} className="bg-mc-bg-secondary border border-mc-border rounded-xl p-4">
+                <article key={agent.id} className="bg-autensa-bg-secondary border border-autensa-border rounded-xl p-4">
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="min-w-0">
                       <div className="font-semibold truncate">{agent.avatar_emoji} {agent.name}</div>
-                      <div className="text-xs text-mc-text-secondary truncate">{agent.role}</div>
+                      <div className="text-xs text-autensa-text-secondary truncate">{agent.role}</div>
                     </div>
                     <div className="text-right shrink-0">
                       <span className={`text-xs px-2 py-1 rounded uppercase ${agent.status === 'working' ? 'status-working' : agent.status === 'offline' ? 'status-offline' : 'status-standby'}`}>
                         {agent.status}
                       </span>
-                      <div className="text-[11px] text-mc-text-secondary mt-1">Updated {formatDistanceToNow(new Date(agent.updated_at), { addSuffix: true })}</div>
+                      <div className="text-[11px] text-autensa-text-secondary mt-1">Updated {formatDistanceToNow(new Date(agent.updated_at), { addSuffix: true })}</div>
                     </div>
                   </div>
 
                   {isBlocked && (
-                    <div className="mb-3 p-2.5 rounded-lg border border-mc-accent-red/30 bg-mc-accent-red/10 text-mc-accent-red text-xs flex items-center gap-2">
+                    <div className="mb-3 p-2.5 rounded-lg border border-autensa-accent-red/30 bg-autensa-accent-red/10 text-autensa-accent-red text-xs flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4" />
                       Blocked indicator: waiting in testing/review or offline with assigned work
                     </div>
                   )}
 
                   <div className="space-y-2">
-                    <div className="text-xs font-medium uppercase text-mc-text-secondary">Timeline</div>
+                    <div className="text-xs font-medium uppercase text-autensa-text-secondary">Timeline</div>
                     {agentTimeline.length === 0 ? (
-                      <div className="text-xs text-mc-text-secondary">No recent activity for this agent.</div>
+                      <div className="text-xs text-autensa-text-secondary">No recent activity for this agent.</div>
                     ) : (
                       agentTimeline.map((event) => (
-                        <div key={event.id} className="rounded-lg border border-mc-border bg-mc-bg px-3 py-2.5 min-h-11">
+                        <div key={event.id} className="rounded-lg border border-autensa-border bg-autensa-bg px-3 py-2.5 min-h-11">
                           <div className="text-sm leading-snug">{event.message}</div>
-                          <div className="text-[11px] text-mc-text-secondary mt-1">{formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}</div>
+                          <div className="text-[11px] text-autensa-text-secondary mt-1">{formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}</div>
                         </div>
                       ))
                     )}
@@ -326,8 +326,8 @@ export function AgentActivityDashboard({ workspace }: AgentActivityDashboardProp
 
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-mc-bg-secondary border border-mc-border rounded-xl p-3 sm:p-4 min-h-20">
-      <div className="text-[11px] uppercase text-mc-text-secondary">{label}</div>
+    <div className="bg-autensa-bg-secondary border border-autensa-border rounded-xl p-3 sm:p-4 min-h-20">
+      <div className="text-[11px] uppercase text-autensa-text-secondary">{label}</div>
       <div className="text-xl sm:text-2xl font-semibold mt-1">{value}</div>
     </div>
   );

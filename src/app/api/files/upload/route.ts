@@ -3,7 +3,7 @@ import { logger } from '@/lib/logger';
  * File Upload API
  * Accepts file content over HTTP and saves it to the server filesystem.
  * This enables remote agents to create files on
- * the Mission Control server.
+ * the Autensa server.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createProduct, listProducts } from '@/lib/autopilot/products';
 import { CreateProductSchema } from '@/lib/validation';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 5;
 
 export async function GET(request: NextRequest) {
   try {

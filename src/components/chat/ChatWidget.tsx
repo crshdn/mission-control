@@ -101,12 +101,12 @@ export function ChatWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-5 right-5 z-[45] w-14 h-14 bg-mc-accent rounded-full shadow-lg shadow-mc-accent/20 flex items-center justify-center hover:bg-mc-accent/90 transition-all hover:scale-105 group"
+          className="fixed bottom-5 right-5 z-[45] w-14 h-14 bg-autensa-accent rounded-full shadow-lg shadow-autensa-accent/20 flex items-center justify-center hover:bg-autensa-accent/90 transition-all hover:scale-105 group"
           title="Open Chat (⌘⇧C)"
         >
-          <MessageSquare className="w-6 h-6 text-mc-bg" />
+          <MessageSquare className="w-6 h-6 text-autensa-bg" />
           {totalUnread > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-mc-accent-red text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+            <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-autensa-accent-red text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
               {totalUnread > 99 ? '99+' : totalUnread}
             </span>
           )}
@@ -116,15 +116,15 @@ export function ChatWidget() {
       {/* Chat Panel */}
       {isOpen && (
         <div
-          className={`fixed bottom-5 right-5 z-[45] ${widthClass} ${heightClass} max-h-[85vh] max-w-[95vw] bg-mc-bg-secondary border border-mc-border rounded-xl shadow-2xl shadow-black/40 flex flex-col overflow-hidden transition-all duration-200`}
+          className={`fixed bottom-5 right-5 z-[45] ${widthClass} ${heightClass} max-h-[85vh] max-w-[95vw] bg-autensa-bg-secondary border border-autensa-border rounded-xl shadow-2xl shadow-black/40 flex flex-col overflow-hidden transition-all duration-200`}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-3 py-2.5 border-b border-mc-border bg-mc-bg-secondary flex-shrink-0">
+          <div className="flex items-center justify-between px-3 py-2.5 border-b border-autensa-border bg-autensa-bg-secondary flex-shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               {selectedTaskId && (
                 <button
                   onClick={handleBack}
-                  className="p-1 hover:bg-mc-bg-tertiary rounded transition-colors"
+                  className="p-1 hover:bg-autensa-bg-tertiary rounded transition-colors"
                   title="Back to inbox"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -136,10 +136,10 @@ export function ChatWidget() {
                 </span>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Inbox className="w-4 h-4 text-mc-accent" />
+                  <Inbox className="w-4 h-4 text-autensa-accent" />
                   <span className="text-sm font-medium">Chat Inbox</span>
                   {unreadTasks.length > 0 && (
-                    <span className="text-xs text-mc-text-secondary">
+                    <span className="text-xs text-autensa-text-secondary">
                       {unreadTasks.length} conversation{unreadTasks.length !== 1 ? 's' : ''}
                     </span>
                   )}
@@ -149,14 +149,14 @@ export function ChatWidget() {
             <div className="flex items-center gap-1 flex-shrink-0">
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="p-1.5 hover:bg-mc-bg-tertiary rounded transition-colors"
+                className="p-1.5 hover:bg-autensa-bg-tertiary rounded transition-colors"
                 title={isExpanded ? 'Compact' : 'Expand'}
               >
                 {isExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
               </button>
               <button
                 onClick={handleClose}
-                className="p-1.5 hover:bg-mc-bg-tertiary rounded transition-colors"
+                className="p-1.5 hover:bg-autensa-bg-tertiary rounded transition-colors"
                 title="Close (Esc)"
               >
                 <X className="w-3.5 h-3.5" />
@@ -182,8 +182,8 @@ export function ChatWidget() {
           </div>
 
           {/* Footer hint */}
-          <div className="px-3 py-1.5 border-t border-mc-border/50 bg-mc-bg flex-shrink-0">
-            <span className="text-[10px] text-mc-text-secondary/50">
+          <div className="px-3 py-1.5 border-t border-autensa-border/50 bg-autensa-bg flex-shrink-0">
+            <span className="text-[10px] text-autensa-text-secondary/50">
               ⌘⇧C toggle · Esc close · ⌘K commands · @ mention agents
             </span>
           </div>

@@ -30,16 +30,16 @@ export function LiveFeed({ mobileMode = false, isPortrait = true }: LiveFeedProp
 
   return (
     <aside
-      className={`bg-mc-bg-secondary ${mobileMode ? 'border border-mc-border rounded-lg h-full' : 'border-l border-mc-border'} flex flex-col transition-all duration-300 ease-in-out ${
+      className={`bg-autensa-bg-secondary ${mobileMode ? 'border border-autensa-border rounded-lg h-full' : 'border-l border-autensa-border'} flex flex-col transition-all duration-300 ease-in-out ${
         effectiveMinimized ? 'w-12' : mobileMode ? 'w-full' : 'w-80'
       }`}
     >
-      <div className="p-3 border-b border-mc-border">
+      <div className="p-3 border-b border-autensa-border">
         <div className="flex items-center">
           {!mobileMode && (
             <button
               onClick={toggleMinimize}
-              className="p-1 rounded hover:bg-mc-bg-tertiary text-mc-text-secondary hover:text-mc-text transition-colors"
+              className="p-1 rounded hover:bg-autensa-bg-tertiary text-autensa-text-secondary hover:text-autensa-text transition-colors"
               aria-label={effectiveMinimized ? 'Expand feed' : 'Minimize feed'}
             >
               {effectiveMinimized ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -55,7 +55,7 @@ export function LiveFeed({ mobileMode = false, isPortrait = true }: LiveFeedProp
                 key={tab}
                 onClick={() => setFilter(tab)}
                 className={`min-h-11 text-xs rounded uppercase ${mobileMode && isPortrait ? 'px-1' : 'px-3'} ${
-                  filter === tab ? 'bg-mc-accent text-mc-bg font-medium' : 'text-mc-text-secondary hover:bg-mc-bg-tertiary'
+                  filter === tab ? 'bg-autensa-accent text-autensa-bg font-medium' : 'text-autensa-text-secondary hover:bg-autensa-bg-tertiary'
                 }`}
               >
                 {tab}
@@ -68,7 +68,7 @@ export function LiveFeed({ mobileMode = false, isPortrait = true }: LiveFeedProp
       {!effectiveMinimized && (
         <div className="flex-1 overflow-y-auto p-2 space-y-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
           {filteredEvents.length === 0 ? (
-            <div className="text-center py-8 text-mc-text-secondary text-sm">No events yet</div>
+            <div className="text-center py-8 text-autensa-text-secondary text-sm">No events yet</div>
           ) : (
             filteredEvents.map((event) => <EventItem key={event.id} event={event} />)
           )}
@@ -114,14 +114,14 @@ function EventItem({ event }: { event: Event }) {
   return (
     <div
       className={`p-2 rounded border-l-2 animate-slide-in ${
-        isHighlight ? 'bg-mc-bg-tertiary border-mc-accent-pink' : 'bg-transparent border-transparent hover:bg-mc-bg-tertiary'
+        isHighlight ? 'bg-autensa-bg-tertiary border-autensa-accent-pink' : 'bg-transparent border-transparent hover:bg-autensa-bg-tertiary'
       }`}
     >
       <div className="flex items-start gap-2">
         <span className="text-sm">{getEventIcon(event.type)}</span>
         <div className="flex-1 min-w-0">
-          <p className={`text-sm ${isTaskEvent ? 'text-mc-accent-pink' : 'text-mc-text'}`}>{event.message}</p>
-          <div className="flex items-center gap-1 mt-1 text-xs text-mc-text-secondary">
+          <p className={`text-sm ${isTaskEvent ? 'text-autensa-accent-pink' : 'text-autensa-text'}`}>{event.message}</p>
+          <div className="flex items-center gap-1 mt-1 text-xs text-autensa-text-secondary">
             <Clock className="w-3 h-3" />
             {formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
           </div>

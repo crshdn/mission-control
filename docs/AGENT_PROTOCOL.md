@@ -1,10 +1,10 @@
 # Agent Protocol
 
-This document describes how OpenClaw agents interact with Mission Control.
+This document describes how OpenClaw agents interact with Autensa.
 
 ## Task Assignment Flow
 
-1. **Human assigns task** in Mission Control UI
+1. **Human assigns task** in Autensa UI
    - Drag task card to agent in "ASSIGNED" column
    - System auto-dispatches to agent's OpenClaw session
 
@@ -135,7 +135,7 @@ If you're stuck or need clarification:
 ### Session Linking
 - Agents are automatically linked to OpenClaw when first task is assigned
 - Session remains active for future tasks
-- the orchestrator can manually link/unlink agents via Mission Control UI
+- the orchestrator can manually link/unlink agents via Autensa UI
 
 ## Status Transitions
 
@@ -153,13 +153,13 @@ If you're stuck or need clarification:
 
 ## API Integration
 
-Agents don't call Mission Control APIs directly. All interaction happens through:
+Agents don't call Autensa APIs directly. All interaction happens through:
 
 1. **Receiving tasks** via OpenClaw session message
 2. **Reporting completion** via TASK_COMPLETE message
 3. **Asking questions** via normal conversation with the orchestrator
 
-Mission Control handles:
+Autensa handles:
 - Task routing
 - Status updates
 - Event logging

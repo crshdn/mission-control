@@ -447,8 +447,8 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="w-6 h-6 animate-spin text-mc-accent" />
-        <span className="ml-2 text-mc-text-secondary">Loading planning state...</span>
+        <Loader2 className="w-6 h-6 animate-spin text-autensa-accent" />
+        <span className="ml-2 text-autensa-text-secondary">Loading planning state...</span>
       </div>
     );
   }
@@ -505,14 +505,14 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
         )}
         
         {/* Spec Summary */}
-        <div className="bg-mc-bg border border-mc-border rounded-lg p-4">
+        <div className="bg-autensa-bg border border-autensa-border rounded-lg p-4">
           <h3 className="font-medium mb-2">{state.spec.title}</h3>
-          <p className="text-sm text-mc-text-secondary mb-4">{state.spec.summary}</p>
+          <p className="text-sm text-autensa-text-secondary mb-4">{state.spec.summary}</p>
           
           {state.spec.deliverables?.length > 0 && (
             <div className="mb-3">
               <h4 className="text-sm font-medium mb-1">Deliverables:</h4>
-              <ul className="list-disc list-inside text-sm text-mc-text-secondary">
+              <ul className="list-disc list-inside text-sm text-autensa-text-secondary">
                 {state.spec.deliverables.map((d, i) => (
                   <li key={i}>{d}</li>
                 ))}
@@ -523,7 +523,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
           {state.spec.success_criteria?.length > 0 && (
             <div>
               <h4 className="text-sm font-medium mb-1">Success Criteria:</h4>
-              <ul className="list-disc list-inside text-sm text-mc-text-secondary">
+              <ul className="list-disc list-inside text-sm text-autensa-text-secondary">
                 {state.spec.success_criteria.map((c, i) => (
                   <li key={i}>{c}</li>
                 ))}
@@ -538,11 +538,11 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
             <h3 className="font-medium mb-2">Agents Created:</h3>
             <div className="space-y-2">
               {state.agents.map((agent, i) => (
-                <div key={i} className="bg-mc-bg border border-mc-border rounded-lg p-3 flex items-center gap-3">
+                <div key={i} className="bg-autensa-bg border border-autensa-border rounded-lg p-3 flex items-center gap-3">
                   <span className="text-2xl">{agent.avatar_emoji}</span>
                   <div>
                     <p className="font-medium">{agent.name}</p>
-                    <p className="text-sm text-mc-text-secondary">{agent.role}</p>
+                    <p className="text-sm text-autensa-text-secondary">{agent.role}</p>
                   </div>
                 </div>
               ))}
@@ -559,7 +559,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
       <div className="flex flex-col items-center justify-center p-8 space-y-4">
         <div className="text-center">
           <h3 className="text-lg font-medium mb-2">Start Planning</h3>
-          <p className="text-mc-text-secondary text-sm max-w-md">
+          <p className="text-autensa-text-secondary text-sm max-w-md">
             I&apos;ll ask you a few questions to understand exactly what you need. 
             All questions are multiple choice — just click to answer.
           </p>
@@ -575,7 +575,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
         <button
           onClick={startPlanning}
           disabled={starting}
-          className="px-6 py-3 bg-mc-accent text-mc-bg rounded-lg font-medium hover:bg-mc-accent/90 disabled:opacity-50 flex items-center gap-2"
+          className="px-6 py-3 bg-autensa-accent text-autensa-bg rounded-lg font-medium hover:bg-autensa-accent/90 disabled:opacity-50 flex items-center gap-2"
         >
           {starting ? (
             <>
@@ -594,15 +594,15 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Progress indicator with cancel button */}
-      <div className="p-4 border-b border-mc-border flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-mc-text-secondary">
+      <div className="p-4 border-b border-autensa-border flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm text-autensa-text-secondary">
           <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
           <span>Planning in progress...</span>
         </div>
         <button
           onClick={cancelPlanning}
           disabled={canceling}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-mc-accent-red hover:bg-mc-accent-red/10 rounded disabled:opacity-50"
+          className="flex items-center gap-2 px-3 py-2 text-sm text-autensa-accent-red hover:bg-autensa-accent-red/10 rounded disabled:opacity-50"
         >
           {canceling ? (
             <>
@@ -639,22 +639,22 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
                       disabled={submitting}
                       className={`w-full flex items-center gap-3 p-4 rounded-lg border transition-all text-left ${
                         isThisOptionSubmitting
-                          ? 'border-mc-accent bg-mc-accent/20'
+                          ? 'border-autensa-accent bg-autensa-accent/20'
                           : isSelected
-                          ? 'border-mc-accent bg-mc-accent/10'
-                          : 'border-mc-border hover:border-mc-accent/50'
+                          ? 'border-autensa-accent bg-autensa-accent/10'
+                          : 'border-autensa-border hover:border-autensa-accent/50'
                       } disabled:opacity-50`}
                     >
                       <span className={`w-8 h-8 rounded flex items-center justify-center text-sm font-bold ${
-                        isSelected ? 'bg-mc-accent text-mc-bg' : 'bg-mc-bg-tertiary'
+                        isSelected ? 'bg-autensa-accent text-autensa-bg' : 'bg-autensa-bg-tertiary'
                       }`}>
                         {option.id.toUpperCase()}
                       </span>
                       <span className="flex-1">{option.label}</span>
                       {isThisOptionSubmitting ? (
-                        <Loader2 className="w-5 h-5 text-mc-accent animate-spin" />
+                        <Loader2 className="w-5 h-5 text-autensa-accent animate-spin" />
                       ) : isSelected && !submitting ? (
-                        <CheckCircle className="w-5 h-5 text-mc-accent" />
+                        <CheckCircle className="w-5 h-5 text-autensa-accent" />
                       ) : null}
                     </button>
 
@@ -666,7 +666,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
                           value={otherText}
                           onChange={(e) => setOtherText(e.target.value)}
                           placeholder="Please specify..."
-                          className="w-full bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
+                          className="w-full bg-autensa-bg border border-autensa-border rounded px-3 py-2 text-sm focus:outline-none focus:border-autensa-accent"
                           disabled={submitting}
                         />
                       </div>
@@ -717,7 +717,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
               <button
                 onClick={submitAnswer}
                 disabled={!selectedOption || submitting || (selectedOption === 'Other' && !otherText.trim())}
-                className="w-full px-6 py-3 bg-mc-accent text-mc-bg rounded-lg font-medium hover:bg-mc-accent/90 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full px-6 py-3 bg-autensa-accent text-autensa-bg rounded-lg font-medium hover:bg-autensa-accent/90 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {submitting ? (
                   <>
@@ -731,8 +731,8 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
 
               {/* Waiting indicator after submit */}
               {isSubmittingAnswer && !submitting && (
-                <div className="mt-4 flex items-center justify-center gap-2 text-sm text-mc-text-secondary">
-                  <Loader2 className="w-4 h-4 animate-spin text-mc-accent" />
+                <div className="mt-4 flex items-center justify-center gap-2 text-sm text-autensa-text-secondary">
+                  <Loader2 className="w-4 h-4 animate-spin text-autensa-accent" />
                   <span>Waiting for response...</span>
                 </div>
               )}
@@ -745,7 +745,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
                 <>
                   <AlertCircle className="w-8 h-8 text-amber-400 mx-auto mb-3" />
                   <p className="text-amber-300 font-medium mb-2">Planning appears stuck</p>
-                  <p className="text-mc-text-secondary text-sm mb-4 max-w-sm">
+                  <p className="text-autensa-text-secondary text-sm mb-4 max-w-sm">
                     The orchestrator hasn&apos;t responded in a while. This can happen when the completion message was processed but the dispatch didn&apos;t fire.
                   </p>
                   <div className="flex items-center justify-center gap-3">
@@ -769,7 +769,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
                     <button
                       onClick={cancelPlanning}
                       disabled={canceling}
-                      className="px-4 py-2 text-mc-text-secondary hover:text-mc-accent-red text-sm rounded-lg border border-mc-border hover:border-mc-accent-red/30"
+                      className="px-4 py-2 text-autensa-text-secondary hover:text-autensa-accent-red text-sm rounded-lg border border-autensa-border hover:border-autensa-accent-red/30"
                     >
                       Cancel Planning
                     </button>
@@ -777,8 +777,8 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
                 </>
               ) : (
                 <>
-                  <Loader2 className="w-8 h-8 animate-spin text-mc-accent mx-auto mb-2" />
-                  <p className="text-mc-text-secondary">
+                  <Loader2 className="w-8 h-8 animate-spin text-autensa-accent mx-auto mb-2" />
+                  <p className="text-autensa-text-secondary">
                     {isWaitingForResponse ? 'Waiting for response...' : 'Waiting for next question...'}
                   </p>
                 </>
@@ -790,13 +790,13 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
 
       {/* Conversation history (collapsed by default) */}
       {state?.messages && state.messages.length > 0 && (
-        <details className="border-t border-mc-border">
-          <summary className="p-3 text-sm text-mc-text-secondary cursor-pointer hover:bg-mc-bg-tertiary">
+        <details className="border-t border-autensa-border">
+          <summary className="p-3 text-sm text-autensa-text-secondary cursor-pointer hover:bg-autensa-bg-tertiary">
             View conversation ({state.messages.length} messages)
           </summary>
-          <div className="p-3 space-y-2 max-h-48 overflow-y-auto bg-mc-bg">
+          <div className="p-3 space-y-2 max-h-48 overflow-y-auto bg-autensa-bg">
             {state.messages.map((msg, i) => (
-              <div key={i} className={`text-sm ${msg.role === 'user' ? 'text-mc-accent' : 'text-mc-text-secondary'}`}>
+              <div key={i} className={`text-sm ${msg.role === 'user' ? 'text-autensa-accent' : 'text-autensa-text-secondary'}`}>
                 <span className="font-medium">{msg.role === 'user' ? 'You' : 'Orchestrator'}:</span>{' '}
                 <span className="opacity-75">{msg.content.substring(0, 100)}...</span>
               </div>

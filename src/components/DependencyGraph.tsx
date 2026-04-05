@@ -67,13 +67,13 @@ export function DependencyGraph({ subtasks }: DependencyGraphProps) {
 
   return (
     <div className="space-y-3">
-      <h4 className="text-xs font-medium uppercase text-mc-text-secondary">Dependency Graph</h4>
+      <h4 className="text-xs font-medium uppercase text-autensa-text-secondary">Dependency Graph</h4>
       <div className="space-y-4">
         {layers.map((layer, layerIdx) => (
           <div key={layerIdx}>
             {layerIdx > 0 && (
               <div className="flex justify-center py-1">
-                <div className="w-px h-4 bg-mc-border" />
+                <div className="w-px h-4 bg-autensa-border" />
               </div>
             )}
             <div className="flex flex-wrap gap-2 justify-center">
@@ -90,7 +90,7 @@ export function DependencyGraph({ subtasks }: DependencyGraphProps) {
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-3 text-[10px] text-mc-text-secondary pt-2">
+      <div className="flex items-center gap-3 text-[10px] text-autensa-text-secondary pt-2">
         <span>Top = no dependencies</span>
         <span>Bottom = depends on above</span>
       </div>
