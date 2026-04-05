@@ -211,7 +211,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         // planning_spec may be an object with spec_markdown, or a raw string
         const specText = typeof spec === 'string' ? spec : (spec.spec_markdown || JSON.stringify(spec, null, 2));
         planningSpecSection = `\n---\n**📋 PLANNING SPECIFICATION:**\n${specText}\n`;
-      } catch {
+      } catch (err) {
+        logger.warn('[Dispatch] Failed to parse planning_spec, treating as plain text:', err);
         // If not valid JSON, treat as plain text
         planningSpecSection = `\n---\n**📋 PLANNING SPECIFICATION:**\n${rawTask.planning_spec}\n`;
       }

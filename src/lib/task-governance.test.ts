@@ -58,6 +58,8 @@ test('task cannot be done when status_reason indicates failure', () => {
 });
 
 test('ensureFixerExists creates fixer when missing', () => {
+  run(`DELETE FROM agents WHERE role = 'fixer' AND workspace_id = 'default'`);
+
   const fixer = ensureFixerExists('default');
   assert.equal(fixer.created, true);
 

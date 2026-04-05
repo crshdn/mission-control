@@ -6,6 +6,7 @@ import type { OpenClawMessage, OpenClawSessionInfo } from '../types';
 import { loadOrCreateDeviceIdentity, signDevicePayload, buildDeviceAuthPayload, publicKeyRawBase64Url } from './device-identity';
 import { createHash } from 'crypto';
 import { extractGatewayAgents, extractGatewaySessions } from './gateway-compat';
+import { WS_CONNECTION_TIMEOUT_MS, WS_RECONNECT_DELAY_MS } from '@/lib/constants';
 
 // Types for gateway model discovery (matches OpenClaw models.list response)
 export interface GatewayModelChoice {
@@ -213,7 +214,7 @@ export class OpenClawClient extends EventEmitter {
             this.ws?.close();
             reject(new Error('Connection timeout'));
           }
-        }, 10000); // 10 second connection timeout
+        }, WS_CONNECTION_TIMEOUT_MS);
 
         this.ws.onopen = async () => {
           clearTimeout(connectionTimeout);
@@ -440,7 +441,7 @@ export class OpenClawClient extends EventEmitter {
         // Don't spam logs on reconnect failure, just schedule another attempt
         this.scheduleReconnect();
       }
-    }, 10000); // 10 seconds between reconnect attempts
+    }, WS_RECONNECT_DELAY_MS);
   }
 
   async call<T = unknown>(method: string, params?: Record<string, unknown>): Promise<T> {

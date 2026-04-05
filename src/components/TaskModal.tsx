@@ -3,6 +3,8 @@
 
 import { logger } from '@/lib/logger';
 import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useShallow } from 'zustand/react/shallow';
 import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus, Users, ImageIcon, Truck, Radio, MessageSquare, ExternalLink, HardDrive } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { triggerAutoDispatch, shouldTriggerAutoDispatch } from '@/lib/auto-dispatch';
@@ -28,7 +30,15 @@ interface TaskModalProps {
 }
 
 export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
-  const { agents, addTask, updateTask, addEvent } = useMissionControl();
+  const router = useRouter();
+  const { agents, addTask, updateTask, addEvent } = useMissionControl(
+    useShallow((state) => ({
+      agents: state.agents,
+      addTask: state.addTask,
+      updateTask: state.updateTask,
+      addEvent: state.addEvent,
+    }))
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAgentModal, setShowAgentModal] = useState(false);
   const [usePlanningMode, setUsePlanningMode] = useState(false);
@@ -37,10 +47,10 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
     task?.status === 'planning' ? 'planning' : task?.status === 'convoy_active' ? 'convoy' : 'overview'
   );
 
-  // Stable callback for when spec is locked - use window.location.reload() to refresh data
+  // Refresh data when spec is locked (planning completed)
   const handleSpecLocked = useCallback(() => {
-    window.location.reload();
-  }, []);
+    router.refresh();
+  }, [router]);
 
   const [form, setForm] = useState({
     title: task?.title || '',
