@@ -32,6 +32,15 @@ function startHealthCheckCycle(): void {
   logger.info('[SSE] Health check cycle started');
 }
 
+function stopHealthCheckCycle(): void {
+  if (healthCheckInterval !== null) {
+    clearInterval(healthCheckInterval);
+    healthCheckInterval = null;
+    healthCheckStarted = false;
+    logger.info('[SSE] Health check cycle stopped');
+  }
+}
+
 /**
  * Register a new SSE client connection
  */
@@ -46,6 +55,9 @@ export function registerClient(controller: ReadableStreamDefaultController): voi
  */
 export function unregisterClient(controller: ReadableStreamDefaultController): void {
   clients.delete(controller);
+  if (clients.size === 0) {
+    stopHealthCheckCycle();
+  }
 }
 
 /**

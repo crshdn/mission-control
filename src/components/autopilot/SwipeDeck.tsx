@@ -31,7 +31,6 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
   const [animatingOut, setAnimatingOut] = useState<string | null>(null);
   const [sessionStats, setSessionStats] = useState({ approved: 0, rejected: 0, maybe: 0, fired: 0 });
   const [lastSwipe, setLastSwipe] = useState<LastSwipe | null>(null);
-  const [pendingCount, setPendingCount] = useState(0);
 
   const loadDeck = useCallback(async () => {
     setLoading(true);
@@ -46,7 +45,6 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
       const data = await res.json();
       setIdeas(data);
       setCurrentIndex(0);
-      setPendingCount(data.length);
     } catch (err) {
       logger.error('Failed to load swipe deck:', err);
       setError('Failed to load deck. Please try again.');
@@ -160,7 +158,7 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
   const currentIdea = ideas[currentIndex];
   const remaining = ideas.length - currentIndex;
 
-  const showReviewAll = pendingCount >= SWIPE_BATCH_THRESHOLD;
+  const showReviewAll = remaining >= SWIPE_BATCH_THRESHOLD;
 
   if (loading) {
     return (
@@ -256,7 +254,7 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-mc-accent/20 text-mc-accent rounded-lg hover:bg-mc-accent/30 transition-colors"
           >
             <ListChecks className="w-3.5 h-3.5" />
-            Review All ({pendingCount})
+            Review All ({remaining})
           </Link>
         )}
       </div>
