@@ -9,7 +9,7 @@ import { IdeaCard } from './IdeaCard';
 import { UndoToast } from './UndoToast';
 import { useSwipe } from '@/hooks/useSwipe';
 import type { Idea, SwipeAction } from '@/lib/types';
-import { SWIPE_BATCH_THRESHOLD } from '@/lib/constants';
+import { shouldShowReviewAll } from './swipeDeck-utils';
 
 interface SwipeDeckProps {
   productId: string;
@@ -26,6 +26,7 @@ interface LastSwipe {
 export function SwipeDeck({ productId }: SwipeDeckProps) {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [initialIdeaCount, setInitialIdeaCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [animatingOut, setAnimatingOut] = useState<string | null>(null);
@@ -44,6 +45,7 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
       }
       const data = await res.json();
       setIdeas(data);
+      setInitialIdeaCount(data.length);
       setCurrentIndex(0);
     } catch (err) {
       logger.error('Failed to load swipe deck:', err);
@@ -158,7 +160,7 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
   const currentIdea = ideas[currentIndex];
   const remaining = ideas.length - currentIndex;
 
-  const showReviewAll = remaining >= SWIPE_BATCH_THRESHOLD;
+  const showReviewAll = shouldShowReviewAll(initialIdeaCount);
 
   if (loading) {
     return (

@@ -15,6 +15,13 @@ const clients = new Set<ReadableStreamDefaultController>();
 let healthCheckInterval: ReturnType<typeof setInterval> | null = null;
 let healthCheckStarted = false;
 
+function removeClient(controller: ReadableStreamDefaultController): void {
+  const removed = clients.delete(controller);
+  if (removed && clients.size === 0) {
+    stopHealthCheckCycle();
+  }
+}
+
 function startHealthCheckCycle(): void {
   if (healthCheckStarted) return;
   healthCheckStarted = true;
@@ -54,10 +61,7 @@ export function registerClient(controller: ReadableStreamDefaultController): voi
  * Unregister an SSE client connection
  */
 export function unregisterClient(controller: ReadableStreamDefaultController): void {
-  clients.delete(controller);
-  if (clients.size === 0) {
-    stopHealthCheckCycle();
-  }
+  removeClient(controller);
 }
 
 /**
@@ -76,7 +80,7 @@ export function broadcast(event: SSEEvent): void {
     } catch (error) {
       // Client disconnected, remove it
       logger.error('Failed to send SSE event to client:', error);
-      clients.delete(client);
+      removeClient(client);
     }
   }
 
