@@ -16,20 +16,21 @@ export function recordCostEvent(input: {
   tokens_input?: number;
   tokens_output?: number;
   cost_usd: number;
+  source_id?: string | null;
   metadata?: string;
 }): CostEvent {
   const id = uuidv4();
   const workspaceId = input.workspace_id || 'default';
 
   run(
-    `INSERT INTO cost_events (id, product_id, workspace_id, task_id, cycle_id, agent_id, event_type, provider, model, tokens_input, tokens_output, cost_usd, metadata)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO cost_events (id, product_id, workspace_id, task_id, cycle_id, agent_id, event_type, provider, model, tokens_input, tokens_output, cost_usd, source_id, metadata)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id, input.product_id || null, workspaceId, input.task_id || null,
       input.cycle_id || null, input.agent_id || null, input.event_type,
       input.provider || null, input.model || null,
       input.tokens_input || 0, input.tokens_output || 0,
-      input.cost_usd, input.metadata || null
+      input.cost_usd, input.source_id || null, input.metadata || null
     ]
   );
 

@@ -695,6 +695,7 @@ export interface CostEvent {
   tokens_input: number;
   tokens_output: number;
   cost_usd: number;
+  source_id?: string;
   metadata?: string; // JSON
   created_at: string;
 }
