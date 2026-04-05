@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add lightweight agent-facing guidance for Autensa without duplicating the repository's existing setup and workflow documentation.
+Add lightweight agent-facing guidance for Mission Control without duplicating the repository's existing setup and workflow documentation.
 
 ## Files
 

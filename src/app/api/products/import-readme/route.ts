@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/readme`, {
         headers: {
           'Accept': 'application/vnd.github.raw+json',
-          'User-Agent': 'Autensa/2.0',
+          'User-Agent': 'Mission Control/2.0',
         },
       });
 

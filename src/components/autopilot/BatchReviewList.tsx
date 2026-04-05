@@ -169,10 +169,10 @@ export function BatchReviewList({ productId, ideas: initialIdeas, onBatchComplet
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
         <div className="text-4xl">&#10024;</div>
-        <h3 className="text-lg font-semibold text-autensa-text">
+        <h3 className="text-lg font-semibold text-mc-text">
           {successCount != null ? `${successCount} ideas processed!` : 'No pending ideas'}
         </h3>
-        <p className="text-sm text-autensa-text-secondary">All ideas have been reviewed.</p>
+        <p className="text-sm text-mc-text-secondary">All ideas have been reviewed.</p>
       </div>
     );
   }
@@ -180,33 +180,33 @@ export function BatchReviewList({ productId, ideas: initialIdeas, onBatchComplet
   return (
     <div className="flex flex-col h-full">
       {/* Header controls */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-autensa-border bg-autensa-bg-secondary">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-mc-border bg-mc-bg-secondary">
         <div className="flex items-center gap-3">
           {/* Select all */}
           <button
             onClick={toggleSelectAll}
-            className="flex items-center gap-1.5 text-xs text-autensa-text-secondary hover:text-autensa-text transition-colors"
+            className="flex items-center gap-1.5 text-xs text-mc-text-secondary hover:text-mc-text transition-colors"
           >
-            {allSelected ? <CheckSquare className="w-4 h-4 text-autensa-accent" /> : <Square className="w-4 h-4" />}
+            {allSelected ? <CheckSquare className="w-4 h-4 text-mc-accent" /> : <Square className="w-4 h-4" />}
             {allSelected ? 'Deselect all' : 'Select all'}
           </button>
 
-          <span className="text-xs text-autensa-text-secondary">
+          <span className="text-xs text-mc-text-secondary">
             {ideas.length} pending &middot; {actionCount} actions set
           </span>
         </div>
 
         {/* Sort controls */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-autensa-text-secondary">Sort:</span>
+          <span className="text-xs text-mc-text-secondary">Sort:</span>
           {SORT_OPTIONS.map(opt => (
             <button
               key={opt.value}
               onClick={() => handleSort(opt.value)}
               className={`text-xs px-2 py-1 rounded transition-colors flex items-center gap-1 ${
                 sortField === opt.value
-                  ? 'bg-autensa-accent/20 text-autensa-accent'
-                  : 'text-autensa-text-secondary hover:text-autensa-text hover:bg-autensa-bg-tertiary'
+                  ? 'bg-mc-accent/20 text-mc-accent'
+                  : 'text-mc-text-secondary hover:text-mc-text hover:bg-mc-bg-tertiary'
               }`}
             >
               {opt.label}
@@ -220,8 +220,8 @@ export function BatchReviewList({ productId, ideas: initialIdeas, onBatchComplet
 
       {/* Bulk action bar (appears when items selected) */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-2 px-4 py-2 border-b border-autensa-border bg-autensa-accent/5">
-          <span className="text-xs text-autensa-text-secondary mr-2">{selectedIds.size} selected — bulk action:</span>
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-mc-border bg-mc-accent/5">
+          <span className="text-xs text-mc-text-secondary mr-2">{selectedIds.size} selected — bulk action:</span>
           <button
             onClick={() => applyBulkAction('approve')}
             className="text-[11px] px-2 py-1 rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
@@ -278,8 +278,8 @@ export function BatchReviewList({ productId, ideas: initialIdeas, onBatchComplet
       </div>
 
       {/* Submit footer */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-autensa-border bg-autensa-bg-secondary">
-        <div className="text-xs text-autensa-text-secondary">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-mc-border bg-mc-bg-secondary">
+        <div className="text-xs text-mc-text-secondary">
           {actionCount} of {ideas.length} ideas have actions assigned
         </div>
         <button
@@ -287,8 +287,8 @@ export function BatchReviewList({ productId, ideas: initialIdeas, onBatchComplet
           disabled={actionCount === 0 || submitting}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             actionCount > 0 && !submitting
-              ? 'bg-autensa-accent text-white hover:bg-autensa-accent/90'
-              : 'bg-autensa-bg-tertiary text-autensa-text-secondary cursor-not-allowed'
+              ? 'bg-mc-accent text-white hover:bg-mc-accent/90'
+              : 'bg-mc-bg-tertiary text-mc-text-secondary cursor-not-allowed'
           }`}
         >
           {submitting ? <Loader className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

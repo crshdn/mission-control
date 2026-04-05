@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run, transaction } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
+import { getApiToken } from '@/lib/runtime-compat';
 import { rebuildPreferenceModel } from './preferences';
 import { recalculateAndBroadcast } from './health-score';
 import type { Idea, Task, Product, SwipeHistoryEntry } from '@/lib/types';
@@ -280,7 +281,7 @@ export function getPendingCount(productId: string): number {
 }
 
 /**
- * Create a Autensa task from an approved idea.
+ * Create a Mission Control task from an approved idea.
  */
 function createTaskFromIdea(idea: Idea, opts?: { urgent?: boolean; notes?: string }): Task {
   const taskId = uuidv4();
@@ -359,8 +360,9 @@ function createTaskFromIdea(idea: Idea, opts?: { urgent?: boolean; notes?: strin
 function queueDispatch(taskId: string): void {
   const url = getMissionControlUrl();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (process.env.AUTENSA_API_TOKEN) {
-    headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
+  const apiToken = getApiToken();
+  if (apiToken) {
+    headers['Authorization'] = `Bearer ${apiToken}`;
   }
   fetch(`${url}/api/tasks/${taskId}/dispatch`, { method: 'POST', headers, signal: AbortSignal.timeout(30_000) })
     .then(res => { if (!res.ok) logger.error('[AutoDispatch] Failed:', res.status); })

@@ -17,7 +17,7 @@ function sharedUserMd(missionControlUrl: string): string {
   return `# User Context
 
 ## Operating Environment
-- Platform: Autensa multi-agent task orchestration
+- Platform: Mission Control multi-agent task orchestration
 - API Base: ${missionControlUrl}
 - Tasks are dispatched automatically by the workflow engine
 - Communication via OpenClaw Gateway

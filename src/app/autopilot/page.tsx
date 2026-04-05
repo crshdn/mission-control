@@ -64,31 +64,31 @@ export default function AutopilotPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-autensa-bg flex items-center justify-center">
+      <div className="min-h-screen bg-mc-bg flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl mb-4 animate-pulse">🚀</div>
-          <p className="text-autensa-text-secondary">Loading autopilot...</p>
+          <p className="text-mc-text-secondary">Loading autopilot...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-autensa-bg">
-      <header className="border-b border-autensa-border bg-autensa-bg-secondary">
+    <div className="min-h-screen bg-mc-bg">
+      <header className="border-b border-mc-border bg-mc-bg-secondary">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Rocket className="w-6 h-6 text-autensa-accent-cyan" />
-              <h1 className="text-xl font-bold text-autensa-text">Product Autopilot</h1>
+              <Rocket className="w-6 h-6 text-mc-accent-cyan" />
+              <h1 className="text-xl font-bold text-mc-text">Product Autopilot</h1>
             </div>
             <div className="flex items-center gap-2">
-              <Link href="/" className="min-h-11 px-4 rounded-lg border border-autensa-border bg-autensa-bg text-autensa-text-secondary hover:text-autensa-text hover:bg-autensa-bg-tertiary flex items-center gap-2 text-sm">
+              <Link href="/" className="min-h-11 px-4 rounded-lg border border-mc-border bg-mc-bg text-mc-text-secondary hover:text-mc-text hover:bg-mc-bg-tertiary flex items-center gap-2 text-sm">
                 Workspaces
               </Link>
               <Link
                 href="/autopilot/new"
-                className="min-h-11 px-4 rounded-lg bg-autensa-accent text-white hover:bg-autensa-accent/90 flex items-center gap-2 text-sm font-medium"
+                className="min-h-11 px-4 rounded-lg bg-mc-accent text-white hover:bg-mc-accent/90 flex items-center gap-2 text-sm font-medium"
               >
                 <Plus className="w-4 h-4" />
                 New Product
@@ -102,14 +102,14 @@ export default function AutopilotPage() {
         {products.length === 0 ? (
           <div className="text-center py-20">
             <div className="text-6xl mb-6">🚀</div>
-            <h2 className="text-2xl font-bold text-autensa-text mb-3">No products yet</h2>
-            <p className="text-autensa-text-secondary mb-8 max-w-md mx-auto">
+            <h2 className="text-2xl font-bold text-mc-text mb-3">No products yet</h2>
+            <p className="text-mc-text-secondary mb-8 max-w-md mx-auto">
               Create your first product to start the autonomous development loop.
               Agents will research, ideate, and you swipe to decide what gets built.
             </p>
             <Link
               href="/autopilot/new"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-autensa-accent text-white rounded-lg hover:bg-autensa-accent/90 font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-mc-accent text-white rounded-lg hover:bg-mc-accent/90 font-medium"
             >
               <Plus className="w-5 h-5" />
               Create First Product
@@ -121,7 +121,7 @@ export default function AutopilotPage() {
               <Link
                 key={product.id}
                 href={`/autopilot/${product.id}`}
-                className="group block bg-autensa-bg-secondary border border-autensa-border rounded-xl p-5 hover:border-autensa-accent/50 transition-colors"
+                className="group block bg-mc-bg-secondary border border-mc-border rounded-xl p-5 hover:border-mc-accent/50 transition-colors"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -134,11 +134,11 @@ export default function AutopilotPage() {
                       )}
                     </span>
                     <div>
-                      <h3 className="font-semibold text-autensa-text group-hover:text-autensa-accent transition-colors">{product.name}</h3>
+                      <h3 className="font-semibold text-mc-text group-hover:text-mc-accent transition-colors">{product.name}</h3>
                       <span className={`text-xs px-2 py-0.5 rounded ${
                         product.status === 'active' ? 'bg-green-500/20 text-green-400' :
                         product.status === 'paused' ? 'bg-amber-500/20 text-amber-400' :
-                        'bg-autensa-bg-tertiary text-autensa-text-secondary'
+                        'bg-mc-bg-tertiary text-mc-text-secondary'
                       }`}>
                         {product.status}
                       </span>
@@ -157,11 +157,11 @@ export default function AutopilotPage() {
                         <HealthBadge score={healthScores[product.id]} size={38} />
                       </button>
                     )}
-                    <ArrowRight className="w-4 h-4 text-autensa-text-secondary group-hover:text-autensa-accent transition-colors" />
+                    <ArrowRight className="w-4 h-4 text-mc-text-secondary group-hover:text-mc-accent transition-colors" />
                   </div>
                 </div>
                 {product.description && (
-                  <p className="text-sm text-autensa-text-secondary line-clamp-2">{product.description}</p>
+                  <p className="text-sm text-mc-text-secondary line-clamp-2">{product.description}</p>
                 )}
               </Link>
             ))}

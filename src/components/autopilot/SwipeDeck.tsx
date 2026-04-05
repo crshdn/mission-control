@@ -165,7 +165,7 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-autensa-text-secondary animate-pulse">Loading ideas...</div>
+        <div className="text-mc-text-secondary animate-pulse">Loading ideas...</div>
       </div>
     );
   }
@@ -174,10 +174,10 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
         <div className="text-red-400 text-lg">Error</div>
-        <p className="text-sm text-autensa-text-secondary">{error}</p>
+        <p className="text-sm text-mc-text-secondary">{error}</p>
         <button
           onClick={loadDeck}
-          className="px-4 py-2 bg-autensa-accent/20 text-autensa-accent rounded-lg hover:bg-autensa-accent/30 transition-colors"
+          className="px-4 py-2 bg-mc-accent/20 text-mc-accent rounded-lg hover:bg-mc-accent/30 transition-colors"
         >
           Try again
         </button>
@@ -189,16 +189,16 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
         <div className="text-4xl">&#10024;</div>
-        <h3 className="text-lg font-semibold text-autensa-text">All caught up!</h3>
-        <p className="text-sm text-autensa-text-secondary">No more ideas to review right now.</p>
-        <div className="flex gap-4 text-sm text-autensa-text-secondary">
+        <h3 className="text-lg font-semibold text-mc-text">All caught up!</h3>
+        <p className="text-sm text-mc-text-secondary">No more ideas to review right now.</p>
+        <div className="flex gap-4 text-sm text-mc-text-secondary">
           <span className="text-green-400">{sessionStats.approved + sessionStats.fired} approved</span>
           <span className="text-red-400">{sessionStats.rejected} rejected</span>
           <span className="text-amber-400">{sessionStats.maybe} maybe</span>
         </div>
         <button
           onClick={loadDeck}
-          className="px-4 py-2 bg-autensa-accent/20 text-autensa-accent rounded-lg hover:bg-autensa-accent/30 transition-colors"
+          className="px-4 py-2 bg-mc-accent/20 text-mc-accent rounded-lg hover:bg-mc-accent/30 transition-colors"
         >
           Refresh deck
         </button>
@@ -247,13 +247,13 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
     <div className="flex flex-col items-center space-y-6">
       {/* Progress + Review All */}
       <div className="flex items-center gap-4">
-        <div className="text-sm text-autensa-text-secondary">
+        <div className="text-sm text-mc-text-secondary">
           {currentIndex + 1} / {ideas.length} ideas
         </div>
         {showReviewAll && (
           <Link
             href={`/autopilot/${productId}/review`}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-autensa-accent/20 text-autensa-accent rounded-lg hover:bg-autensa-accent/30 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-mc-accent/20 text-mc-accent rounded-lg hover:bg-mc-accent/30 transition-colors"
           >
             <ListChecks className="w-3.5 h-3.5" />
             Review All ({remaining})
@@ -269,10 +269,10 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
       >
         {/* Background card (hint only — no content bleed) */}
         {ideas[currentIndex + 1] && (
-          <div className="absolute inset-2 top-3 rounded-xl bg-autensa-bg-secondary border border-autensa-border opacity-30 pointer-events-none" />
+          <div className="absolute inset-2 top-3 rounded-xl bg-mc-bg-secondary border border-mc-border opacity-30 pointer-events-none" />
         )}
         {ideas[currentIndex + 2] && (
-          <div className="absolute inset-4 top-5 rounded-xl bg-autensa-bg-secondary border border-autensa-border opacity-15 pointer-events-none" />
+          <div className="absolute inset-4 top-5 rounded-xl bg-mc-bg-secondary border border-mc-border opacity-15 pointer-events-none" />
         )}
 
         {/* Active card */}
@@ -302,7 +302,7 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
       </div>
 
       {/* Session stats */}
-      <div className="flex gap-4 text-xs text-autensa-text-secondary">
+      <div className="flex gap-4 text-xs text-mc-text-secondary">
         <span>Remaining: {remaining}</span>
         <span className="text-green-400">{sessionStats.approved} yes</span>
         <span className="text-orange-400">{sessionStats.fired} now</span>
@@ -311,7 +311,7 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
       </div>
 
       {/* Keyboard hint */}
-      <div className="text-xs text-autensa-text-secondary/50">
+      <div className="text-xs text-mc-text-secondary/50">
         &larr; Pass &middot; &darr; Maybe &middot; &rarr; Yes &middot; &uarr; Build Now
       </div>
 

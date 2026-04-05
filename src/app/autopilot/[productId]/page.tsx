@@ -181,8 +181,8 @@ export default function ProductDashboardPage() {
 
   if (loading || !product) {
     return (
-      <div className="min-h-screen bg-autensa-bg flex items-center justify-center">
-        <div className="text-autensa-text-secondary animate-pulse">Loading product...</div>
+      <div className="min-h-screen bg-mc-bg flex items-center justify-center">
+        <div className="text-mc-text-secondary animate-pulse">Loading product...</div>
       </div>
     );
   }
@@ -198,18 +198,18 @@ export default function ProductDashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-autensa-bg flex flex-col">
+    <div className="min-h-screen bg-mc-bg flex flex-col">
       {/* Header */}
-      <header className="border-b border-autensa-border bg-autensa-bg-secondary px-4 py-3">
+      <header className="border-b border-mc-border bg-mc-bg-secondary px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/autopilot" className="text-autensa-text-secondary hover:text-autensa-text">
+            <Link href="/autopilot" className="text-mc-text-secondary hover:text-mc-text">
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <span className="text-2xl">{product.icon}</span>
             <div>
-              <h1 className="font-semibold text-autensa-text">{product.name}</h1>
-              <span className={`text-xs ${product.status === 'active' ? 'text-green-400' : 'text-autensa-text-secondary'}`}>
+              <h1 className="font-semibold text-mc-text">{product.name}</h1>
+              <span className={`text-xs ${product.status === 'active' ? 'text-green-400' : 'text-mc-text-secondary'}`}>
                 {product.status}
               </span>
             </div>
@@ -261,14 +261,14 @@ export default function ProductDashboardPage() {
             )}
             <Link
               href={`/autopilot/${productId}/swipe`}
-              className="min-h-11 px-4 rounded-lg bg-autensa-accent text-white hover:bg-autensa-accent/90 flex items-center gap-2 text-sm font-medium"
+              className="min-h-11 px-4 rounded-lg bg-mc-accent text-white hover:bg-mc-accent/90 flex items-center gap-2 text-sm font-medium"
             >
               <Rocket className="w-4 h-4" />
               Full Screen Swipe
             </Link>
             <button
               onClick={openSettings}
-              className="min-h-11 w-11 rounded-lg bg-autensa-bg-tertiary border border-autensa-border text-autensa-text-secondary hover:text-autensa-text flex items-center justify-center"
+              className="min-h-11 w-11 rounded-lg bg-mc-bg-tertiary border border-mc-border text-mc-text-secondary hover:text-mc-text flex items-center justify-center"
               title="Product Settings"
             >
               <Settings className="w-5 h-5" />
@@ -278,7 +278,7 @@ export default function ProductDashboardPage() {
       </header>
 
       {/* Tabs */}
-      <div className="border-b border-autensa-border bg-autensa-bg-secondary px-4 overflow-x-auto">
+      <div className="border-b border-mc-border bg-mc-bg-secondary px-4 overflow-x-auto">
         <div className="flex gap-1 min-w-max">
           {tabs.map(t => (
             <button
@@ -286,8 +286,8 @@ export default function ProductDashboardPage() {
               onClick={() => setTab(t.id)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 tab === t.id
-                  ? 'border-autensa-accent text-autensa-accent'
-                  : 'border-transparent text-autensa-text-secondary hover:text-autensa-text'
+                  ? 'border-mc-accent text-mc-accent'
+                  : 'border-transparent text-mc-text-secondary hover:text-mc-text'
               }`}
             >
               {t.icon}
@@ -317,10 +317,10 @@ export default function ProductDashboardPage() {
       {showSettings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowSettings(false)} />
-          <div className="relative bg-autensa-bg-secondary border border-autensa-border rounded-xl w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto">
-            <div className="sticky top-0 bg-autensa-bg-secondary border-b border-autensa-border px-5 py-4 flex items-center justify-between rounded-t-xl">
-              <h2 className="text-lg font-semibold text-autensa-text">Product Settings</h2>
-              <button onClick={() => setShowSettings(false)} className="text-autensa-text-secondary hover:text-autensa-text">
+          <div className="relative bg-mc-bg-secondary border border-mc-border rounded-xl w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto">
+            <div className="sticky top-0 bg-mc-bg-secondary border-b border-mc-border px-5 py-4 flex items-center justify-between rounded-t-xl">
+              <h2 className="text-lg font-semibold text-mc-text">Product Settings</h2>
+              <button onClick={() => setShowSettings(false)} className="text-mc-text-secondary hover:text-mc-text">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -332,49 +332,49 @@ export default function ProductDashboardPage() {
 
               <div className="flex gap-3">
                 <div className="w-16">
-                  <label className="block text-xs font-medium text-autensa-text-secondary uppercase tracking-wider mb-1">Icon</label>
+                  <label className="block text-xs font-medium text-mc-text-secondary uppercase tracking-wider mb-1">Icon</label>
                   <input
                     type="text"
                     value={settingsForm.icon || ''}
                     onChange={e => setSettingsForm(f => ({ ...f, icon: e.target.value }))}
-                    className="w-full bg-autensa-bg border border-autensa-border rounded-lg px-3 py-2 text-sm text-autensa-text text-center text-xl focus:outline-none focus:border-autensa-accent"
+                    className="w-full bg-mc-bg border border-mc-border rounded-lg px-3 py-2 text-sm text-mc-text text-center text-xl focus:outline-none focus:border-mc-accent"
                     maxLength={4}
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-autensa-text-secondary uppercase tracking-wider mb-1">Name</label>
+                  <label className="block text-xs font-medium text-mc-text-secondary uppercase tracking-wider mb-1">Name</label>
                   <input
                     type="text"
                     value={settingsForm.name || ''}
                     onChange={e => setSettingsForm(f => ({ ...f, name: e.target.value }))}
-                    className="w-full bg-autensa-bg border border-autensa-border rounded-lg px-3 py-2 text-sm text-autensa-text focus:outline-none focus:border-autensa-accent"
+                    className="w-full bg-mc-bg border border-mc-border rounded-lg px-3 py-2 text-sm text-mc-text focus:outline-none focus:border-mc-accent"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-autensa-text-secondary uppercase tracking-wider mb-1">Description</label>
+                <label className="block text-xs font-medium text-mc-text-secondary uppercase tracking-wider mb-1">Description</label>
                 <textarea
                   value={settingsForm.description || ''}
                   onChange={e => setSettingsForm(f => ({ ...f, description: e.target.value }))}
-                  className="w-full bg-autensa-bg border border-autensa-border rounded-lg px-3 py-2 text-sm text-autensa-text resize-none focus:outline-none focus:border-autensa-accent"
+                  className="w-full bg-mc-bg border border-mc-border rounded-lg px-3 py-2 text-sm text-mc-text resize-none focus:outline-none focus:border-mc-accent"
                   rows={2}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-autensa-text-secondary uppercase tracking-wider mb-1">Repository URL</label>
+                <label className="block text-xs font-medium text-mc-text-secondary uppercase tracking-wider mb-1">Repository URL</label>
                 <div className="flex gap-2">
                   <input
                     type="url"
                     value={settingsForm.repo_url || ''}
                     onChange={e => setSettingsForm(f => ({ ...f, repo_url: e.target.value }))}
-                    className="flex-1 bg-autensa-bg border border-autensa-border rounded-lg px-3 py-2 text-sm text-autensa-text focus:outline-none focus:border-autensa-accent"
+                    className="flex-1 bg-mc-bg border border-mc-border rounded-lg px-3 py-2 text-sm text-mc-text focus:outline-none focus:border-mc-accent"
                     placeholder="https://github.com/org/repo"
                   />
                   {settingsForm.repo_url && (
                     <a href={settingsForm.repo_url} target="_blank" rel="noopener noreferrer"
-                      className="px-3 flex items-center bg-autensa-bg border border-autensa-border rounded-lg text-autensa-text-secondary hover:text-autensa-text">
+                      className="px-3 flex items-center bg-mc-bg border border-mc-border rounded-lg text-mc-text-secondary hover:text-mc-text">
                       <ExternalLink className="w-4 h-4" />
                     </a>
                   )}
@@ -382,18 +382,18 @@ export default function ProductDashboardPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-autensa-text-secondary uppercase tracking-wider mb-1">Live URL</label>
+                <label className="block text-xs font-medium text-mc-text-secondary uppercase tracking-wider mb-1">Live URL</label>
                 <div className="flex gap-2">
                   <input
                     type="url"
                     value={settingsForm.live_url || ''}
                     onChange={e => setSettingsForm(f => ({ ...f, live_url: e.target.value }))}
-                    className="flex-1 bg-autensa-bg border border-autensa-border rounded-lg px-3 py-2 text-sm text-autensa-text focus:outline-none focus:border-autensa-accent"
+                    className="flex-1 bg-mc-bg border border-mc-border rounded-lg px-3 py-2 text-sm text-mc-text focus:outline-none focus:border-mc-accent"
                     placeholder="https://yourproduct.com"
                   />
                   {settingsForm.live_url && (
                     <a href={settingsForm.live_url} target="_blank" rel="noopener noreferrer"
-                      className="px-3 flex items-center bg-autensa-bg border border-autensa-border rounded-lg text-autensa-text-secondary hover:text-autensa-text">
+                      className="px-3 flex items-center bg-mc-bg border border-mc-border rounded-lg text-mc-text-secondary hover:text-mc-text">
                       <ExternalLink className="w-4 h-4" />
                     </a>
                   )}
@@ -402,21 +402,21 @@ export default function ProductDashboardPage() {
 
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-autensa-text-secondary uppercase tracking-wider mb-1">Default Branch</label>
+                  <label className="block text-xs font-medium text-mc-text-secondary uppercase tracking-wider mb-1">Default Branch</label>
                   <input
                     type="text"
                     value={settingsForm.default_branch || ''}
                     onChange={e => setSettingsForm(f => ({ ...f, default_branch: e.target.value }))}
-                    className="w-full bg-autensa-bg border border-autensa-border rounded-lg px-3 py-2 text-sm text-autensa-text focus:outline-none focus:border-autensa-accent"
+                    className="w-full bg-mc-bg border border-mc-border rounded-lg px-3 py-2 text-sm text-mc-text focus:outline-none focus:border-mc-accent"
                     placeholder="main"
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-autensa-text-secondary uppercase tracking-wider mb-1">Build Mode</label>
+                  <label className="block text-xs font-medium text-mc-text-secondary uppercase tracking-wider mb-1">Build Mode</label>
                   <select
                     value={settingsForm.build_mode || 'plan_first'}
                     onChange={e => setSettingsForm(f => ({ ...f, build_mode: e.target.value }))}
-                    className="w-full bg-autensa-bg border border-autensa-border rounded-lg px-3 py-2 text-sm text-autensa-text focus:outline-none focus:border-autensa-accent"
+                    className="w-full bg-mc-bg border border-mc-border rounded-lg px-3 py-2 text-sm text-mc-text focus:outline-none focus:border-mc-accent"
                   >
                     <option value="plan_first">Plan First</option>
                     <option value="auto_build">Auto Build</option>
@@ -425,10 +425,10 @@ export default function ProductDashboardPage() {
               </div>
             </div>
 
-            <div className="sticky bottom-0 bg-autensa-bg-secondary border-t border-autensa-border px-5 py-4 flex items-center justify-end gap-3 rounded-b-xl">
+            <div className="sticky bottom-0 bg-mc-bg-secondary border-t border-mc-border px-5 py-4 flex items-center justify-end gap-3 rounded-b-xl">
               <button
                 onClick={() => setShowSettings(false)}
-                className="min-h-9 px-4 rounded-lg text-sm text-autensa-text-secondary hover:text-autensa-text"
+                className="min-h-9 px-4 rounded-lg text-sm text-mc-text-secondary hover:text-mc-text"
               >
                 Cancel
               </button>
@@ -438,7 +438,7 @@ export default function ProductDashboardPage() {
                 className={`min-h-9 px-4 rounded-lg flex items-center gap-2 text-sm font-medium ${
                   settingsSaved
                     ? 'bg-green-500/20 text-green-400'
-                    : 'bg-autensa-accent text-white hover:bg-autensa-accent/90'
+                    : 'bg-mc-accent text-white hover:bg-mc-accent/90'
                 }`}
               >
                 {settingsSaving ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

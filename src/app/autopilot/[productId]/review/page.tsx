@@ -38,15 +38,15 @@ export default function BatchReviewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-autensa-bg flex flex-col">
-      <header className="border-b border-autensa-border bg-autensa-bg-secondary px-4 py-3 flex items-center gap-3">
-        <Link href={`/autopilot/${productId}/swipe`} className="text-autensa-text-secondary hover:text-autensa-text">
+    <div className="min-h-screen bg-mc-bg flex flex-col">
+      <header className="border-b border-mc-border bg-mc-bg-secondary px-4 py-3 flex items-center gap-3">
+        <Link href={`/autopilot/${productId}/swipe`} className="text-mc-text-secondary hover:text-mc-text">
           <ArrowLeft className="w-5 h-5" />
         </Link>
-        <Layers className="w-5 h-5 text-autensa-accent" />
-        <h1 className="font-semibold text-autensa-text">Batch Review</h1>
+        <Layers className="w-5 h-5 text-mc-accent" />
+        <h1 className="font-semibold text-mc-text">Batch Review</h1>
         {!loading && (
-          <span className="text-sm text-autensa-text-secondary ml-2">
+          <span className="text-sm text-mc-text-secondary ml-2">
             {ideas.length} pending ideas
           </span>
         )}
@@ -55,7 +55,7 @@ export default function BatchReviewPage() {
       <main className="flex-1 flex flex-col">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="text-autensa-text-secondary animate-pulse">Loading ideas...</div>
+            <div className="text-mc-text-secondary animate-pulse">Loading ideas...</div>
           </div>
         ) : (
           <BatchReviewList

@@ -5,6 +5,7 @@ import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
 import { buildCheckpointContext } from '@/lib/checkpoint';
 import { endTaskSession } from '@/lib/openclaw/task-session-registry';
+import { getApiToken } from '@/lib/runtime-compat';
 import type { Agent, AgentHealth, AgentHealthState, Task } from '@/lib/types';
 
 const STALL_THRESHOLD_MINUTES = 5;
@@ -160,8 +161,9 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
     
     const missionControlUrl = getMissionControlUrl();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (process.env.AUTENSA_API_TOKEN) {
-      headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
+    const apiToken = getApiToken();
+    if (apiToken) {
+      headers['Authorization'] = `Bearer ${apiToken}`;
     }
 
     try {
@@ -249,8 +251,9 @@ export async function nudgeAgent(agentId: string): Promise<{ success: boolean; e
   // Re-dispatch via API
   const missionControlUrl = getMissionControlUrl();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (process.env.AUTENSA_API_TOKEN) {
-    headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
+  const apiToken = getApiToken();
+  if (apiToken) {
+    headers['Authorization'] = `Bearer ${apiToken}`;
   }
 
   try {

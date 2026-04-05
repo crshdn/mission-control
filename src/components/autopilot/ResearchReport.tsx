@@ -85,11 +85,11 @@ export function ResearchReport({ productId }: ResearchReportProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-autensa-text">Research Cycles</h3>
+        <h3 className="font-semibold text-mc-text">Research Cycles</h3>
         <button
           onClick={handleRunResearch}
           disabled={starting || !!activeCycle}
-          className="min-h-11 px-4 rounded-lg bg-autensa-accent text-white hover:bg-autensa-accent/90 disabled:opacity-50 flex items-center gap-2 text-sm"
+          className="min-h-11 px-4 rounded-lg bg-mc-accent text-white hover:bg-mc-accent/90 disabled:opacity-50 flex items-center gap-2 text-sm"
         >
           {(starting || !!activeCycle) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
           {(starting || !!activeCycle) ? 'Research Running...' : 'Run Research'}
@@ -102,57 +102,57 @@ export function ResearchReport({ productId }: ResearchReportProps) {
             <Loader2 className="w-4 h-4 animate-spin" />
             Research in progress
           </div>
-          <div className="mt-1 text-autensa-text-secondary flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+          <div className="mt-1 text-mc-text-secondary flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
             <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" /> Elapsed: {formatElapsed(activeCycle.started_at, nowMs)}</span>
             <span>Phase: {activeCycle.current_phase || 'running'}</span>
             <span>Started: {new Date(activeCycle.started_at).toLocaleTimeString()}</span>
           </div>
-          <p className="mt-2 text-xs text-autensa-text-secondary">
+          <p className="mt-2 text-xs text-mc-text-secondary">
             Not stuck — research can take a few minutes. Live steps appear in the Activity panel on the right.
           </p>
         </div>
       )}
 
       {loading ? (
-        <div className="text-autensa-text-secondary animate-pulse">Loading cycles...</div>
+        <div className="text-mc-text-secondary animate-pulse">Loading cycles...</div>
       ) : cycles.length === 0 ? (
-        <div className="text-center py-12 text-autensa-text-secondary">No research cycles yet. Click &quot;Run Research&quot; to start.</div>
+        <div className="text-center py-12 text-mc-text-secondary">No research cycles yet. Click &quot;Run Research&quot; to start.</div>
       ) : (
         <div className="space-y-3">
           {cycles.map(cycle => (
-            <div key={cycle.id} className="bg-autensa-bg-secondary border border-autensa-border rounded-lg p-4">
+            <div key={cycle.id} className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className={`text-xs px-2 py-0.5 rounded font-medium ${
                     cycle.status === 'completed' ? 'bg-green-500/20 text-green-400' :
                     cycle.status === 'running' ? 'bg-blue-500/20 text-blue-400' :
                     cycle.status === 'failed' ? 'bg-red-500/20 text-red-400' :
-                    'bg-autensa-bg-tertiary text-autensa-text-secondary'
+                    'bg-mc-bg-tertiary text-mc-text-secondary'
                   }`}>
                     {cycle.status}
                   </span>
-                  <span className="text-sm text-autensa-text-secondary">
+                  <span className="text-sm text-mc-text-secondary">
                     {new Date(cycle.started_at).toLocaleDateString()} {new Date(cycle.started_at).toLocaleTimeString()}
                   </span>
                   {cycle.status === 'running' && (
                     <span className="text-xs text-blue-300">phase: {cycle.current_phase || 'running'}</span>
                   )}
                   {cycle.ideas_generated > 0 && (
-                    <span className="text-xs text-autensa-text-secondary">{cycle.ideas_generated} ideas</span>
+                    <span className="text-xs text-mc-text-secondary">{cycle.ideas_generated} ideas</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
                   {cycle.status === 'completed' && (
                     <button
                       onClick={() => handleRunIdeation(cycle.id)}
-                      className="text-xs px-3 py-1.5 rounded bg-autensa-accent/20 text-autensa-accent hover:bg-autensa-accent/30"
+                      className="text-xs px-3 py-1.5 rounded bg-mc-accent/20 text-mc-accent hover:bg-mc-accent/30"
                     >
                       Generate Ideas
                     </button>
                   )}
                   <button
                     onClick={() => setExpanded(expanded === cycle.id ? null : cycle.id)}
-                    className="text-xs text-autensa-text-secondary hover:text-autensa-text"
+                    className="text-xs text-mc-text-secondary hover:text-mc-text"
                   >
                     {expanded === cycle.id ? 'Collapse' : 'View Report'}
                   </button>
@@ -162,7 +162,7 @@ export function ResearchReport({ productId }: ResearchReportProps) {
                 <p className="text-sm text-red-400">{cycle.error_message}</p>
               )}
               {expanded === cycle.id && cycle.report && (
-                <pre className="mt-3 p-3 bg-autensa-bg rounded text-xs text-autensa-text-secondary overflow-auto max-h-96 whitespace-pre-wrap">
+                <pre className="mt-3 p-3 bg-mc-bg rounded text-xs text-mc-text-secondary overflow-auto max-h-96 whitespace-pre-wrap">
                   {JSON.stringify(JSON.parse(cycle.report), null, 2)}
                 </pre>
               )}

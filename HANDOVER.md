@@ -1,9 +1,9 @@
-# Autensa v1.3.2+ Handover — Session 2026-03-03
+# Mission Control v1.3.2+ Handover — Session 2026-03-03
 
 ## Current State
 
 **Build:** Passes clean (`npm run build`)
-**PM2:** Running from `/Users/nomames/projects/autensa` on port 4000 (process name: `mission-control`)
+**PM2:** Running from `/Users/nomames/projects/mission-control` on port 4000 (process name: `mission-control`)
 **Database:** Migrations 010-012 applied. Full workflow tables + Strict template fixed.
 **Git:** All changes are **uncommitted**. User is actively testing.
 

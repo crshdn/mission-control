@@ -1,8 +1,8 @@
-<h1 align="center">Autensa</h1>
+<h1 align="center">Mission Control</h1>
 
 <p align="center">
   <em>The World's First Autonomous Product Engine</em><br>
-  <a href="https://autensa.com">autensa.com</a>
+  <a href="https://missioncontrol.ghray.com">missioncontrol.ghray.com</a>
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@ I highly recommend getting Hetzner VPS to run this. <a href="https://hetzner.clo
 </p>
 
 <p align="center">
-  <a href="https://ghray.com/Autensa_v2.mp4"><strong>▶️ Watch the Autensa v2 Introduction</strong></a>
+  <a href="https://ghray.com/Autensa_v2.mp4"><strong>▶️ Watch the Mission Control v2 Introduction</strong></a>
 </p>
 
 ---
@@ -125,11 +125,11 @@ I highly recommend getting Hetzner VPS to run this. <a href="https://hetzner.clo
 
 ### v2.0 Highlights
 
-Autensa v2 is a ground-up expansion from task orchestration dashboard to **the world's first autonomous product improvement engine**. It researches your market, generates feature ideas, lets you decide with a swipe, and builds them — automatically.
+Mission Control v2 is a ground-up expansion from task orchestration dashboard to **the world's first autonomous product improvement engine**. It researches your market, generates feature ideas, lets you decide with a swipe, and builds them — automatically.
 
 ### 🔬 Product Autopilot — The Full Pipeline
 
-The headline feature. Point Autensa at any product (repo + live URL) and it runs a continuous improvement loop:
+The headline feature. Point Mission Control at any product (repo + live URL) and it runs a continuous improvement loop:
 
 1. **Autonomous Research** — AI agents analyze your codebase, scan your live site, and research your market: competitors, user intent, conversion patterns, SEO gaps, technical opportunities. Runs on configurable schedules — daily, weekly, or on-demand.
 
@@ -297,7 +297,7 @@ Configure autonomous cycles per product:
 
 ## 🛡️ Privacy
 
-Autensa is open-source and self-hosted. The project does **not** include ad trackers, third-party analytics beacons, or a centralized data collector.
+Mission Control is open-source and self-hosted. The project does **not** include ad trackers, third-party analytics beacons, or a centralized data collector.
 
 Your task data, research results, ideas, swipe history, and product programs stay in your own deployment (SQLite + workspace). If you connect external services (AI providers or remote gateways), only the data you explicitly send to those services leaves your environment.
 
@@ -310,7 +310,7 @@ Your task data, research results, ideas, swipe history, and product programs sta
 │                          YOUR MACHINE                                │
 │                                                                      │
 │  ┌──────────────────┐          ┌──────────────────────────────────┐  │
-│  │ Autensa           │◄────────►│    OpenClaw Gateway              │  │
+│  │ Mission Control   │◄────────►│    OpenClaw Gateway              │  │
 │  │  (Next.js)        │   WS     │  (AI Agent Runtime)              │  │
 │  │  Port 4000        │          │  Port 18789                      │  │
 │  └────────┬──────────┘          └───────────┬────────────────────┘  │
@@ -330,7 +330,7 @@ Your task data, research results, ideas, swipe history, and product programs sta
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-**Autensa** = The dashboard + autopilot engine (this project)
+**Mission Control** = The dashboard + autopilot engine (this project)
 **OpenClaw Gateway** = The AI runtime that executes tasks ([separate project](https://github.com/openclaw/openclaw))
 
 ---
@@ -372,7 +372,7 @@ OPENCLAW_GATEWAY_TOKEN=your-token-here
 # Start OpenClaw (separate terminal)
 openclaw gateway start
 
-# Start Autensa
+# Start Mission Control
 npm run dev
 ```
 
@@ -389,7 +389,7 @@ npx next start -p 4000
 
 ## 🐳 Docker
 
-You can run Autensa in a container using the included `Dockerfile` and `docker-compose.yml`.
+You can run Mission Control in a container using the included `Dockerfile` and `docker-compose.yml`.
 
 ### Prerequisites
 
@@ -528,7 +528,7 @@ See [PRODUCTION_SETUP.md](PRODUCTION_SETUP.md) for the full production guide.
 
 ## 🌐 Multi-Machine Setup
 
-Run Autensa on one machine and OpenClaw on another:
+Run Mission Control on one machine and OpenClaw on another:
 
 ```env
 # Point to the remote machine
@@ -564,7 +564,7 @@ Key tables added in v2: `products`, `research_cycles`, `ideas`, `swipe_history`,
 ## 📁 Project Structure
 
 ```
-autensa/
+mission-control/
 ├── src/
 │   ├── app/                    # Next.js pages & API routes
 │   │   ├── api/
@@ -665,7 +665,7 @@ See [Issue #30](https://github.com/crshdn/mission-control/issues/30) for details
 
 ## 👏 Contributors
 
-Autensa is built by a growing community. Thank you to everyone who has contributed!
+Mission Control is built by a growing community. Thank you to everyone who has contributed!
 
 <table>
   <tr>
@@ -915,7 +915,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ## ☕ Support
 
-If Autensa has been useful to you, consider buying me a coffee!
+If Mission Control has been useful to you, consider buying me a coffee!
 
 <a href="https://buymeacoffee.com/crshdn" target="_blank">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />

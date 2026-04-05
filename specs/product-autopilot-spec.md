@@ -135,7 +135,7 @@ This is a markdown document that instructs the research and ideation agents. It 
 # Product Program: [Product Name]
 
 ## Identity
-- Name: Autensa (Mission Control)
+- Name: Mission Control
 - Type: Web application (Next.js + SQLite)
 - Repo: https://github.com/crshdn/mission-control
 - Live URL: http://192.168.1.65:4000
@@ -724,7 +724,7 @@ The system runs continuous improvement cycles:
 **Weekly Autopilot Report** (sent via Discord or in-app):
 
 ```
-📊 Weekly Autopilot Report — Autensa
+📊 Weekly Autopilot Report — Mission Control
 Week of March 17-23, 2026
 
 IDEATION

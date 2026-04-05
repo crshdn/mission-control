@@ -4,6 +4,7 @@ import { getMissionControlUrl } from '@/lib/config';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { pickDynamicAgent } from '@/lib/task-governance';
 import { formatMailForDispatch } from '@/lib/mailbox';
+import { getApiToken } from '@/lib/runtime-compat';
 import type { Task } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -48,8 +49,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const missionControlUrl = getMissionControlUrl();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (process.env.AUTENSA_API_TOKEN) {
-      headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
+    const apiToken = getApiToken();
+    if (apiToken) {
+      headers['Authorization'] = `Bearer ${apiToken}`;
     }
 
     const results: Array<{ taskId: string; success: boolean; error?: string }> = [];

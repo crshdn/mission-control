@@ -73,10 +73,10 @@ export function TaskImages({ taskId }: TaskImagesProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-autensa-text-secondary">
+        <h3 className="text-sm font-medium text-mc-text-secondary">
           Images {images.length > 0 && `(${images.length})`}
         </h3>
-        <label className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-autensa-accent hover:bg-autensa-accent/10 rounded cursor-pointer transition-colors">
+        <label className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-mc-accent hover:bg-mc-accent/10 rounded cursor-pointer transition-colors">
           {uploading ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
@@ -99,7 +99,7 @@ export function TaskImages({ taskId }: TaskImagesProps) {
       )}
 
       {images.length === 0 && !error && (
-        <p className="text-xs text-autensa-text-secondary">
+        <p className="text-xs text-mc-text-secondary">
           No images attached. Add screenshots, mockups, or reference images.
         </p>
       )}
@@ -107,7 +107,7 @@ export function TaskImages({ taskId }: TaskImagesProps) {
       {images.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
           {images.map((img) => (
-            <div key={img.filename} className="group relative rounded-lg overflow-hidden border border-autensa-border bg-autensa-bg">
+            <div key={img.filename} className="group relative rounded-lg overflow-hidden border border-mc-border bg-mc-bg">
               <Image
                 src={`/api/task-images/${taskId}/${img.filename}`}
                 alt={img.original_name}
@@ -124,7 +124,7 @@ export function TaskImages({ taskId }: TaskImagesProps) {
                 </button>
               </div>
               <div className="px-2 py-1">
-                <p className="text-xs text-autensa-text-secondary truncate" title={img.original_name}>
+                <p className="text-xs text-mc-text-secondary truncate" title={img.original_name}>
                   {img.original_name}
                 </p>
               </div>

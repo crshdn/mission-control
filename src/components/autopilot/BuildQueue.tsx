@@ -37,7 +37,7 @@ export function BuildQueue({ productId }: BuildQueueProps) {
 
   const statusColors: Record<string, string> = {
     planning: 'bg-purple-500/20 text-purple-400',
-    inbox: 'bg-autensa-bg-tertiary text-autensa-text-secondary',
+    inbox: 'bg-mc-bg-tertiary text-mc-text-secondary',
     assigned: 'bg-blue-500/20 text-blue-400',
     in_progress: 'bg-cyan-500/20 text-cyan-400',
     testing: 'bg-yellow-500/20 text-yellow-400',
@@ -61,26 +61,26 @@ export function BuildQueue({ productId }: BuildQueueProps) {
 
   return (
     <div className="space-y-4">
-      <h3 className="font-semibold text-autensa-text">Build Queue</h3>
+      <h3 className="font-semibold text-mc-text">Build Queue</h3>
       {loading ? (
-        <div className="text-autensa-text-secondary animate-pulse">Loading...</div>
+        <div className="text-mc-text-secondary animate-pulse">Loading...</div>
       ) : tasks.length === 0 ? (
-        <div className="text-center py-12 text-autensa-text-secondary">No tasks in build queue. Approve some ideas first!</div>
+        <div className="text-center py-12 text-mc-text-secondary">No tasks in build queue. Approve some ideas first!</div>
       ) : (
         <div className="space-y-2">
           {tasks.map(task => (
-            <div key={task.id} className="bg-autensa-bg-secondary border border-autensa-border rounded-lg p-4 flex items-center justify-between">
+            <div key={task.id} className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4 flex items-center justify-between">
               <div>
-                <h4 className="font-medium text-autensa-text text-sm">{task.title}</h4>
-                <span className="text-xs text-autensa-text-secondary">{task.priority} priority</span>
+                <h4 className="font-medium text-mc-text text-sm">{task.title}</h4>
+                <span className="text-xs text-mc-text-secondary">{task.priority} priority</span>
               </div>
               <div className="flex items-center gap-2">
                 {task.pr_status && (
-                  <span className={`text-xs px-2 py-1 rounded font-medium ${prStatusColors[task.pr_status] || 'bg-autensa-bg-tertiary text-autensa-text-secondary'}`}>
+                  <span className={`text-xs px-2 py-1 rounded font-medium ${prStatusColors[task.pr_status] || 'bg-mc-bg-tertiary text-mc-text-secondary'}`}>
                     {prStatusLabels[task.pr_status] || task.pr_status}
                   </span>
                 )}
-                <span className={`text-xs px-2 py-1 rounded font-medium ${statusColors[task.status] || 'bg-autensa-bg-tertiary text-autensa-text-secondary'}`}>
+                <span className={`text-xs px-2 py-1 rounded font-medium ${statusColors[task.status] || 'bg-mc-bg-tertiary text-mc-text-secondary'}`}>
                   {task.status.replace('_', ' ')}
                 </span>
               </div>

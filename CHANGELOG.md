@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Autensa (formerly Mission Control) will be documented in this file.
+All notable changes to Mission Control will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -130,7 +130,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🚀 Product Autopilot — The World's First Autonomous Product Engine
 
-Autensa v2 transforms from a task orchestration dashboard into the world's first autonomous product improvement engine. Point it at any product and it runs a continuous research → ideation → build loop.
+Mission Control v2 transforms from a task orchestration dashboard into the world's first autonomous product improvement engine. Point it at any product and it runs a continuous research → ideation → build loop.
 
 ### Added
 
@@ -260,7 +260,7 @@ Autensa v2 transforms from a task orchestration dashboard into the world's first
 - Migration 019–021: Workspace isolation (`workspace_ports`, `workspace_merges`), schema refinements
 
 ### Changed
-- **Project identity** — "Mission Control" → "Autensa" throughout. Tagline updated to "The Autonomous Product Engine"
+- **Project identity** — "Autensa" → "Mission Control" throughout. Tagline updated to "The Autonomous Product Engine"
 - **Architecture** — Added Autopilot Engine layer between dashboard and agent runtime
 - **Task dispatch** — Now supports workspace isolation strategy detection before dispatch. Agents receive isolated paths, ports, branches, and workspace boundaries
 - **Merge on completion** — Task completion triggers workspace merge with product-scoped serialization lock
@@ -348,7 +348,7 @@ Autensa v2 transforms from a task orchestration dashboard into the world's first
 ### Changed
 - **Strict template defaults** — Strict workflow is now default, with review as queue stage and verification owned by the `reviewer` role.
 - **Workspace initialization** — New workspaces can clone workflow templates and bootstrap core agents automatically.
-- **Project branding/docs** — Updated project branding to Autensa (formerly Mission Control) and added explicit privacy-first statement in docs.
+- **Project branding/docs** — Updated project branding to Mission Control (formerly Autensa) and added explicit privacy-first statement in docs.
 
 ### Fixed
 - **Role mismatch** — Fixed strict template verification role (`verifier` → `reviewer`).

@@ -26,7 +26,7 @@ const EVENT_ICONS: Record<string, React.ReactNode> = {
 };
 
 function getEventIcon(eventType: string) {
-  return EVENT_ICONS[eventType] || <Activity className="w-3.5 h-3.5 text-autensa-text-secondary" />;
+  return EVENT_ICONS[eventType] || <Activity className="w-3.5 h-3.5 text-mc-text-secondary" />;
 }
 
 function relativeTime(iso: string): string {
@@ -120,23 +120,23 @@ export function ActivityPanel({ productId }: ActivityPanelProps) {
 
   const panelContent = (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-autensa-border">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-mc-border">
         <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-autensa-accent" />
-          <span className="text-sm font-medium text-autensa-text">Activity</span>
-          <span className="text-xs text-autensa-text-secondary">({entries.length})</span>
+          <Activity className="w-4 h-4 text-mc-accent" />
+          <span className="text-sm font-medium text-mc-text">Activity</span>
+          <span className="text-xs text-mc-text-secondary">({entries.length})</span>
         </div>
         {/* Desktop: collapse button */}
         <button
           onClick={() => setIsOpen(false)}
-          className="hidden lg:block text-autensa-text-secondary hover:text-autensa-text"
+          className="hidden lg:block text-mc-text-secondary hover:text-mc-text"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
         {/* Mobile: close button */}
         <button
           onClick={() => setMobileOpen(false)}
-          className="lg:hidden text-autensa-text-secondary hover:text-autensa-text"
+          className="lg:hidden text-mc-text-secondary hover:text-mc-text"
         >
           <X className="w-4 h-4" />
         </button>
@@ -144,7 +144,7 @@ export function ActivityPanel({ productId }: ActivityPanelProps) {
 
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
         {entries.length === 0 && (
-          <p className="text-xs text-autensa-text-secondary text-center py-4">No activity yet</p>
+          <p className="text-xs text-mc-text-secondary text-center py-4">No activity yet</p>
         )}
 
         {cycleKeys.map((key, idx) => {
@@ -153,7 +153,7 @@ export function ActivityPanel({ productId }: ActivityPanelProps) {
 
           return (
             <div key={key}>
-              <div className="text-[10px] font-semibold text-autensa-text-secondary uppercase tracking-wider mb-1">
+              <div className="text-[10px] font-semibold text-mc-text-secondary uppercase tracking-wider mb-1">
                 {cycleLabel(cycleType, cycleKeys.length - idx)}
               </div>
               <div className="space-y-1">
@@ -161,15 +161,15 @@ export function ActivityPanel({ productId }: ActivityPanelProps) {
                   <div key={entry.id} className="flex items-start gap-2 text-xs group">
                     <div className="mt-0.5 shrink-0">{getEventIcon(entry.event_type)}</div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-autensa-text">{entry.message}</span>
+                      <span className="text-mc-text">{entry.message}</span>
                       {entry.detail && (
-                        <span className="text-autensa-text-secondary ml-1">— {entry.detail}</span>
+                        <span className="text-mc-text-secondary ml-1">— {entry.detail}</span>
                       )}
                       {(entry.cost_usd != null && entry.cost_usd > 0) && (
                         <span className="text-green-400 ml-1">${entry.cost_usd.toFixed(4)}</span>
                       )}
                     </div>
-                    <span className="text-[10px] text-autensa-text-secondary shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[10px] text-mc-text-secondary shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                       {relativeTime(entry.created_at)}
                     </span>
                   </div>
@@ -187,13 +187,13 @@ export function ActivityPanel({ productId }: ActivityPanelProps) {
     <>
       {/* Desktop: side panel */}
       {isOpen ? (
-        <div className="hidden lg:flex w-80 border-l border-autensa-border bg-autensa-bg-secondary flex-col">
+        <div className="hidden lg:flex w-80 border-l border-mc-border bg-mc-bg-secondary flex-col">
           {panelContent}
         </div>
       ) : (
         <button
           onClick={() => setIsOpen(true)}
-          className="hidden lg:flex items-center justify-center w-8 border-l border-autensa-border bg-autensa-bg-secondary hover:bg-autensa-bg text-autensa-text-secondary hover:text-autensa-text"
+          className="hidden lg:flex items-center justify-center w-8 border-l border-mc-border bg-mc-bg-secondary hover:bg-mc-bg text-mc-text-secondary hover:text-mc-text"
           title="Show activity panel"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -203,7 +203,7 @@ export function ActivityPanel({ productId }: ActivityPanelProps) {
       {/* Mobile: floating button + slide-over */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed bottom-4 right-4 z-40 w-12 h-12 rounded-full bg-autensa-accent text-white shadow-lg flex items-center justify-center"
+        className="lg:hidden fixed bottom-4 right-4 z-40 w-12 h-12 rounded-full bg-mc-accent text-white shadow-lg flex items-center justify-center"
       >
         <Activity className="w-5 h-5" />
         {entries.length > 0 && (
@@ -216,7 +216,7 @@ export function ActivityPanel({ productId }: ActivityPanelProps) {
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-          <div className="absolute right-0 top-0 bottom-0 w-80 bg-autensa-bg-secondary">
+          <div className="absolute right-0 top-0 bottom-0 w-80 bg-mc-bg-secondary">
             {panelContent}
           </div>
         </div>

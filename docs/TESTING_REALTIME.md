@@ -28,7 +28,7 @@ Open http://localhost:4000 (production server) or http://localhost:4000 (local)
 ### 2. Real-Time Task Updates
 
 **Test steps:**
-1. Open Autensa in two browser windows side-by-side
+1. Open Mission Control in two browser windows side-by-side
 2. In Window 1: Create a new task (click "+ New Task")
 3. In Window 2: Task should appear in INBOX column **without refresh**
 4. In Window 1: Drag task to ASSIGNED column
@@ -130,7 +130,7 @@ curl -X POST http://localhost:4000/api/tasks/TASK_ID/subagent \
 ### 7. Multi-Client SSE Test
 
 **Test steps:**
-1. Open Autensa in 3 different browsers (Chrome, Firefox, Safari)
+1. Open Mission Control in 3 different browsers (Chrome, Firefox, Safari)
 2. Create/update a task in Browser 1
 3. Verify all browsers receive the update simultaneously
 

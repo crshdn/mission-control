@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
         // Try GitHub API first
         try {
           const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/readme`, {
-            headers: { 'Accept': 'application/vnd.github.raw+json', 'User-Agent': 'Autensa/2.0' },
+            headers: { 'Accept': 'application/vnd.github.raw+json', 'User-Agent': 'Mission Control/2.0' },
             signal: AbortSignal.timeout(10_000),
           });
           if (res.ok) {
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     if (live_url) {
       try {
         const res = await fetch(live_url, {
-          headers: { 'User-Agent': 'Autensa/2.0' },
+          headers: { 'User-Agent': 'Mission Control/2.0' },
           signal: AbortSignal.timeout(10_000),
         });
         if (res.ok) {

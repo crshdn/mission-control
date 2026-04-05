@@ -1,0 +1,175 @@
+
+> mission-control@2.4.0 test
+> mkdir -p .tmp && rm -f .tmp/mission-control-test.db* && NODE_ENV=test DATABASE_PATH=.tmp/mission-control-test.db tsx --test --test-concurrency=1 src/**/*.test.ts
+
+✔ getDispatchFailureMessage returns the backend conflict message (0.305125ms)
+✔ broadcast stops the health-check timer when the last client is pruned (29.472208ms)
+[23:37:51.005] [32mINFO[39m (74080): [36m[SSE] Health check cycle started[39m
+[23:37:51.006] [31mERROR[39m (74080): [36mFailed to send SSE event to client:[39m
+    err: {
+      "type": "Error",
+      "message": "client disconnected",
+      "stack":
+          Error: client disconnected
+              at Object.enqueue (/Users/openclaw/.openclaw/mission-control/src/lib/events.test.ts:24:15)
+              at Object.broadcast (/Users/openclaw/.openclaw/mission-control/src/lib/events.ts:79:14)
+              at TestContext.<anonymous> (/Users/openclaw/.openclaw/mission-control/src/lib/events.test.ts:31:12)
+              at async Test.run (node:internal/test_runner/test:1125:7)
+              at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3)
+    }
+[23:37:51.007] [32mINFO[39m (74080): [36m[SSE] Health check cycle stopped[39m
+[23:37:51.007] [32mINFO[39m (74080): [36m[SSE] Broadcast task_created to 0 client(s)[39m
+✔ getHealthSummary returns correct shape (18.255583ms)
+✔ getHealthDetail returns all components (1.80675ms)
+✔ formatPrometheus produces valid exposition format (0.40925ms)
+✔ formatPrometheus handles error state (0.060834ms)
+[23:37:51.147] [32mINFO[39m (74082): [36m[DB] Pre-migration backup created: mission-control-test.db.backup.2026-04-05T21-37-51[39m
+[23:37:51.148] [32mINFO[39m (74082): [36m[DB] Removed old backup: mission-control-test.db.backup.2026-04-05T17-42-18[39m
+[23:37:51.148] [32mINFO[39m (74082): [36m[DB] Running migration 001: initial_schema[39m
+[23:37:51.148] [32mINFO[39m (74082): [36m[Migration 001] Baseline schema marker[39m
+[23:37:51.148] [32mINFO[39m (74082): [36m[DB] Migration 001 completed[39m
+[23:37:51.148] [32mINFO[39m (74082): [36m[DB] Running migration 002: add_workspaces[39m
+[23:37:51.148] [32mINFO[39m (74082): [36m[Migration 002] Adding workspaces table and columns...[39m
+[23:37:51.148] [32mINFO[39m (74082): [36m[DB] Migration 002 completed[39m
+[23:37:51.148] [32mINFO[39m (74082): [36m[DB] Running migration 003: add_planning_tables[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[Migration 003] Adding planning tables...[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Migration 003 completed[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Running migration 004: add_planning_session_columns[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[Migration 004] Adding planning session columns to tasks...[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Migration 004 completed[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Running migration 005: add_agent_model_field[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[Migration 005] Adding model field to agents...[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Migration 005 completed[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Running migration 006: add_planning_dispatch_error_column[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[Migration 006] Adding planning_dispatch_error column to tasks...[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Migration 006 completed[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Running migration 007: add_agent_source_and_gateway_id[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[Migration 007] Adding source and gateway_agent_id to agents...[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Migration 007 completed[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Running migration 008: add_status_reason_column[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[Migration 008] Adding status_reason column to tasks...[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Migration 008 completed[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Running migration 009: add_agent_session_key_prefix[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[Migration 009] Adding session_key_prefix to agents...[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Migration 009 completed[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Running migration 010: add_workflow_templates_roles_knowledge[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[Migration 010] Adding workflow templates, task roles, and knowledge tables...[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[Migration 010] Seeded default workflow templates[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Migration 010 completed[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Running migration 011: fix_broken_fk_references[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[Migration 011] Fixing broken FK references from migration 010...[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[Migration 011] No broken FK references found — skipping[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Migration 011 completed[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Running migration 012: fix_strict_template_review_queue[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[Migration 012] Updating Strict workflow template...[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[Migration 012] Strict template updated (review is now a queue)[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Migration 012 completed[39m
+[23:37:51.149] [32mINFO[39m (74082): [36m[DB] Running migration 013: reset_fresh_start[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Fresh database detected — wiping seed data and bootstrapping...[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Wiped task_roles[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Wiped task_activities[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Wiped task_deliverables[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Wiped planning_questions[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Wiped planning_specs[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Wiped knowledge_entries[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Wiped messages[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Wiped conversation_participants[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Wiped conversations[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Wiped events[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Wiped openclaw_sessions[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Wiped agents[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Wiped tasks[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Strict template is now default with reviewer role[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Bootstrap] Created Builder Agent (builder) for workspace default[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Bootstrap] Created Tester Agent (tester) for workspace default[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Bootstrap] Created Reviewer Agent (reviewer) for workspace default[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Bootstrap] Created Learner Agent (learner) for workspace default[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 013] Fresh start complete[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[DB] Migration 013 completed[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[DB] Running migration 014: add_task_images_column[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 014] Adding images column to tasks...[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[DB] Migration 014 completed[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[DB] Running migration 015: add_convoy_mode[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 015] Adding convoy mode tables and columns...[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 015] Convoy mode tables and indexes created[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[DB] Migration 015 completed[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[DB] Running migration 016: add_product_autopilot[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 016] Adding Product Autopilot tables...[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[Migration 016] Product Autopilot tables and indexes created[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[DB] Migration 016 completed[39m
+[23:37:51.150] [32mINFO[39m (74082): [36m[DB] Running migration 017: add_task_notes[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 017] Adding task_notes table...[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 017] task_notes table created[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Migration 017 completed[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Running migration 018: autopilot_resilience_activity[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 018] Adding autopilot resilience and activity log...[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 018] Autopilot resilience tables and columns created[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Migration 018 completed[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Running migration 019: add_build_pipeline_columns[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 019] Adding build pipeline columns to products and tasks...[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 019] Build pipeline columns added[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Migration 019 completed[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Running migration 020: add_chat_role_column[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 020] Adding role column to task_notes for agent responses...[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Migration 020 completed[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Running migration 021: add_parallel_build_isolation[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 021] Adding parallel build isolation columns and tables...[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 021] Parallel build isolation tables and columns created[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Migration 021 completed[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Running migration 022: add_product_health_scores[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 022] Adding product health scores table and weight config...[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 022] Product health scores table and indexes created[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Migration 022 completed[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Running migration 023: add_idea_similarity_detection[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 023] Adding idea similarity detection tables and columns...[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 023] Idea similarity detection tables and columns created[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Migration 023 completed[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Running migration 024: add_user_task_reads[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 024] Adding user_task_reads table for unread tracking...[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 024] user_task_reads table created[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Migration 024 completed[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Running migration 025: add_batch_review_threshold[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 025] Adding batch_review_threshold column to products...[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Migration 025 completed[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Running migration 026: add_rollback_history[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 026] Adding rollback history table...[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 026] Rollback history table created[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Migration 026 completed[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Running migration 027: add_product_program_ab_testing[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 027] Adding Product Program A/B testing tables and columns...[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 027] Product Program A/B testing tables created[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Migration 027 completed[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Running migration 028: add_product_skills[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 028] Adding product_skills table...[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[Migration 028] product_skills and skill_reports tables created[39m
+[23:37:51.151] [32mINFO[39m (74082): [36m[DB] Migration 028 completed[39m
+[23:37:51.153] [32mINFO[39m (74082): [36m[DB] New database created at:[39m
+    [35mdata[39m: ".tmp/mission-control-test.db"
+[23:37:51.156] [32mINFO[39m (74082): [36m[OpenClaw] Device identity loaded:[39m
+    [35mdata[39m: "5f6a4a43eeeb22430e92944fbbc048abf30c3a1f4a6bb6032fb7562c4c03cf0b"
+[23:37:51.156] [32mINFO[39m (74082): [36m[OpenClaw] Started periodic cache cleanup (interval:[39m
+    [35mdata[39m: [
+      300000,
+      "ms)"
+    ]
+✔ isPathWithinBase rejects sibling-prefix paths (0.314ms)
+✔ resolveConfiguredBasePath rejects filesystem roots (0.119709ms)
+✔ resolveExistingBasePath reports missing directories clearly (1.452792ms)
+✔ resolveWritableBasePath creates a missing configured base safely (0.516125ms)
+✔ resolvePreviewPath rejects symlink escapes outside allowed roots (0.868709ms)
+✔ resolveDownloadTargetPath rejects path traversal via relative paths (0.369959ms)
+✔ resolveDownloadTargetPath rejects symlink escapes outside projects base (0.900167ms)
+✔ resolveUploadTargetPath keeps files within resolved projects base (0.609875ms)
+✔ resolveUploadTargetPath rejects writes through symlinked parent directories (0.55525ms)
+✔ evidence gate requires deliverable + activity (10.545833ms)
+✔ task cannot be done when status_reason indicates failure (0.408125ms)
+✔ ensureFixerExists creates fixer when missing (0.840334ms)
+✔ failure counter reads status_changed failure events (0.193208ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 594.97075

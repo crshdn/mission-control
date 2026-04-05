@@ -1,4 +1,4 @@
-# Autensa v2 — Video Narration Script
+# Mission Control v2 — Video Narration Script
 
 **Format:** One section per slide. Read in order. Designed for AI voice generation.
 **Tone:** Confident, clear, no hype. Like a founder demo, not a commercial.
@@ -8,7 +8,7 @@
 
 ## Slide 1 — Title
 
-This is Autensa v2 — the autonomous product engine.
+This is Mission Control v2 — the autonomous product engine.
 
 It watches your products, researches your market, generates feature ideas, and builds them — automatically — while you sleep.
 
@@ -26,9 +26,9 @@ Seventy-two percent of feature ideas never get built. The average time from idea
 
 ## Slide 3 — Before vs After
 
-Before Autensa, you were doing all of this manually. Researching competitors every week. Brainstorming in docs that get forgotten. Prioritizing in spreadsheets. Writing specs from scratch. Assigning work to developers and waiting. Reviewing pull requests by hand. Deploying and hoping for the best.
+Before Mission Control, you were doing all of this manually. Researching competitors every week. Brainstorming in docs that get forgotten. Prioritizing in spreadsheets. Writing specs from scratch. Assigning work to developers and waiting. Reviewing pull requests by hand. Deploying and hoping for the best.
 
-With Autensa v2, AI researches your market automatically. It generates ranked, scored feature ideas. You swipe Yes or No in seconds. Specs get written from the research. Build agents implement the feature immediately. Review agents verify quality and run tests. And a pull request shows up on GitHub — ready to merge.
+With Mission Control v2, AI researches your market automatically. It generates ranked, scored feature ideas. You swipe Yes or No in seconds. Specs get written from the research. Build agents implement the feature immediately. Review agents verify quality and run tests. And a pull request shows up on GitHub — ready to merge.
 
 ---
 
@@ -44,7 +44,7 @@ Seven steps, end to end, from idea to shipped code. And only one of those steps 
 
 Step one: autonomous research.
 
-You point Autensa at your product. It reads your codebase, scans your live site, and researches your market. Competitive analysis — what your competitors are doing, where they're strong, where they're weak. Market signals — conversion patterns, pricing opportunities, growth channels. Technical gaps — performance issues, UX improvements, architecture upgrades. And user intent — what people are actually searching for and trying to do.
+You point Mission Control at your product. It reads your codebase, scans your live site, and researches your market. Competitive analysis — what your competitors are doing, where they're strong, where they're weak. Market signals — conversion patterns, pricing opportunities, growth channels. Technical gaps — performance issues, UX improvements, architecture upgrades. And user intent — what people are actually searching for and trying to do.
 
 This runs daily, on a schedule. No manual work required.
 
@@ -142,7 +142,7 @@ And preference learning — every swipe trains the model. Category weights, comp
 
 ## Slide 13 — Architecture
 
-Under the hood, Autensa's research and ideation engine is inspired by Andrej Karpathy's AutoResearch architecture — the program-guided autonomous research loop.
+Under the hood, Mission Control's research and ideation engine is inspired by Andrej Karpathy's AutoResearch architecture — the program-guided autonomous research loop.
 
 At the center is a Product Program — a living document, similar to Karpathy's program dot md, that instructs the research and ideation agents. It defines what to look for, what matters, and what to ignore.
 
@@ -156,15 +156,15 @@ And you steer the program, not every individual action. Your swipe decisions bec
 
 ## Slide 14 — Who This Is For
 
-Autensa is built for builders.
+Mission Control is built for builders.
 
-If you're a solo developer who can't research and build and ship at the same time — Autensa handles the research and ideation loop. You swipe, agents build, and your side project improves while you sleep.
+If you're a solo developer who can't research and build and ship at the same time — Mission Control handles the research and ideation loop. You swipe, agents build, and your side project improves while you sleep.
 
-If you're a startup founder who needs to iterate faster than competitors — ship improvements daily instead of monthly. Autensa surfaces what competitors are doing and builds your response automatically.
+If you're a startup founder who needs to iterate faster than competitors — ship improvements daily instead of monthly. Mission Control surfaces what competitors are doing and builds your response automatically.
 
-If you're an agency or freelancer managing ten client sites — add each one as a product. Autensa researches and suggests improvements for all of them in parallel.
+If you're an agency or freelancer managing ten client sites — add each one as a product. Mission Control researches and suggests improvements for all of them in parallel.
 
-And if you're an enterprise team with a backlog four hundred tickets deep — Autensa doesn't replace your backlog. It attacks it. Prioritized, researched, and built by agents while your team focuses on what matters most.
+And if you're an enterprise team with a backlog four hundred tickets deep — Mission Control doesn't replace your backlog. It attacks it. Prioritized, researched, and built by agents while your team focuses on what matters most.
 
 ---
 
@@ -172,23 +172,23 @@ And if you're an enterprise team with a backlog four hundred tickets deep — Au
 
 Here's what continuous improvement actually looks like.
 
-Ideas researched per week: manually, you might get through two or three. With Autensa, fifty to a hundred plus.
+Ideas researched per week: manually, you might get through two or three. With Mission Control, fifty to a hundred plus.
 
-Features shipped per month: manually, one or two if you're lucky. With Autensa, ten to thirty or more.
+Features shipped per month: manually, one or two if you're lucky. With Mission Control, ten to thirty or more.
 
-Time from idea to pull request: manually, weeks to months. With Autensa, minutes to hours.
+Time from idea to pull request: manually, weeks to months. With Mission Control, minutes to hours.
 
 ---
 
 ## Slide 16 — Open Source
 
-Autensa is open source, built for the OpenClaw ecosystem.
+Mission Control is open source, built for the OpenClaw ecosystem.
 
 It runs on your machine. It uses your API keys. It connects to your repos. No vendor lock-in. No data leaves your setup.
 
 The agents are pluggable — use Claude Code, Codex, or any OpenClaw-compatible agent. Configure them per product.
 
-And it works with any stack. Next.js, React, Python, Rails — if it has a repo, Autensa can improve it.
+And it works with any stack. Next.js, React, Python, Rails — if it has a repo, Mission Control can improve it.
 
 ---
 
@@ -196,4 +196,4 @@ And it works with any stack. Next.js, React, Python, Rails — if it has a repo,
 
 Stop managing a backlog. Start shipping on autopilot.
 
-Autensa v2 is available now for OpenClaw users. Check it out at github dot com slash openclaw slash autensa.
+Mission Control v2 is available now for OpenClaw users. Check it out at github dot com slash openclaw slash mission-control.

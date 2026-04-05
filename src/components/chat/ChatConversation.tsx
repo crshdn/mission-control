@@ -90,9 +90,9 @@ export function ChatConversation({ taskId, onMarkRead }: ChatConversationProps) 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2.5">
         {notes.length === 0 && !waiting && (
           <div className="text-center py-8">
-            <MessageSquare className="w-7 h-7 text-autensa-text-secondary mx-auto mb-2 opacity-40" />
-            <p className="text-autensa-text-secondary text-xs">No messages yet</p>
-            <p className="text-autensa-text-secondary/50 text-[10px] mt-1">
+            <MessageSquare className="w-7 h-7 text-mc-text-secondary mx-auto mb-2 opacity-40" />
+            <p className="text-mc-text-secondary text-xs">No messages yet</p>
+            <p className="text-mc-text-secondary/50 text-[10px] mt-1">
               Send a message — it dispatches automatically
             </p>
           </div>
@@ -108,7 +108,7 @@ export function ChatConversation({ taskId, onMarkRead }: ChatConversationProps) 
                   : 'bg-blue-500/10 border-blue-500/20'
               }`}>
                 <div className="flex items-center gap-1.5 mb-0.5">
-                  <span className="text-[10px] font-medium text-autensa-text-secondary">
+                  <span className="text-[10px] font-medium text-mc-text-secondary">
                     {isAgent ? 'Agent' : 'You'}
                   </span>
                   {!isAgent && note.status === 'pending' && (
@@ -122,11 +122,11 @@ export function ChatConversation({ taskId, onMarkRead }: ChatConversationProps) 
                       <Check className="w-2.5 h-2.5" />
                     </span>
                   )}
-                  <span className="ml-auto text-[10px] text-autensa-text-secondary/40">
+                  <span className="ml-auto text-[10px] text-mc-text-secondary/40">
                     {new Date(note.created_at.endsWith('Z') ? note.created_at : note.created_at + 'Z').toLocaleTimeString()}
                   </span>
                 </div>
-                <div className="text-xs text-autensa-text whitespace-pre-wrap leading-relaxed">{note.content}</div>
+                <div className="text-xs text-mc-text whitespace-pre-wrap leading-relaxed">{note.content}</div>
               </div>
             </div>
           );
@@ -135,7 +135,7 @@ export function ChatConversation({ taskId, onMarkRead }: ChatConversationProps) 
         {waiting && (
           <div className="mr-6">
             <div className="bg-green-500/10 border border-green-500/20 rounded-lg px-2.5 py-1.5 inline-flex items-center gap-1.5">
-              <span className="text-[10px] font-medium text-autensa-text-secondary">Agent</span>
+              <span className="text-[10px] font-medium text-mc-text-secondary">Agent</span>
               <div className="flex gap-0.5">
                 <span className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                 <span className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -147,7 +147,7 @@ export function ChatConversation({ taskId, onMarkRead }: ChatConversationProps) 
       </div>
 
       {/* Input */}
-      <div className="border-t border-autensa-border p-2 space-y-1.5 flex-shrink-0">
+      <div className="border-t border-mc-border p-2 space-y-1.5 flex-shrink-0">
         {error && (
           <div className="text-[10px] text-red-400 px-1">{error}</div>
         )}

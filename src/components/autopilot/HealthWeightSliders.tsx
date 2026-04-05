@@ -101,19 +101,19 @@ export function HealthWeightSliders({ productId, initialWeights, onSaved }: Prop
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-autensa-text-secondary uppercase tracking-wider">
+        <h3 className="text-sm font-medium text-mc-text-secondary uppercase tracking-wider">
           Health Score Weights
         </h3>
         <div className="flex items-center gap-2">
           {previewScore !== null && (
             <div className="flex items-center gap-2 mr-3">
-              <span className="text-xs text-autensa-text-secondary">Current:</span>
+              <span className="text-xs text-mc-text-secondary">Current:</span>
               <HealthBadge score={previewScore} size={32} />
             </div>
           )}
           <button
             onClick={handleReset}
-            className="min-h-8 px-3 rounded-lg border border-autensa-border bg-autensa-bg text-autensa-text-secondary hover:text-autensa-text text-xs flex items-center gap-1"
+            className="min-h-8 px-3 rounded-lg border border-mc-border bg-mc-bg text-mc-text-secondary hover:text-mc-text text-xs flex items-center gap-1"
           >
             <RotateCcw className="w-3 h-3" />
             Reset
@@ -124,7 +124,7 @@ export function HealthWeightSliders({ productId, initialWeights, onSaved }: Prop
             className={`min-h-8 px-3 rounded-lg flex items-center gap-1.5 text-xs font-medium transition-colors ${
               saved
                 ? 'bg-green-500/20 text-green-400'
-                : 'bg-autensa-accent text-white hover:bg-autensa-accent/90'
+                : 'bg-mc-accent text-white hover:bg-mc-accent/90'
             }`}
           >
             {saving ? <Loader className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
@@ -149,8 +149,8 @@ export function HealthWeightSliders({ productId, initialWeights, onSaved }: Prop
               key={comp.key}
               className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
                 isDisabled
-                  ? 'border-autensa-border/30 bg-autensa-bg/30 opacity-50'
-                  : 'border-autensa-border bg-autensa-bg'
+                  ? 'border-mc-border/30 bg-mc-bg/30 opacity-50'
+                  : 'border-mc-border bg-mc-bg'
               }`}
             >
               <label className="flex items-center gap-2 cursor-pointer min-w-[160px]">
@@ -158,7 +158,7 @@ export function HealthWeightSliders({ productId, initialWeights, onSaved }: Prop
                   type="checkbox"
                   checked={!isDisabled}
                   onChange={() => handleToggle(comp.key)}
-                  className="rounded border-autensa-border bg-autensa-bg text-autensa-accent focus:ring-autensa-accent"
+                  className="rounded border-mc-border bg-mc-bg text-mc-accent focus:ring-mc-accent"
                 />
                 <span
                   className="text-sm font-medium"
@@ -175,7 +175,7 @@ export function HealthWeightSliders({ productId, initialWeights, onSaved }: Prop
                 value={value}
                 onChange={(e) => handleWeightChange(comp.key, Number(e.target.value))}
                 disabled={isDisabled}
-                className="flex-1 h-1.5 bg-autensa-bg-tertiary rounded-lg appearance-none cursor-pointer accent-autensa-accent disabled:opacity-30"
+                className="flex-1 h-1.5 bg-mc-bg-tertiary rounded-lg appearance-none cursor-pointer accent-mc-accent disabled:opacity-30"
                 style={
                   !isDisabled
                     ? ({
@@ -186,7 +186,7 @@ export function HealthWeightSliders({ productId, initialWeights, onSaved }: Prop
                 }
               />
 
-              <span className="text-sm font-mono text-autensa-text-secondary w-10 text-right">
+              <span className="text-sm font-mono text-mc-text-secondary w-10 text-right">
                 {isDisabled ? '—' : `${value}%`}
               </span>
             </div>
@@ -194,7 +194,7 @@ export function HealthWeightSliders({ productId, initialWeights, onSaved }: Prop
         })}
       </div>
 
-      <div className="text-xs text-autensa-text-secondary flex items-center justify-between pt-1">
+      <div className="text-xs text-mc-text-secondary flex items-center justify-between pt-1">
         <span>
           Total active weight: <span className="font-mono">{totalWeight}%</span>
           {totalWeight !== 100 && totalWeight > 0 && (

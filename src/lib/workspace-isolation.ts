@@ -16,7 +16,13 @@ import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { getProjectsPath } from '@/lib/config';
 import { normalizeServerPath } from '@/lib/server-paths';
-import type { Task, Product } from '@/lib/types';
+import { shouldRetainWorkspace } from '@/lib/workspace-retention';
+import {
+  getPrimaryWorkspaceMetadataPath,
+  resolveWorkspaceMetadataPath,
+  WORKSPACE_METADATA_FILENAMES,
+} from '@/lib/workspace-metadata';
+import type { Task } from '@/lib/types';
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -72,6 +78,9 @@ export interface WorkspaceStatus {
 
 const PORT_RANGE_START = 4200;
 const PORT_RANGE_END = 4299;
+const WORKSPACE_METADATA_EXCLUDE_FLAGS = WORKSPACE_METADATA_FILENAMES
+  .map((filename) => `--exclude='${filename}'`)
+  .join(' ');
 
 export function allocatePort(taskId: string, productId?: string): number {
   // Find the first available port in the range, ensuring the associated task is still active
@@ -200,13 +209,12 @@ export async function createTaskWorkspace(task: Task): Promise<WorkspaceInfo> {
         const entryTaskId = entry.name.replace('task-', '');
         if (entryTaskId === task.id) continue;
         
-        const entryTask = queryOne<{ status: string }>(
-          `SELECT status FROM tasks WHERE id = ?`,
+        const entryTask = queryOne<{ status: string; merge_status: string | null }>(
+          `SELECT status, merge_status FROM tasks WHERE id = ?`,
           [entryTaskId]
         );
-        
-        const isActive = entryTask && ['assigned', 'in_progress', 'convoy_active', 'testing', 'review', 'verification'].includes(entryTask.status);
-        if (!isActive) {
+
+        if (!shouldRetainWorkspace(entryTask)) {
           logger.info(`[Workspace] Cleaning up orphaned workspace for task ${entryTaskId}`);
           const orphanPath = path.join(workspacesRoot, entry.name);
           try {
@@ -256,7 +264,7 @@ export async function createTaskWorkspace(task: Task): Promise<WorkspaceInfo> {
     agentId: task.assigned_agent_id || undefined,
     isolatedPort: port,
   };
-  writeFileSync(path.join(workspaceDir, '.autensa-workspace.json'), JSON.stringify(metadata, null, 2));
+  writeFileSync(getPrimaryWorkspaceMetadataPath(workspaceDir), JSON.stringify(metadata, null, 2));
 
   // Persist to DB
   const now = new Date().toISOString();
@@ -356,7 +364,7 @@ async function createSandboxWorkspace(
       `rsync -a --exclude='.workspaces' --exclude='node_modules' --exclude='.next' --exclude='.git' --exclude='dist' --exclude='build' "${projectDir}/" "${workspaceDir}/"`,
       { stdio: 'pipe', timeout: 60000 }
     );
-  } catch (err) {
+  } catch {
     // If rsync fails (e.g., empty dir), just create the workspace
     mkdirSync(workspaceDir, { recursive: true });
   }
@@ -387,8 +395,8 @@ export async function getWorkspaceStatus(task: Task): Promise<WorkspaceStatus> {
   };
 
   // Read metadata for branch info
-  const metadataPath = path.join(workspacePath, '.autensa-workspace.json');
-  if (existsSync(metadataPath)) {
+  const metadataPath = resolveWorkspaceMetadataPath(workspacePath);
+  if (metadataPath) {
     try {
       const metadata: WorkspaceMetadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
       result.branch = metadata.branch;
@@ -420,7 +428,7 @@ export async function getWorkspaceStatus(task: Task): Promise<WorkspaceStatus> {
     const projectDir = path.dirname(path.dirname(workspacePath)); // Up from .workspaces/task-xxx
     try {
       const diff = execSync(
-        `diff -rq "${projectDir}" "${workspacePath}" --exclude='.workspaces' --exclude='node_modules' --exclude='.next' --exclude='.autensa-workspace.json' 2>/dev/null | wc -l`,
+        `diff -rq "${projectDir}" "${workspacePath}" --exclude='.workspaces' --exclude='node_modules' --exclude='.next' ${WORKSPACE_METADATA_EXCLUDE_FLAGS} 2>/dev/null | wc -l`,
         { encoding: 'utf-8', timeout: 10000 }
       ).trim();
       result.filesChanged = parseInt(diff) || 0;
@@ -453,7 +461,7 @@ export async function mergeWorkspace(task: Task, options?: { force?: boolean; cr
   if (task.workspace_strategy === 'worktree') {
     return mergeWorktree(task, mergeId, now, options);
   } else {
-    return mergeSandbox(task, mergeId, now, options);
+    return mergeSandbox(task, mergeId, now);
   }
 }
 
@@ -468,8 +476,8 @@ async function mergeWorktree(
 
   // Read metadata for branch name
   let branch = `autopilot/${task.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50)}`;
-  const metadataPath = path.join(workspacePath, '.autensa-workspace.json');
-  if (existsSync(metadataPath)) {
+  const metadataPath = resolveWorkspaceMetadataPath(workspacePath);
+  if (metadataPath) {
     try {
       const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
       if (metadata.branch) branch = metadata.branch;
@@ -547,8 +555,7 @@ async function mergeWorktree(
 async function mergeSandbox(
   task: Task,
   mergeId: string,
-  now: string,
-  _options?: { force?: boolean }
+  now: string
 ): Promise<MergeResult> {
   const workspacePath = task.workspace_path!;
   // The project dir is two levels up: .workspaces/task-xxx → .workspaces → projectDir
@@ -559,7 +566,7 @@ async function mergeSandbox(
     let conflictFiles: string[] = [];
     try {
       const diff = execSync(
-        `diff -rq "${projectDir}" "${workspacePath}" --exclude='.workspaces' --exclude='node_modules' --exclude='.next' --exclude='.autensa-workspace.json' --exclude='.git' --exclude='dist' --exclude='build' 2>/dev/null || true`,
+        `diff -rq "${projectDir}" "${workspacePath}" --exclude='.workspaces' --exclude='node_modules' --exclude='.next' ${WORKSPACE_METADATA_EXCLUDE_FLAGS} --exclude='.git' --exclude='dist' --exclude='build' 2>/dev/null || true`,
         { encoding: 'utf-8', timeout: 30000 }
       );
       // Parse diff output for changed files
@@ -574,7 +581,7 @@ async function mergeSandbox(
       if (changedFiles.length > 0) {
         // rsync changes from workspace back to project
         execSync(
-          `rsync -a --exclude='.workspaces' --exclude='node_modules' --exclude='.next' --exclude='.autensa-workspace.json' --exclude='.git' --exclude='dist' --exclude='build' "${workspacePath}/" "${projectDir}/"`,
+          `rsync -a --exclude='.workspaces' --exclude='node_modules' --exclude='.next' ${WORKSPACE_METADATA_EXCLUDE_FLAGS} --exclude='.git' --exclude='dist' --exclude='build' "${workspacePath}/" "${projectDir}/"`,
           { stdio: 'pipe', timeout: 60000 }
         );
       }
@@ -623,8 +630,8 @@ export function cleanupWorkspace(task: Task): boolean {
       }
 
       // Try to delete the branch
-      const metadataPath = path.join(workspacePath, '.autensa-workspace.json');
-      if (existsSync(metadataPath)) {
+      const metadataPath = resolveWorkspaceMetadataPath(workspacePath);
+      if (metadataPath) {
         try {
           const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
           if (metadata.branch) {
@@ -648,8 +655,8 @@ export function cleanupWorkspace(task: Task): boolean {
     );
 
     // Update metadata status
-    const metadataPath = path.join(workspacePath, '.autensa-workspace.json');
-    if (existsSync(metadataPath)) {
+    const metadataPath = resolveWorkspaceMetadataPath(workspacePath);
+    if (metadataPath) {
       try {
         const metadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
         metadata.status = 'abandoned';
@@ -687,9 +694,10 @@ export function getActiveWorkspaces(productId: string): Array<{
 
   return tasks.map(t => {
     let branch: string | undefined;
-    if (t.workspace_path && existsSync(path.join(t.workspace_path, '.autensa-workspace.json'))) {
+    const metadataPath = t.workspace_path ? resolveWorkspaceMetadataPath(t.workspace_path) : null;
+    if (metadataPath) {
       try {
-        const meta = JSON.parse(readFileSync(path.join(t.workspace_path, '.autensa-workspace.json'), 'utf-8'));
+        const meta = JSON.parse(readFileSync(metadataPath, 'utf-8'));
         branch = meta.branch;
       } catch { /* ignore */ }
     }

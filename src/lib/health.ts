@@ -1,5 +1,5 @@
 /**
- * Health check module for Autensa.
+ * Health check module for Mission Control.
  *
  * Provides summary (unauthenticated) and detailed (authenticated)
  * system health information for monitoring integrations.

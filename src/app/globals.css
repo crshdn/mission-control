@@ -3,19 +3,19 @@
 @tailwind utilities;
 
 :root {
-  --autensa-bg: #0d1117;
-  --autensa-bg-secondary: #161b22;
-  --autensa-bg-tertiary: #21262d;
-  --autensa-border: #30363d;
-  --autensa-text: #c9d1d9;
-  --autensa-text-secondary: #8b949e;
-  --autensa-accent: #58a6ff;
-  --autensa-accent-green: #3fb950;
-  --autensa-accent-yellow: #d29922;
-  --autensa-accent-red: #f85149;
-  --autensa-accent-purple: #a371f7;
-  --autensa-accent-pink: #db61a2;
-  --autensa-accent-cyan: #39d353;
+  --mc-bg: #0d1117;
+  --mc-bg-secondary: #161b22;
+  --mc-bg-tertiary: #21262d;
+  --mc-border: #30363d;
+  --mc-text: #c9d1d9;
+  --mc-text-secondary: #8b949e;
+  --mc-accent: #58a6ff;
+  --mc-accent-green: #3fb950;
+  --mc-accent-yellow: #d29922;
+  --mc-accent-red: #f85149;
+  --mc-accent-purple: #a371f7;
+  --mc-accent-pink: #db61a2;
+  --mc-accent-cyan: #39d353;
 }
 
 * {
@@ -32,8 +32,8 @@ body {
 }
 
 body {
-  background-color: var(--autensa-bg);
-  color: var(--autensa-text);
+  background-color: var(--mc-bg);
+  color: var(--mc-text);
 }
 
 /* Custom scrollbar */
@@ -43,16 +43,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--autensa-bg-secondary);
+  background: var(--mc-bg-secondary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--autensa-border);
+  background: var(--mc-border);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--autensa-text-secondary);
+  background: var(--mc-text-secondary);
 }
 
 /* Mission Queue center pane: make horizontal scrollbar easier to grab */
@@ -65,69 +65,69 @@ body {
 }
 
 .mission-queue-scroll-x::-webkit-scrollbar-track {
-  background: var(--autensa-bg-tertiary);
+  background: var(--mc-bg-tertiary);
   border-radius: 999px;
 }
 
 .mission-queue-scroll-x::-webkit-scrollbar-thumb {
-  background: var(--autensa-text-secondary);
+  background: var(--mc-text-secondary);
   border-radius: 999px;
-  border: 3px solid var(--autensa-bg-tertiary);
+  border: 3px solid var(--mc-bg-tertiary);
 }
 
 .mission-queue-scroll-x::-webkit-scrollbar-thumb:hover {
-  background: var(--autensa-text);
+  background: var(--mc-text);
 }
 
 /* Status badge styles */
 .status-standby {
-  @apply bg-autensa-bg-tertiary text-autensa-text-secondary border border-autensa-border;
+  @apply bg-mc-bg-tertiary text-mc-text-secondary border border-mc-border;
 }
 
 .status-working {
-  @apply bg-autensa-accent-green/20 text-autensa-accent-green border border-autensa-accent-green/50;
+  @apply bg-mc-accent-green/20 text-mc-accent-green border border-mc-accent-green/50;
 }
 
 .status-offline {
-  @apply bg-autensa-accent-red/20 text-autensa-accent-red border border-autensa-accent-red/50;
+  @apply bg-mc-accent-red/20 text-mc-accent-red border border-mc-accent-red/50;
 }
 
 /* Priority badge styles */
 .priority-low {
-  @apply bg-autensa-text-secondary/20 text-autensa-text-secondary;
+  @apply bg-mc-text-secondary/20 text-mc-text-secondary;
 }
 
 .priority-normal {
-  @apply bg-autensa-accent/20 text-autensa-accent;
+  @apply bg-mc-accent/20 text-mc-accent;
 }
 
 .priority-high {
-  @apply bg-autensa-accent-yellow/20 text-autensa-accent-yellow;
+  @apply bg-mc-accent-yellow/20 text-mc-accent-yellow;
 }
 
 .priority-urgent {
-  @apply bg-autensa-accent-red/20 text-autensa-accent-red;
+  @apply bg-mc-accent-red/20 text-mc-accent-red;
 }
 
 /* Task status column colors */
 .column-inbox {
-  @apply border-t-autensa-accent-pink;
+  @apply border-t-mc-accent-pink;
 }
 
 .column-assigned {
-  @apply border-t-autensa-accent-yellow;
+  @apply border-t-mc-accent-yellow;
 }
 
 .column-in_progress {
-  @apply border-t-autensa-accent;
+  @apply border-t-mc-accent;
 }
 
 .column-review {
-  @apply border-t-autensa-accent-purple;
+  @apply border-t-mc-accent-purple;
 }
 
 .column-done {
-  @apply border-t-autensa-accent-green;
+  @apply border-t-mc-accent-green;
 }
 
 /* Animations */
@@ -157,5 +157,5 @@ body {
 
 /* Glow effect for online status */
 .online-glow {
-  box-shadow: 0 0 10px var(--autensa-accent-green), 0 0 20px var(--autensa-accent-green);
+  box-shadow: 0 0 10px var(--mc-accent-green), 0 0 20px var(--mc-accent-green);
 }

@@ -19,7 +19,7 @@ function buildIdeationPrompt(
     ? swipeHistory.map(s => `- ${s.action}: [${s.category}] (impact: ${s.impact_score}, feasibility: ${s.feasibility_score}, complexity: ${s.complexity})`).join('\n')
     : 'No swipe history yet.';
 
-  return `You are a Product Ideation Agent for Autensa. Generate high-quality feature ideas based on research findings and user preferences.
+  return `You are a Product Ideation Agent for Mission Control. Generate high-quality feature ideas based on research findings and user preferences.
 
 ## Instructions
 

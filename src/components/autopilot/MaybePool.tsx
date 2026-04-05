@@ -49,10 +49,10 @@ export function MaybePool({ productId }: MaybePoolProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-autensa-text">Maybe Pool ({entries.length})</h3>
+        <h3 className="font-semibold text-mc-text">Maybe Pool ({entries.length})</h3>
         <button
           onClick={handleEvaluate}
-          className="min-h-11 px-4 rounded-lg border border-autensa-border text-autensa-text-secondary hover:bg-autensa-bg-tertiary flex items-center gap-2 text-sm"
+          className="min-h-11 px-4 rounded-lg border border-mc-border text-mc-text-secondary hover:bg-mc-bg-tertiary flex items-center gap-2 text-sm"
         >
           <RefreshCw className="w-4 h-4" />
           Re-evaluate
@@ -60,21 +60,21 @@ export function MaybePool({ productId }: MaybePoolProps) {
       </div>
 
       {loading ? (
-        <div className="text-autensa-text-secondary animate-pulse">Loading...</div>
+        <div className="text-mc-text-secondary animate-pulse">Loading...</div>
       ) : entries.length === 0 ? (
-        <div className="text-center py-12 text-autensa-text-secondary">No ideas in the maybe pool</div>
+        <div className="text-center py-12 text-mc-text-secondary">No ideas in the maybe pool</div>
       ) : (
         <div className="space-y-4">
           {entries.map(entry => (
             <div key={entry.id} className="relative">
               <IdeaCard idea={entry.idea} showActions={false} compact />
               <div className="mt-2 flex items-center justify-between px-2">
-                <span className="text-xs text-autensa-text-secondary">
+                <span className="text-xs text-mc-text-secondary">
                   Evaluations: {entry.evaluation_count} · Next: {entry.next_evaluate_at ? new Date(entry.next_evaluate_at).toLocaleDateString() : 'N/A'}
                 </span>
                 <button
                   onClick={() => handleResurface(entry.idea_id)}
-                  className="text-xs px-3 py-1.5 rounded bg-autensa-accent/20 text-autensa-accent hover:bg-autensa-accent/30"
+                  className="text-xs px-3 py-1.5 rounded bg-mc-accent/20 text-mc-accent hover:bg-mc-accent/30"
                 >
                   Resurface Now
                 </button>

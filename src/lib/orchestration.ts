@@ -40,7 +40,7 @@ export interface RegisterSubAgentParams {
 
 /**
  * Log an activity to a task's activity feed
- * This makes activities visible in the Autensa UI
+ * This makes activities visible in the Mission Control UI
  */
 export async function logActivity(params: LogActivityParams): Promise<void> {
   try {
@@ -95,7 +95,7 @@ export async function logDeliverable(params: LogDeliverableParams): Promise<void
 }
 
 /**
- * Register a sub-agent session in Autensa
+ * Register a sub-agent session in Mission Control
  * This makes the session visible in the Sessions tab and updates agent counters
  */
 export async function registerSubAgentSession(params: RegisterSubAgentParams): Promise<void> {
@@ -243,7 +243,7 @@ export async function onSubAgentCompleted(params: {
  *   taskId: 'task-123',
  *   sessionId: 'agent:main:subagent:abc123',
  *   agentName: 'mission-control-integration-fixes',
- *   description: 'Fix Autensa real-time updates',
+ *   description: 'Fix Mission Control real-time updates',
  * });
  * 
  * // During work:

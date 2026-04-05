@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  LEGACY_TASK_READS_STORAGE_KEY,
+  PRIMARY_TASK_READS_STORAGE_KEY,
+} from '@/lib/runtime-compat';
 
 /**
  * Hook to poll unread message counts for all tasks.
@@ -8,12 +12,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
  * Uses hybrid approach: localStorage for immediate updates, API for ground truth.
  */
 
-const LOCAL_STORAGE_KEY = 'autensa-task-reads';
+const LOCAL_STORAGE_KEY = PRIMARY_TASK_READS_STORAGE_KEY;
+const LEGACY_LOCAL_STORAGE_KEY = LEGACY_TASK_READS_STORAGE_KEY;
 
 function getLocalReads(): Record<string, string> {
   if (typeof window === 'undefined') return {};
   try {
-    const data = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const data = localStorage.getItem(LOCAL_STORAGE_KEY) ?? localStorage.getItem(LEGACY_LOCAL_STORAGE_KEY);
     return data ? JSON.parse(data) : {};
   } catch {
     return {};
@@ -26,6 +31,7 @@ export function markTaskReadLocally(taskId: string): void {
     const reads = getLocalReads();
     reads[taskId] = new Date().toISOString();
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(reads));
+    localStorage.removeItem(LEGACY_LOCAL_STORAGE_KEY);
   } catch {
     // Silent
   }

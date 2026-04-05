@@ -1,0 +1,178 @@
+
+> mission-control@2.4.0 build
+> next build
+
+▲ Next.js 16.2.2 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+Turbopack build encountered 1 warnings:
+./next.config.mjs
+Encountered unexpected file in NFT list
+A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
+- filesystem operations (like path.join, path.resolve or fs.readFile), or
+- very dynamic requires (like require('./' + foo)).
+To resolve this, you can
+- remove them if possible, or
+- only use them in development, or
+- make sure they are statically scoped to some subfolder: path.join(process.cwd(), 'data', bar), or
+- add ignore comments: path.join(/*turbopackIgnore: true*/ process.cwd(), bar)
+
+Import trace:
+  App Route:
+    ./next.config.mjs
+    ./src/app/api/products/generate-description/route.ts
+
+
+✓ Compiled successfully in 3.5s
+  Running TypeScript ...
+  Finished TypeScript in 2.7s ...
+  Collecting page data using 9 workers ...
+{"level":30,"time":1775425087897,"pid":74956,"hostname":"m4.fritz.box","data":"5f6a4a43eeeb22430e92944fbbc048abf30c3a1f4a6bb6032fb7562c4c03cf0b","msg":"[OpenClaw] Device identity loaded:"}
+{"level":30,"time":1775425087898,"pid":74956,"hostname":"m4.fritz.box","data":[300000,"ms)"],"msg":"[OpenClaw] Started periodic cache cleanup (interval:"}
+{"level":30,"time":1775425087898,"pid":74956,"hostname":"m4.fritz.box","msg":"[ChatListener] Attached to OpenClaw client"}
+  Generating static pages using 9 workers (0/11) ...
+  Generating static pages using 9 workers (2/11) 
+  Generating static pages using 9 workers (5/11) 
+  Generating static pages using 9 workers (8/11) 
+✓ Generating static pages using 9 workers (11/11) in 77ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /activity
+├ ƒ /api/admin/backups
+├ ƒ /api/admin/backups/[id]
+├ ƒ /api/admin/backups/restore
+├ ƒ /api/admin/rollbacks
+├ ƒ /api/agents
+├ ƒ /api/agents/[id]
+├ ƒ /api/agents/[id]/health
+├ ƒ /api/agents/[id]/health/nudge
+├ ƒ /api/agents/[id]/mail
+├ ƒ /api/agents/[id]/openclaw
+├ ƒ /api/agents/discover
+├ ƒ /api/agents/health
+├ ƒ /api/agents/import
+├ ƒ /api/convoy/[convoyId]/mail
+├ ƒ /api/costs
+├ ƒ /api/costs/breakdown
+├ ƒ /api/costs/caps
+├ ƒ /api/costs/caps/[id]
+├ ƒ /api/costs/caps/status
+├ ƒ /api/costs/event
+├ ƒ /api/demo
+├ ƒ /api/error-reports
+├ ƒ /api/events
+├ ƒ /api/events/stream
+├ ƒ /api/files/download
+├ ƒ /api/files/preview
+├ ƒ /api/files/reveal
+├ ƒ /api/files/upload
+├ ƒ /api/health
+├ ƒ /api/health/metrics
+├ ƒ /api/openclaw/models
+├ ƒ /api/openclaw/orchestra
+├ ƒ /api/openclaw/sessions
+├ ƒ /api/openclaw/sessions/[id]
+├ ƒ /api/openclaw/sessions/[id]/history
+├ ƒ /api/openclaw/status
+├ ƒ /api/products
+├ ƒ /api/products/[id]
+├ ƒ /api/products/[id]/ab-tests
+├ ƒ /api/products/[id]/ab-tests/[testId]
+├ ƒ /api/products/[id]/ab-tests/[testId]/cancel
+├ ƒ /api/products/[id]/ab-tests/[testId]/comparison
+├ ƒ /api/products/[id]/ab-tests/[testId]/conclude
+├ ƒ /api/products/[id]/ab-tests/[testId]/promote
+├ ƒ /api/products/[id]/activity
+├ ƒ /api/products/[id]/costs
+├ ƒ /api/products/[id]/health
+├ ƒ /api/products/[id]/health/export
+├ ƒ /api/products/[id]/health/scores
+├ ƒ /api/products/[id]/health/weights
+├ ƒ /api/products/[id]/ideas
+├ ƒ /api/products/[id]/ideas/[ideaId]
+├ ƒ /api/products/[id]/ideas/pending
+├ ƒ /api/products/[id]/ideation/cycles
+├ ƒ /api/products/[id]/ideation/run
+├ ƒ /api/products/[id]/maybe
+├ ƒ /api/products/[id]/maybe/[ideaId]/resurface
+├ ƒ /api/products/[id]/maybe/evaluate
+├ ƒ /api/products/[id]/research/cycles
+├ ƒ /api/products/[id]/research/run
+├ ƒ /api/products/[id]/rollback
+├ ƒ /api/products/[id]/schedules
+├ ƒ /api/products/[id]/schedules/[schedId]
+├ ƒ /api/products/[id]/similarity
+├ ƒ /api/products/[id]/skills
+├ ƒ /api/products/[id]/skills/[skillId]
+├ ƒ /api/products/[id]/skills/[skillId]/report
+├ ƒ /api/products/[id]/swipe
+├ ƒ /api/products/[id]/swipe/[swipeId]/undo
+├ ƒ /api/products/[id]/swipe/batch
+├ ƒ /api/products/[id]/swipe/deck
+├ ƒ /api/products/[id]/swipe/history
+├ ƒ /api/products/[id]/swipe/stats
+├ ƒ /api/products/[id]/variants
+├ ƒ /api/products/[id]/variants/[variantId]
+├ ƒ /api/products/[id]/workspaces
+├ ƒ /api/products/backfill-preferences
+├ ƒ /api/products/generate-description
+├ ƒ /api/products/health-scores
+├ ƒ /api/products/import-readme
+├ ƒ /api/products/scan-url
+├ ƒ /api/task-images/[...path]
+├ ƒ /api/tasks
+├ ƒ /api/tasks/[id]
+├ ƒ /api/tasks/[id]/activities
+├ ƒ /api/tasks/[id]/agent-stream
+├ ƒ /api/tasks/[id]/chat
+├ ƒ /api/tasks/[id]/chat/agents
+├ ƒ /api/tasks/[id]/checkpoint
+├ ƒ /api/tasks/[id]/checkpoint/restore
+├ ƒ /api/tasks/[id]/checkpoints
+├ ƒ /api/tasks/[id]/convoy
+├ ƒ /api/tasks/[id]/convoy/dispatch
+├ ƒ /api/tasks/[id]/convoy/progress
+├ ƒ /api/tasks/[id]/convoy/subtasks
+├ ƒ /api/tasks/[id]/costs
+├ ƒ /api/tasks/[id]/deliverables
+├ ƒ /api/tasks/[id]/dispatch
+├ ƒ /api/tasks/[id]/fail
+├ ƒ /api/tasks/[id]/images
+├ ƒ /api/tasks/[id]/planning
+├ ƒ /api/tasks/[id]/planning/answer
+├ ƒ /api/tasks/[id]/planning/approve
+├ ƒ /api/tasks/[id]/planning/force-complete
+├ ƒ /api/tasks/[id]/planning/poll
+├ ƒ /api/tasks/[id]/planning/retry-dispatch
+├ ƒ /api/tasks/[id]/read
+├ ƒ /api/tasks/[id]/roles
+├ ƒ /api/tasks/[id]/subagent
+├ ƒ /api/tasks/[id]/test
+├ ƒ /api/tasks/[id]/workspace
+├ ƒ /api/tasks/unread
+├ ƒ /api/webhooks/agent-completion
+├ ƒ /api/webhooks/github
+├ ƒ /api/workspaces
+├ ƒ /api/workspaces/[id]
+├ ƒ /api/workspaces/[id]/knowledge
+├ ƒ /api/workspaces/[id]/workflows
+├ ○ /autopilot
+├ ƒ /autopilot/[productId]
+├ ƒ /autopilot/[productId]/health
+├ ƒ /autopilot/[productId]/review
+├ ƒ /autopilot/[productId]/swipe
+├ ○ /autopilot/new
+├ ○ /settings
+├ ƒ /workspace/[slug]
+└ ƒ /workspace/[slug]/activity
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

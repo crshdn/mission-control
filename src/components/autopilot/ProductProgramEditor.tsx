@@ -40,11 +40,11 @@ export function ProductProgramEditor({ product, onSave }: ProductProgramEditorPr
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-autensa-text">Product Program</h3>
+        <h3 className="font-semibold text-mc-text">Product Program</h3>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="min-h-11 px-4 rounded-lg bg-autensa-accent text-white hover:bg-autensa-accent/90 disabled:opacity-50 flex items-center gap-2 text-sm"
+          className="min-h-11 px-4 rounded-lg bg-mc-accent text-white hover:bg-mc-accent/90 disabled:opacity-50 flex items-center gap-2 text-sm"
         >
           <Save className="w-4 h-4" />
           {saving ? 'Saving...' : saved ? 'Saved!' : 'Save'}
@@ -53,7 +53,7 @@ export function ProductProgramEditor({ product, onSave }: ProductProgramEditorPr
       <textarea
         value={program}
         onChange={e => setProgram(e.target.value)}
-        className="w-full bg-autensa-bg-tertiary border border-autensa-border rounded-lg px-4 py-3 text-autensa-text font-mono text-sm focus:outline-none focus:border-autensa-accent resize-none min-h-[600px]"
+        className="w-full bg-mc-bg-tertiary border border-mc-border rounded-lg px-4 py-3 text-mc-text font-mono text-sm focus:outline-none focus:border-mc-accent resize-none min-h-[600px]"
         placeholder="Write your product program here..."
       />
     </div>

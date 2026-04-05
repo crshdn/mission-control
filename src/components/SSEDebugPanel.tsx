@@ -2,6 +2,7 @@
 
 
 import { logger } from '@/lib/logger';
+import { isDebugEnabledInStorage } from '@/lib/runtime-compat';
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -38,7 +39,7 @@ export function SSEDebugPanel() {
 
   useEffect(() => {
     // Check if debug mode is enabled
-    const debugEnabled = localStorage.getItem('AUTENSA_DEBUG') === 'true';
+    const debugEnabled = isDebugEnabledInStorage(localStorage);
     setIsEnabled(debugEnabled);
 
     if (!debugEnabled) return;
@@ -67,7 +68,7 @@ export function SSEDebugPanel() {
   // Re-check debug mode on storage changes
   useEffect(() => {
     const handleStorage = () => {
-      const debugEnabled = localStorage.getItem('AUTENSA_DEBUG') === 'true';
+      const debugEnabled = isDebugEnabledInStorage(localStorage);
       setIsEnabled(debugEnabled);
     };
 
@@ -81,40 +82,40 @@ export function SSEDebugPanel() {
     <div className="fixed bottom-4 left-4 z-50">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 bg-autensa-bg-secondary border border-autensa-border rounded-lg shadow-lg text-sm"
+        className="flex items-center gap-2 px-3 py-2 bg-mc-bg-secondary border border-mc-border rounded-lg shadow-lg text-sm"
       >
         {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-        <span className="text-autensa-accent">Debug</span>
-        <span className="bg-autensa-accent text-autensa-bg px-2 py-0.5 rounded text-xs">
+        <span className="text-mc-accent">Debug</span>
+        <span className="bg-mc-accent text-mc-bg px-2 py-0.5 rounded text-xs">
           {logs.length}
         </span>
       </button>
 
       {isOpen && (
-        <div className="absolute bottom-12 left-0 w-96 max-h-80 bg-autensa-bg-secondary border border-autensa-border rounded-lg shadow-xl overflow-hidden">
-          <div className="p-2 border-b border-autensa-border flex justify-between items-center">
+        <div className="absolute bottom-12 left-0 w-96 max-h-80 bg-mc-bg-secondary border border-mc-border rounded-lg shadow-xl overflow-hidden">
+          <div className="p-2 border-b border-mc-border flex justify-between items-center">
             <span className="text-sm font-medium">Debug Events</span>
             <button
               onClick={() => setLogs([])}
-              className="text-xs text-autensa-text-secondary hover:text-autensa-text"
+              className="text-xs text-mc-text-secondary hover:text-mc-text"
             >
               Clear
             </button>
           </div>
           <div className="overflow-y-auto max-h-64 p-2 space-y-1 font-mono text-xs">
             {logs.length === 0 ? (
-              <div className="text-autensa-text-secondary text-center py-4">
+              <div className="text-mc-text-secondary text-center py-4">
                 Waiting for events...
               </div>
             ) : (
               logs.map((log, i) => (
-                <div key={i} className="p-2 bg-autensa-bg rounded border border-autensa-border">
-                  <div className="flex justify-between text-autensa-text-secondary">
-                    <span className="text-autensa-accent">{log.type}</span>
+                <div key={i} className="p-2 bg-mc-bg rounded border border-mc-border">
+                  <div className="flex justify-between text-mc-text-secondary">
+                    <span className="text-mc-accent">{log.type}</span>
                     <span>{log.timestamp.toLocaleTimeString()}</span>
                   </div>
                   {log.data !== null && log.data !== undefined && (
-                    <pre className="mt-1 text-autensa-text overflow-x-auto whitespace-pre-wrap">
+                    <pre className="mt-1 text-mc-text overflow-x-auto whitespace-pre-wrap">
                       {formatLogData(log.data)}
                     </pre>
                   )}

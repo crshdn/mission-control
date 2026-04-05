@@ -222,15 +222,15 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-3 sm:p-4">
-      <div className="bg-autensa-bg-secondary border border-autensa-border rounded-t-xl sm:rounded-lg w-full max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col pb-[env(safe-area-inset-bottom)] sm:pb-0">
+      <div className="bg-mc-bg-secondary border border-mc-border rounded-t-xl sm:rounded-lg w-full max-w-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col pb-[env(safe-area-inset-bottom)] sm:pb-0">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-autensa-border flex-shrink-0">
+        <div className="flex items-center justify-between p-4 border-b border-mc-border flex-shrink-0">
           <h2 className="text-lg font-semibold">
             {task ? task.title : 'Create New Task'}
           </h2>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-autensa-bg-tertiary rounded"
+            className="p-1 hover:bg-mc-bg-tertiary rounded"
           >
             <X className="w-5 h-5" />
           </button>
@@ -238,15 +238,15 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
 
         {/* Tabs - only show for existing tasks */}
         {task && (
-          <div className="flex border-b border-autensa-border flex-shrink-0 overflow-x-auto">
+          <div className="flex border-b border-mc-border flex-shrink-0 overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 min-h-11 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
                   activeTab === tab.id
-                    ? 'text-autensa-accent border-b-2 border-autensa-accent'
-                    : 'text-autensa-text-secondary hover:text-autensa-text'
+                    ? 'text-mc-accent border-b-2 border-mc-accent'
+                    : 'text-mc-text-secondary hover:text-mc-text'
                 }`}
               >
                 {tab.icon}
@@ -269,7 +269,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               required
-              className="w-full min-h-11 bg-autensa-bg border border-autensa-border rounded px-3 py-2 text-sm focus:outline-none focus:border-autensa-accent"
+              className="w-full min-h-11 bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
               placeholder="What needs to be done?"
             />
           </div>
@@ -281,27 +281,27 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={3}
-              className="w-full bg-autensa-bg border border-autensa-border rounded px-3 py-2 text-sm focus:outline-none focus:border-autensa-accent resize-none"
+              className="w-full bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent resize-none"
               placeholder="Add details..."
             />
           </div>
 
           {/* Planning Mode Toggle - only for new tasks */}
           {!task && (
-            <div className="p-3 bg-autensa-bg rounded-lg border border-autensa-border">
+            <div className="p-3 bg-mc-bg rounded-lg border border-mc-border">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={usePlanningMode}
                   onChange={(e) => setUsePlanningMode(e.target.checked)}
-                  className="w-4 h-4 mt-0.5 rounded border-autensa-border"
+                  className="w-4 h-4 mt-0.5 rounded border-mc-border"
                 />
                 <div>
                   <span className="font-medium text-sm flex items-center gap-2">
-                    <ClipboardList className="w-4 h-4 text-autensa-accent" />
+                    <ClipboardList className="w-4 h-4 text-mc-accent" />
                     Enable Planning Mode
                   </span>
-                  <p className="text-xs text-autensa-text-secondary mt-1">
+                  <p className="text-xs text-mc-text-secondary mt-1">
                     Best for complex projects that need detailed requirements. 
                     You&apos;ll answer a few questions to define scope, goals, and constraints 
                     before work begins. Skip this for quick, straightforward tasks.
@@ -323,7 +323,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
                   setForm({ ...form, assigned_agent_id: e.target.value });
                 }
               }}
-              className="w-full min-h-11 bg-autensa-bg border border-autensa-border rounded px-3 py-2 text-sm focus:outline-none focus:border-autensa-accent"
+              className="w-full min-h-11 bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
             >
               <option value="">Unassigned</option>
               {agents.map((agent) => (
@@ -331,7 +331,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
                   {agent.avatar_emoji} {agent.name} - {agent.role}
                 </option>
               ))}
-              <option value="__add_new__" className="text-autensa-accent">
+              <option value="__add_new__" className="text-mc-accent">
                 ➕ Add new agent...
               </option>
             </select>
@@ -344,7 +344,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
               <select
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: e.target.value as TaskPriority })}
-                className="w-full min-h-11 bg-autensa-bg border border-autensa-border rounded px-3 py-2 text-sm focus:outline-none focus:border-autensa-accent"
+                className="w-full min-h-11 bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
               >
                 {priorities.map((p) => (
                   <option key={p} value={p}>
@@ -361,15 +361,15 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
                 type="datetime-local"
                 value={form.due_date}
                 onChange={(e) => setForm({ ...form, due_date: e.target.value })}
-                className="w-full min-h-11 bg-autensa-bg border border-autensa-border rounded px-3 py-2 text-sm focus:outline-none focus:border-autensa-accent"
+                className="w-full min-h-11 bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
               />
             </div>
           </div>
 
           {/* Pull Request section */}
           {task?.pr_url && (
-            <div className="p-3 bg-autensa-bg rounded-lg border border-autensa-border">
-              <h4 className="text-sm font-medium text-autensa-text mb-2 flex items-center gap-2">
+            <div className="p-3 bg-mc-bg rounded-lg border border-mc-border">
+              <h4 className="text-sm font-medium text-mc-text mb-2 flex items-center gap-2">
                 <ExternalLink className="w-4 h-4" />
                 Pull Request
               </h4>
@@ -378,7 +378,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
                   href={task.pr_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-autensa-accent hover:underline break-all"
+                  className="text-sm text-mc-accent hover:underline break-all"
                 >
                   {task.pr_url}
                 </a>
@@ -460,14 +460,14 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
 
         {/* Footer - only show on overview tab */}
         {activeTab === 'overview' && (
-          <div className="flex items-center justify-between p-4 border-t border-autensa-border flex-shrink-0">
+          <div className="flex items-center justify-between p-4 border-t border-mc-border flex-shrink-0">
             <div className="flex gap-2">
               {task && (
                 <>
                   <button
                     type="button"
                     onClick={handleDelete}
-                    className="min-h-11 flex items-center gap-2 px-3 py-2 text-autensa-accent-red hover:bg-autensa-accent-red/10 rounded text-sm"
+                    className="min-h-11 flex items-center gap-2 px-3 py-2 text-mc-accent-red hover:bg-mc-accent-red/10 rounded text-sm"
                   >
                     <Trash2 className="w-4 h-4" />
                     Delete
@@ -479,7 +479,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
               <button
                 type="button"
                 onClick={onClose}
-                className="min-h-11 px-4 py-2 text-sm text-autensa-text-secondary hover:text-autensa-text"
+                className="min-h-11 px-4 py-2 text-sm text-mc-text-secondary hover:text-mc-text"
               >
                 Cancel
               </button>
@@ -487,7 +487,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
                 <button
                   onClick={(e) => handleSubmit(e, true)}
                   disabled={isSubmitting}
-                  className="min-h-11 flex items-center gap-2 px-4 py-2 border border-autensa-accent text-autensa-accent rounded text-sm font-medium hover:bg-autensa-accent/10 disabled:opacity-50"
+                  className="min-h-11 flex items-center gap-2 px-4 py-2 border border-mc-accent text-mc-accent rounded text-sm font-medium hover:bg-mc-accent/10 disabled:opacity-50"
                 >
                   <Plus className="w-4 h-4" />
                   {isSubmitting ? 'Saving...' : 'Save & New'}
@@ -496,7 +496,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="min-h-11 flex items-center gap-2 px-4 py-2 bg-autensa-accent text-autensa-bg rounded text-sm font-medium hover:bg-autensa-accent/90 disabled:opacity-50"
+                className="min-h-11 flex items-center gap-2 px-4 py-2 bg-mc-accent text-mc-bg rounded text-sm font-medium hover:bg-mc-accent/90 disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 {isSubmitting ? 'Saving...' : 'Save'}

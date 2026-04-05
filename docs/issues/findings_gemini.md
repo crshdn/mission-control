@@ -28,7 +28,7 @@
   5. Architecture & State Management
    * Next.js "force-dynamic" Overhead: Many API routes are marked as force-dynamic. While necessary for real-time data, this prevents Next.js from leveraging any caching layers, placing the entire
      load directly on the SQLite database for every request.
-   * Branding Inconsistency: The project is in the middle of a branding shift from "Autensa" to "Autensa." This is visible in the mix of "MC" prefixed variables/CSS classes and "Autensa"
+   * Branding Inconsistency: The project is in the middle of a branding shift to Mission Control. This is visible in the mix of "MC" prefixed variables/CSS classes and "Mission Control"
      references in documentation, which can lead to confusion for new contributors.
 
   6. Error Handling & Resilience

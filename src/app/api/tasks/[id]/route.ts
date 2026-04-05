@@ -10,6 +10,7 @@ import { updateConvoyProgress, checkConvoyCompletion } from '@/lib/convoy';
 import { syncGatewayAgentsToCatalog } from '@/lib/agent-catalog-sync';
 import { triggerWorkspaceMerge } from '@/lib/workspace-isolation';
 import { UpdateTaskSchema } from '@/lib/validation';
+import { getApiToken } from '@/lib/runtime-compat';
 import type { Task, UpdateTaskRequest, Agent, TaskDeliverable } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -307,8 +308,9 @@ export async function PATCH(
         // No workflow template or no role for this stage — fall back to legacy dispatch
         const missionControlUrl = getMissionControlUrl();
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (process.env.AUTENSA_API_TOKEN) {
-          headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
+        const apiToken = getApiToken();
+        if (apiToken) {
+          headers['Authorization'] = `Bearer ${apiToken}`;
         }
 
         try {
@@ -371,8 +373,9 @@ export async function PATCH(
 
       const missionControlUrl = getMissionControlUrl();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (process.env.AUTENSA_API_TOKEN) {
-        headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
+      const apiToken = getApiToken();
+      if (apiToken) {
+        headers['Authorization'] = `Bearer ${apiToken}`;
       }
       try {
         const dispatchRes = await fetch(`${missionControlUrl}/api/tasks/${id}/dispatch`, {

@@ -1,5 +1,6 @@
 import { queryAll, queryOne, run, transaction } from '@/lib/db';
 import { notifyLearner } from '@/lib/learner';
+import { LEGACY_BOARD_OVERRIDE_HEADER, PRIMARY_BOARD_OVERRIDE_HEADER } from '@/lib/runtime-compat';
 import type { Task } from '@/lib/types';
 
 const ACTIVE_STATUSES = ['assigned', 'in_progress', 'convoy_active', 'testing', 'review', 'verification'];
@@ -15,7 +16,8 @@ export function hasStageEvidence(taskId: string): boolean {
 
 export function canUseBoardOverride(request: Request): boolean {
   if (process.env.BOARD_OVERRIDE_ENABLED !== 'true') return false;
-  return request.headers.get('x-autensa-board-override') === 'true';
+  return request.headers.get(PRIMARY_BOARD_OVERRIDE_HEADER) === 'true'
+    || request.headers.get(LEGACY_BOARD_OVERRIDE_HEADER) === 'true';
 }
 
 export function auditBoardOverride(taskId: string, fromStatus: string, toStatus: string, reason?: string): void {

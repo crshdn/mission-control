@@ -673,7 +673,7 @@ For maximum safety, each workspace could run in its own Docker container or VM. 
 Pre-configured workspace templates per project type (Next.js, Python, etc.) that include correct `.env`, port configs, and build scripts. Reduces agent setup time.
 
 ### Live Preview per Workspace
-Each isolated workspace gets its own preview URL (e.g., `task-{id}.preview.autensa.dev`) for the user to see progress without port-forwarding. Could use Cloudflare Tunnels or similar.
+Each isolated workspace gets its own preview URL (e.g., `task-{id}.preview.missioncontrol.dev`) for the user to see progress without port-forwarding. Could use Cloudflare Tunnels or similar.
 
 ### Workspace Sharing
 Allow one agent to "peek" at another workspace's changes without merging — useful for agents that need to coordinate (e.g., backend agent needs to see what API shape the frontend agent is building).

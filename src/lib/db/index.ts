@@ -31,7 +31,7 @@ export function getDb(): Database.Database {
       recoverOrphanedCycles().catch(err => logger.warn('[Recovery] Failed:', err))
     );
 
-    // Keep Autensa's agent catalog synced with OpenClaw-installed agents
+    // Keep Mission Control's agent catalog synced with OpenClaw-installed agents
     ensureCatalogSyncScheduled();
     
     if (isNewDb) {

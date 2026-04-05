@@ -93,34 +93,34 @@ export function CommandPalette({ isOpen, onClose, commands, initialFilter = '' }
     <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[15vh]" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50" />
       <div
-        className="relative w-full max-w-lg bg-autensa-bg-secondary border border-autensa-border rounded-xl shadow-2xl overflow-hidden"
+        className="relative w-full max-w-lg bg-mc-bg-secondary border border-mc-border rounded-xl shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Search Input */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-autensa-border">
-          <Command className="w-4 h-4 text-autensa-text-secondary flex-shrink-0" />
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-mc-border">
+          <Command className="w-4 h-4 text-mc-text-secondary flex-shrink-0" />
           <input
             ref={inputRef}
             value={query}
             onChange={e => { setQuery(e.target.value); setSelectedIndex(0); }}
             onKeyDown={handleKeyDown}
             placeholder="Type a command..."
-            className="flex-1 bg-transparent text-sm text-autensa-text placeholder:text-autensa-text-secondary/50 focus:outline-none"
+            className="flex-1 bg-transparent text-sm text-mc-text placeholder:text-mc-text-secondary/50 focus:outline-none"
           />
-          <kbd className="text-[10px] text-autensa-text-secondary bg-autensa-bg-tertiary px-1.5 py-0.5 rounded">esc</kbd>
+          <kbd className="text-[10px] text-mc-text-secondary bg-mc-bg-tertiary px-1.5 py-0.5 rounded">esc</kbd>
         </div>
 
         {/* Results */}
         <div className="max-h-[360px] overflow-y-auto py-1">
           {flatFiltered.length === 0 && (
-            <div className="px-4 py-6 text-center text-sm text-autensa-text-secondary">
+            <div className="px-4 py-6 text-center text-sm text-mc-text-secondary">
               No commands matching &ldquo;{query}&rdquo;
             </div>
           )}
 
           {Object.entries(grouped).map(([category, cmds]) => (
             <div key={category}>
-              <div className="px-4 py-1.5 text-[10px] font-medium text-autensa-text-secondary uppercase tracking-wider">
+              <div className="px-4 py-1.5 text-[10px] font-medium text-mc-text-secondary uppercase tracking-wider">
                 {categoryLabels[category] || category}
               </div>
               {cmds.map(cmd => {
@@ -129,19 +129,19 @@ export function CommandPalette({ isOpen, onClose, commands, initialFilter = '' }
                   <button
                     key={cmd.id}
                     onClick={() => { cmd.action(); onClose(); }}
-                    className={`w-full px-4 py-2 flex items-center gap-3 text-left hover:bg-autensa-bg-tertiary transition-colors ${
-                      globalIndex === selectedIndex ? 'bg-autensa-bg-tertiary' : ''
+                    className={`w-full px-4 py-2 flex items-center gap-3 text-left hover:bg-mc-bg-tertiary transition-colors ${
+                      globalIndex === selectedIndex ? 'bg-mc-bg-tertiary' : ''
                     }`}
                   >
-                    <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-autensa-text-secondary">
+                    <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-mc-text-secondary">
                       {cmd.icon}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm text-autensa-text">{cmd.label}</span>
-                      <span className="text-xs text-autensa-text-secondary ml-2">{cmd.description}</span>
+                      <span className="text-sm text-mc-text">{cmd.label}</span>
+                      <span className="text-xs text-mc-text-secondary ml-2">{cmd.description}</span>
                     </div>
                     {cmd.shortcut && (
-                      <kbd className="flex-shrink-0 text-[10px] text-autensa-text-secondary bg-autensa-bg px-1.5 py-0.5 rounded border border-autensa-border">
+                      <kbd className="flex-shrink-0 text-[10px] text-mc-text-secondary bg-mc-bg px-1.5 py-0.5 rounded border border-mc-border">
                         {cmd.shortcut}
                       </kbd>
                     )}
@@ -153,7 +153,7 @@ export function CommandPalette({ isOpen, onClose, commands, initialFilter = '' }
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2 border-t border-autensa-border/50 flex items-center gap-3 text-[10px] text-autensa-text-secondary/50">
+        <div className="px-4 py-2 border-t border-mc-border/50 flex items-center gap-3 text-[10px] text-mc-text-secondary/50">
           <span>↑↓ navigate</span>
           <span>↵ select</span>
           <span>esc close</span>

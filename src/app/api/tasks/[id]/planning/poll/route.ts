@@ -5,6 +5,7 @@ import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
 import { extractJSON, getMessagesFromOpenClaw } from '@/lib/planning-utils';
+import { getApiToken } from '@/lib/runtime-compat';
 import { Task } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -142,8 +143,9 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
 
     try {
       const dispatchHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (process.env.AUTENSA_API_TOKEN) {
-        dispatchHeaders['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
+      const apiToken = getApiToken();
+      if (apiToken) {
+        dispatchHeaders['Authorization'] = `Bearer ${apiToken}`;
       }
 
       const dispatchRes = await fetch(dispatchUrl, {

@@ -24,7 +24,7 @@ export default function DemoBanner() {
         rel="noopener noreferrer"
         className="ml-3 underline hover:text-blue-200 transition-colors"
       >
-        Get Autensa →
+        Get Mission Control →
       </a>
     </div>
   );

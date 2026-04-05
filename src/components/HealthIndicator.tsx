@@ -25,7 +25,7 @@ export function HealthIndicator({ state, size = 'sm', showLabel = false }: Healt
     <div className="flex items-center gap-1.5">
       <div className={`${dotSize} rounded-full ${config.color} ${config.pulse ? 'animate-pulse' : ''}`} />
       {showLabel && (
-        <span className="text-[10px] text-autensa-text-secondary uppercase">{config.label}</span>
+        <span className="text-[10px] text-mc-text-secondary uppercase">{config.label}</span>
       )}
     </div>
   );

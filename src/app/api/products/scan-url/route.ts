@@ -115,7 +115,7 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Respons
     return await fetch(url, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Autensa/1.0 (Product Scanner)',
+        'User-Agent': 'Mission Control/1.0 (Product Scanner)',
         'Accept': 'text/html, text/plain, text/markdown, */*',
       },
     });

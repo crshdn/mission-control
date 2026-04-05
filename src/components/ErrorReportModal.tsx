@@ -1,6 +1,6 @@
 'use client';
 
-const REPORT_EMAIL = 'hello@autensa.com';
+const REPORT_EMAIL = 'hello@mission-control.com';
 
 /**
  * Opens the user's default email client with error details + logs pre-filled.

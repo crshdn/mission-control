@@ -20,15 +20,15 @@ interface MissionQueueProps {
 }
 
 const COLUMNS: { id: TaskStatus; label: string; color: string }[] = [
-  { id: 'planning', label: '📋 Planning', color: 'border-t-autensa-accent-purple' },
-  { id: 'inbox', label: 'Inbox', color: 'border-t-autensa-accent-pink' },
-  { id: 'assigned', label: 'Assigned', color: 'border-t-autensa-accent-yellow' },
-  { id: 'in_progress', label: 'In Progress', color: 'border-t-autensa-accent' },
+  { id: 'planning', label: '📋 Planning', color: 'border-t-mc-accent-purple' },
+  { id: 'inbox', label: 'Inbox', color: 'border-t-mc-accent-pink' },
+  { id: 'assigned', label: 'Assigned', color: 'border-t-mc-accent-yellow' },
+  { id: 'in_progress', label: 'In Progress', color: 'border-t-mc-accent' },
   { id: 'convoy_active', label: '🚚 Convoy', color: 'border-t-cyan-400' },
-  { id: 'testing', label: 'Testing', color: 'border-t-autensa-accent-cyan' },
-  { id: 'review', label: 'Review', color: 'border-t-autensa-accent-purple' },
+  { id: 'testing', label: 'Testing', color: 'border-t-mc-accent-cyan' },
+  { id: 'review', label: 'Review', color: 'border-t-mc-accent-purple' },
   { id: 'verification', label: 'Verification', color: 'border-t-orange-500' },
-  { id: 'done', label: 'Done', color: 'border-t-autensa-accent-green' },
+  { id: 'done', label: 'Done', color: 'border-t-mc-accent-green' },
 ];
 
 export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = true }: MissionQueueProps) {
@@ -164,14 +164,14 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="p-3 border-b border-autensa-border flex items-center justify-between">
+      <div className="p-3 border-b border-mc-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <ChevronRight className="w-4 h-4 text-autensa-text-secondary" />
+          <ChevronRight className="w-4 h-4 text-mc-text-secondary" />
           <span className="text-sm font-medium uppercase tracking-wider">Mission Queue</span>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 min-h-11 bg-autensa-accent-pink text-autensa-bg rounded text-sm font-medium hover:bg-autensa-accent-pink/90"
+          className="flex items-center gap-2 px-4 min-h-11 bg-mc-accent-pink text-mc-bg rounded text-sm font-medium hover:bg-mc-accent-pink/90"
         >
           <Plus className="w-4 h-4" />
           New Task
@@ -187,13 +187,13 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
               <div
                 key={column.id}
                 style={{ width: getDesktopColumnWidth(columnTasks.length) }}
-                className={`flex-none ${compactEmptyColumns ? (hasTasks ? 'min-w-[240px]' : 'min-w-[110px] max-w-[180px]') : 'min-w-[250px] max-w-[320px]'} flex flex-col bg-autensa-bg rounded-lg border border-autensa-border/50 border-t-2 transition-[width] duration-200 ${column.color}`}
+                className={`flex-none ${compactEmptyColumns ? (hasTasks ? 'min-w-[240px]' : 'min-w-[110px] max-w-[180px]') : 'min-w-[250px] max-w-[320px]'} flex flex-col bg-mc-bg rounded-lg border border-mc-border/50 border-t-2 transition-[width] duration-200 ${column.color}`}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, column.id)}
               >
-                <div className="p-2 border-b border-autensa-border flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium uppercase text-autensa-text-secondary whitespace-nowrap">{column.label}</span>
-                  <span className="text-xs bg-autensa-bg-tertiary px-2 py-0.5 rounded text-autensa-text-secondary">{columnTasks.length}</span>
+                <div className="p-2 border-b border-mc-border flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium uppercase text-mc-text-secondary whitespace-nowrap">{column.label}</span>
+                  <span className="text-xs bg-mc-bg-tertiary px-2 py-0.5 rounded text-mc-text-secondary">{columnTasks.length}</span>
                 </div>
 
                 <div className={`flex-1 overflow-y-auto p-2 ${hasTasks ? 'space-y-2' : ''}`}>
@@ -227,8 +227,8 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
                   onClick={() => setMobileStatus(column.id)}
                   className={`min-h-11 px-4 rounded-full border whitespace-nowrap ${isPortrait ? 'text-sm' : 'text-xs'} ${
                     selected
-                      ? 'bg-autensa-accent text-autensa-bg border-autensa-accent font-medium'
-                      : 'bg-autensa-bg-secondary border-autensa-border text-autensa-text-secondary'
+                      ? 'bg-mc-accent text-mc-bg border-mc-accent font-medium'
+                      : 'bg-mc-bg-secondary border-mc-border text-mc-text-secondary'
                   }`}
                 >
                   {column.label} ({count})
@@ -239,7 +239,7 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
 
           <div className={`min-w-0 ${isPortrait ? 'space-y-3' : 'space-y-2'}`}>
             {mobileTasks.length === 0 ? (
-              <div className="text-sm text-autensa-text-secondary bg-autensa-bg-secondary border border-autensa-border rounded-lg p-4">
+              <div className="text-sm text-mc-text-secondary bg-mc-bg-secondary border border-mc-border rounded-lg p-4">
                 No tasks in this status.
               </div>
             ) : (
@@ -267,10 +267,10 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
       {mobileMode && statusMoveTask && (
         <div className="fixed inset-0 z-50 bg-black/60 p-4 flex items-end sm:items-center sm:justify-center" onClick={() => setStatusMoveTask(null)}>
           <div
-            className="w-full sm:max-w-md bg-autensa-bg-secondary border border-autensa-border rounded-t-xl sm:rounded-xl p-4"
+            className="w-full sm:max-w-md bg-mc-bg-secondary border border-mc-border rounded-t-xl sm:rounded-xl p-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="text-sm text-autensa-text-secondary mb-2">Move task</div>
+            <div className="text-sm text-mc-text-secondary mb-2">Move task</div>
             <div className="font-medium mb-4 line-clamp-2">{statusMoveTask.title}</div>
             <div className="space-y-2 max-h-[50vh] overflow-y-auto">
               {COLUMNS.map((column) => (
@@ -283,7 +283,7 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
                     }
                   }}
                   disabled={statusMoveTask.status === column.id}
-                  className="w-full min-h-11 px-4 rounded-lg border border-autensa-border bg-autensa-bg text-left text-sm disabled:opacity-40"
+                  className="w-full min-h-11 px-4 rounded-lg border border-mc-border bg-mc-bg text-left text-sm disabled:opacity-40"
                 >
                   {column.label}
                 </button>
@@ -297,7 +297,7 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
       {pendingMove && (
         <div className="fixed inset-0 z-[60] bg-black/60 p-4 flex items-center justify-center" onClick={() => setPendingMove(null)}>
           <div
-            className="w-full max-w-md bg-autensa-bg-secondary border border-amber-500/30 rounded-xl p-5 space-y-4"
+            className="w-full max-w-md bg-mc-bg-secondary border border-amber-500/30 rounded-xl p-5 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3">
@@ -305,22 +305,22 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
                 <AlertTriangle className="w-5 h-5 text-amber-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-autensa-text">Override automation?</h3>
-                <p className="text-sm text-autensa-text-secondary mt-1">
+                <h3 className="font-semibold text-mc-text">Override automation?</h3>
+                <p className="text-sm text-mc-text-secondary mt-1">
                   {getPipelineWarning(pendingMove.task, pendingMove.targetStatus)}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 p-3 bg-autensa-bg rounded-lg border border-autensa-border text-sm">
-              <span className="text-autensa-text-secondary">Moving:</span>
-              <span className="font-medium text-autensa-text truncate">{pendingMove.task.title}</span>
-              <span className="text-autensa-text-secondary mx-1">&rarr;</span>
-              <span className="font-medium text-autensa-text">{COLUMNS.find(c => c.id === pendingMove.targetStatus)?.label || pendingMove.targetStatus}</span>
+            <div className="flex items-center gap-2 p-3 bg-mc-bg rounded-lg border border-mc-border text-sm">
+              <span className="text-mc-text-secondary">Moving:</span>
+              <span className="font-medium text-mc-text truncate">{pendingMove.task.title}</span>
+              <span className="text-mc-text-secondary mx-1">&rarr;</span>
+              <span className="font-medium text-mc-text">{COLUMNS.find(c => c.id === pendingMove.targetStatus)?.label || pendingMove.targetStatus}</span>
             </div>
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setPendingMove(null)}
-                className="min-h-11 px-4 rounded-lg text-sm text-autensa-text-secondary hover:text-autensa-text hover:bg-autensa-bg-tertiary"
+                className="min-h-11 px-4 rounded-lg text-sm text-mc-text-secondary hover:text-mc-text hover:bg-mc-bg-tertiary"
               >
                 Cancel
               </button>
@@ -413,17 +413,17 @@ interface TaskCardProps {
 
 function TaskCard({ task, onDragStart, onClick, onMoveStatus, isDragging, mobileMode, portraitMode = true, unreadCount = 0 }: TaskCardProps) {
   const priorityStyles = {
-    low: 'text-autensa-text-secondary',
-    normal: 'text-autensa-accent',
-    high: 'text-autensa-accent-yellow',
-    urgent: 'text-autensa-accent-red',
+    low: 'text-mc-text-secondary',
+    normal: 'text-mc-accent',
+    high: 'text-mc-accent-yellow',
+    urgent: 'text-mc-accent-red',
   };
 
   const priorityDots = {
-    low: 'bg-autensa-text-secondary/40',
-    normal: 'bg-autensa-accent',
-    high: 'bg-autensa-accent-yellow',
-    urgent: 'bg-autensa-accent-red',
+    low: 'bg-mc-text-secondary/40',
+    normal: 'bg-mc-accent',
+    high: 'bg-mc-accent-yellow',
+    urgent: 'bg-mc-accent-red',
   };
 
   const isPlanning = task.status === 'planning';
@@ -437,13 +437,13 @@ function TaskCard({ task, onDragStart, onClick, onMoveStatus, isDragging, mobile
       draggable={!mobileMode}
       onDragStart={(e) => onDragStart(e, task)}
       onClick={onClick}
-      className={`group bg-autensa-bg-secondary border rounded-lg cursor-pointer transition-all hover:shadow-lg hover:shadow-black/20 ${
+      className={`group bg-mc-bg-secondary border rounded-lg cursor-pointer transition-all hover:shadow-lg hover:shadow-black/20 ${
         isDragging ? 'opacity-50 scale-95' : ''
-      } ${isPlanning ? 'border-purple-500/40 hover:border-purple-500' : 'border-autensa-border/50 hover:border-autensa-accent/40'}`}
+      } ${isPlanning ? 'border-purple-500/40 hover:border-purple-500' : 'border-mc-border/50 hover:border-mc-accent/40'}`}
     >
       {!mobileMode && (
-        <div className="flex items-center justify-center py-1.5 border-b border-autensa-border/30 opacity-0 group-hover:opacity-100 transition-opacity">
-          <GripVertical className="w-4 h-4 text-autensa-text-secondary/50 cursor-grab" />
+        <div className="flex items-center justify-center py-1.5 border-b border-mc-border/30 opacity-0 group-hover:opacity-100 transition-opacity">
+          <GripVertical className="w-4 h-4 text-mc-text-secondary/50 cursor-grab" />
         </div>
       )}
 
@@ -451,7 +451,7 @@ function TaskCard({ task, onDragStart, onClick, onMoveStatus, isDragging, mobile
         <div className="flex items-start justify-between gap-1.5">
           <h4 className={`font-medium leading-snug line-clamp-2 ${portraitMode ? 'text-sm mb-3' : 'text-xs mb-2'}`}>{task.title}</h4>
           {unreadCount > 0 && (
-            <span className="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 bg-autensa-accent/15 text-autensa-accent rounded text-[10px] font-medium" title={`${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}`}>
+            <span className="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 bg-mc-accent/15 text-mc-accent rounded text-[10px] font-medium" title={`${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}`}>
               <MessageSquare className="w-2.5 h-2.5" />
               {unreadCount}
             </span>
@@ -511,9 +511,9 @@ function TaskCard({ task, onDragStart, onClick, onMoveStatus, isDragging, mobile
         )}
 
         {task.assigned_agent && (
-          <div className={`flex items-center gap-2 ${portraitMode ? 'mb-3 py-1.5 px-2' : 'mb-2 py-1 px-2'} bg-autensa-bg-tertiary/50 rounded`}>
+          <div className={`flex items-center gap-2 ${portraitMode ? 'mb-3 py-1.5 px-2' : 'mb-2 py-1 px-2'} bg-mc-bg-tertiary/50 rounded`}>
             <span className="text-base">{(task.assigned_agent as unknown as { avatar_emoji: string }).avatar_emoji}</span>
-            <span className="text-xs text-autensa-text-secondary truncate">{(task.assigned_agent as unknown as { name: string }).name}</span>
+            <span className="text-xs text-mc-text-secondary truncate">{(task.assigned_agent as unknown as { name: string }).name}</span>
           </div>
         )}
 
@@ -525,12 +525,12 @@ function TaskCard({ task, onDragStart, onClick, onMoveStatus, isDragging, mobile
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-autensa-border/20">
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-mc-border/20">
           <div className="flex items-center gap-1.5">
             <div className={`w-1.5 h-1.5 rounded-full ${priorityDots[task.priority]}`} />
             <span className={`text-xs capitalize ${priorityStyles[task.priority]}`}>{task.priority}</span>
           </div>
-          <span className="text-[10px] text-autensa-text-secondary/60">{formatDistanceToNow(new Date(task.created_at), { addSuffix: true })}</span>
+          <span className="text-[10px] text-mc-text-secondary/60">{formatDistanceToNow(new Date(task.created_at), { addSuffix: true })}</span>
         </div>
 
         {mobileMode && (
@@ -539,7 +539,7 @@ function TaskCard({ task, onDragStart, onClick, onMoveStatus, isDragging, mobile
               e.stopPropagation();
               onMoveStatus();
             }}
-            className={`w-full min-h-11 rounded-md border border-autensa-border bg-autensa-bg flex items-center justify-center gap-2 text-autensa-text-secondary ${portraitMode ? 'mt-3 text-sm' : 'mt-2 text-xs'}`}
+            className={`w-full min-h-11 rounded-md border border-mc-border bg-mc-bg flex items-center justify-center gap-2 text-mc-text-secondary ${portraitMode ? 'mt-3 text-sm' : 'mt-2 text-xs'}`}
           >
             <ArrowRightLeft className="w-4 h-4" />
             Move Status

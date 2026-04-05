@@ -5,6 +5,7 @@ import { extractJSON } from '@/lib/planning-utils';
 import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
 import { v4 as uuidv4 } from 'uuid';
+import { getApiToken } from '@/lib/runtime-compat';
 import type { Task } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -135,8 +136,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (firstAgentId) {
       const missionControlUrl = getMissionControlUrl();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (process.env.AUTENSA_API_TOKEN) {
-        headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
+      const apiToken = getApiToken();
+      if (apiToken) {
+        headers['Authorization'] = `Bearer ${apiToken}`;
       }
 
       try {

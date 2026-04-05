@@ -14,7 +14,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Autensa',
+  title: 'Mission Control',
   description: 'AI Agent Orchestration Dashboard',
   icons: {
     icon: '/favicon.svg',
@@ -28,7 +28,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={jetbrainsMono.variable}>
-      <body className={`${jetbrainsMono.className} bg-autensa-bg text-autensa-text min-h-screen`}>
+      <body className={`${jetbrainsMono.className} bg-mc-bg text-mc-text min-h-screen`}>
         <ErrorBoundary>
           <ToastProvider>
             <DemoBanner />

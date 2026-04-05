@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '50', 10);
 
-    let sql = `
+    const sql = `
       SELECT e.*, a.name as agent_name, a.avatar_emoji as agent_emoji, t.title as task_title
       FROM events e
       LEFT JOIN agents a ON e.agent_id = a.id

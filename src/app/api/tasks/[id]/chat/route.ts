@@ -6,6 +6,7 @@ import { getMissionControlUrl } from '@/lib/config';
 import { expectReply } from '@/lib/chat-listener';
 import { queryOne } from '@/lib/db';
 import { broadcast } from '@/lib/events';
+import { getApiToken } from '@/lib/runtime-compat';
 import type { Task } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -89,8 +90,9 @@ export async function POST(
       try {
         const missionControlUrl = getMissionControlUrl();
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (process.env.AUTENSA_API_TOKEN) {
-          headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
+        const apiToken = getApiToken();
+        if (apiToken) {
+          headers['Authorization'] = `Bearer ${apiToken}`;
         }
 
         const dispatchRes = await fetch(`${missionControlUrl}/api/tasks/${taskId}/dispatch`, {

@@ -11,7 +11,7 @@ import { getResearchPrograms } from './ab-testing';
 import type { Product, ResearchCycle } from '@/lib/types';
 
 function buildResearchPrompt(product: Product, learnedPreferences?: string): string {
-  return `You are a Product Research Agent for Autensa. Your job is to research and analyze a product to identify improvement opportunities.
+  return `You are a Product Research Agent for Mission Control. Your job is to research and analyze a product to identify improvement opportunities.
 
 ## Your Process
 

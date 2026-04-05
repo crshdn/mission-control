@@ -1,0 +1,309 @@
+
+> mission-control@2.4.0 lint
+> eslint .
+
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/admin/backups/route.ts
+  12:3  warning  'isS3Configured' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/agents/[id]/health/nudge/route.ts
+  21:12  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/agents/[id]/health/route.ts
+  23:12  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/agents/[id]/mail/route.ts
+  16:12  warning  'error' is defined but never used   @typescript-eslint/no-unused-vars
+  22:53  warning  'params' is defined but never used  @typescript-eslint/no-unused-vars
+  31:12  warning  'error' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/agents/health/route.ts
+   1:10  warning  'NextRequest' is defined but never used  @typescript-eslint/no-unused-vars
+  11:12  warning  'error' is defined but never used        @typescript-eslint/no-unused-vars
+  29:12  warning  'error' is defined but never used        @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/convoy/[convoyId]/mail/route.ts
+  50:12  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/events/route.ts
+  14:9  error  'sql' is never reassigned. Use 'const' instead  prefer-const
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/events/stream/route.ts
+  33:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  46:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/files/preview/route.ts
+  8:24  warning  'existsSync' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/openclaw/orchestra/route.ts
+  3:10  warning  'queryOne' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/openclaw/sessions/[id]/route.ts
+  175:87  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  193:85  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/openclaw/status/route.ts
+  15:16  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+  33:14  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/products/[id]/ab-tests/[testId]/conclude/route.ts
+  13:13  warning  'id' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/products/[id]/health/export/route.ts
+  3:27  warning  'computeHealthScore' is defined but never used  @typescript-eslint/no-unused-vars
+  3:47  warning  'getWeights' is defined but never used          @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/products/[id]/health/scores/route.ts
+  2:10  warning  'NextRequest' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/products/[id]/skills/[skillId]/route.ts
+  3:23  warning  'reportSkillUsage' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/products/health-scores/route.ts
+  2:10  warning  'NextRequest' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/tasks/[id]/checkpoint/restore/route.ts
+  74:12  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/tasks/[id]/checkpoint/route.ts
+  45:12  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  61:12  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/tasks/[id]/checkpoints/route.ts
+  16:12  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/tasks/[id]/convoy/dispatch/route.ts
+    6:10  warning  'formatMailForDispatch' is defined but never used  @typescript-eslint/no-unused-vars
+  106:12  warning  'error' is defined but never used                  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/tasks/[id]/convoy/progress/route.ts
+  53:12  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/tasks/[id]/convoy/route.ts
+    3:20  warning  'queryAll' is defined but never used  @typescript-eslint/no-unused-vars
+  202:12  warning  'error' is defined but never used     @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/tasks/[id]/images/route.ts
+  89:9  warning  'ext' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/tasks/[id]/planning/answer/route.ts
+  5:10  warning  'extractJSON' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/tasks/[id]/planning/poll/route.ts
+    4:10   warning  'getOpenClawClient' is defined but never used  @typescript-eslint/no-unused-vars
+   24:65   warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+   24:80   warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  227:55   warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  324:63   warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  326:106  warning  Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/tasks/[id]/roles/route.ts
+  3:30  warning  'run' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/tasks/[id]/route.ts
+   7:33  warning  'handleStageFailure' is defined but never used  @typescript-eslint/no-unused-vars
+   7:53  warning  'getTaskWorkflow' is defined but never used     @typescript-eslint/no-unused-vars
+  13:47  warning  'TaskDeliverable' is defined but never used     @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/tasks/[id]/test/route.ts
+  81:9  warning  'startTime' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/tasks/[id]/workspace/route.ts
+  9:3  warning  'triggerWorkspaceMerge' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/api/webhooks/agent-completion/route.ts
+  7:21  warning  'Agent' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/app/autopilot/[productId]/health/page.tsx
+  22:3  warning  'HealthComponentScore' is defined but never used  @typescript-eslint/no-unused-vars
+  23:3  warning  'HealthWeightConfig' is defined but never used    @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/components/AgentModal.tsx
+  20:34  warning  'agents' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/components/ConvoyTab.tsx
+  36:48  warning  'taskStatus' is defined but never used  @typescript-eslint/no-unused-vars
+  60:14  warning  'err' is defined but never used         @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/components/DiscoverAgentsModal.tsx
+   39:14  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+  114:14  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/components/MissionQueue.tsx
+  112:31  warning  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+/Users/openclaw/.openclaw/mission-control/src/components/MissionQueue.tsx:112:31
+  110 |       if (res.ok) {
+  111 |         addEvent({
+> 112 |           id: task.id + '-' + Date.now(),
+      |                               ^^^^^^^^^^ Cannot call impure function
+  113 |           type: targetStatus === 'done' ? 'task_completed' : 'task_status_changed',
+  114 |           task_id: task.id,
+  115 |           message: `Task "${task.title}" moved to ${targetStatus}`,  react-hooks/purity
+
+/Users/openclaw/.openclaw/mission-control/src/components/PlanningTab.tsx
+    6:23  warning  'Circle' is defined but never used                      @typescript-eslint/no-unused-vars
+   67:10  warning  'noNewMessageCount' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  267:14  warning  'err' is defined but never used                         @typescript-eslint/no-unused-vars
+  309:14  warning  'err' is defined but never used                         @typescript-eslint/no-unused-vars
+  348:14  warning  'err' is defined but never used                         @typescript-eslint/no-unused-vars
+  377:14  warning  'err' is defined but never used                         @typescript-eslint/no-unused-vars
+  405:14  warning  'err' is defined but never used                         @typescript-eslint/no-unused-vars
+  440:14  warning  'err' is defined but never used                         @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/components/SSEDebugPanel.tsx
+  42:5  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/openclaw/.openclaw/mission-control/src/components/SSEDebugPanel.tsx:42:5
+  40 |     // Check if debug mode is enabled
+  41 |     const debugEnabled = localStorage.getItem('AUTENSA_DEBUG') === 'true';
+> 42 |     setIsEnabled(debugEnabled);
+     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  43 |
+  44 |     if (!debugEnabled) return;
+  45 |  react-hooks/set-state-in-effect
+
+/Users/openclaw/.openclaw/mission-control/src/components/TaskChatTab.tsx
+  4:10  warning  'Send' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/components/TeamTab.tsx
+    6:10  warning  'Users' is defined but never used  @typescript-eslint/no-unused-vars
+  150:14  warning  'err' is defined but never used    @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/components/autopilot/IdeaCard.tsx
+  4:34  warning  'Tag' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/components/autopilot/ProductSettings.tsx
+  6:35  warning  'HealthWeightConfig' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/components/chat/ChatConversation.tsx
+  4:10  warning  'Send' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/components/chat/ChatProvider.tsx
+  3:40  warning  'useCallback' is defined but never used     @typescript-eslint/no-unused-vars
+  5:53  warning  'PaletteCommand' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/components/chat/ChatWidget.tsx
+  43:5  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/openclaw/.openclaw/mission-control/src/components/chat/ChatWidget.tsx:43:5
+  41 |
+  42 |   useEffect(() => {
+> 43 |     fetchUnread();
+     |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  44 |     pollRef.current = setInterval(fetchUnread, 3000);
+  45 |     return () => {
+  46 |       if (pollRef.current) clearInterval(pollRef.current);  react-hooks/set-state-in-effect
+
+/Users/openclaw/.openclaw/mission-control/src/components/chat/CommandPalette.tsx
+  33:7  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/openclaw/.openclaw/mission-control/src/components/chat/CommandPalette.tsx:33:7
+  31 |   useEffect(() => {
+  32 |     if (isOpen) {
+> 33 |       setQuery(initialFilter);
+     |       ^^^^^^^^ Avoid calling setState() directly within an effect
+  34 |       setSelectedIndex(0);
+  35 |       setTimeout(() => inputRef.current?.focus(), 50);
+  36 |     }  react-hooks/set-state-in-effect
+
+/Users/openclaw/.openclaw/mission-control/src/hooks/useUnreadCounts.ts
+  55:5  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/openclaw/.openclaw/mission-control/src/hooks/useUnreadCounts.ts:55:5
+  53 |
+  54 |   useEffect(() => {
+> 55 |     fetchCounts();
+     |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  56 |     pollRef.current = setInterval(fetchCounts, 5000);
+  57 |     return () => {
+  58 |       if (pollRef.current) clearInterval(pollRef.current);  react-hooks/set-state-in-effect
+
+/Users/openclaw/.openclaw/mission-control/src/lib/auto-dispatch.ts
+  17:50  warning  'workspaceId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/lib/autopilot/ab-testing.ts
+  11:35  warning  'transaction' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/lib/autopilot/products.ts
+  3:10  warning  'broadcast' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/lib/autopilot/research.ts
+  136:9  warning  'lastModel' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/lib/autopilot/similarity.test.ts
+    4:46   warning  'checkSimilarity' is defined but never used       @typescript-eslint/no-unused-vars
+    4:63   warning  'batchCheckSimilarity' is defined but never used  @typescript-eslint/no-unused-vars
+    4:85   warning  'storeEmbedding' is defined but never used        @typescript-eslint/no-unused-vars
+    4:101  warning  'backfillEmbeddings' is defined but never used    @typescript-eslint/no-unused-vars
+  152:7    warning  'testDb' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  154:10   warning  'patchDbModule' is defined but never used         @typescript-eslint/no-unused-vars
+  353:193  warning  Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+  356:19   warning  Unexpected any. Specify a different type          @typescript-eslint/no-explicit-any
+
+/Users/openclaw/.openclaw/mission-control/src/lib/autopilot/similarity.ts
+  134:11  warning  'IdeaWithStatus' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/lib/chat-listener.ts
+  10:10  warning  'queryOne' is defined but never used         @typescript-eslint/no-unused-vars
+  10:20  warning  'queryAll' is defined but never used         @typescript-eslint/no-unused-vars
+  13:15  warning  'OpenClawSession' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/lib/costs/tracker.ts
+  4:10  warning  'broadcast' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/lib/db/migrations.ts
+   28:10  warning  'db' is defined but never used   @typescript-eslint/no-unused-vars
+  618:20  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/lib/health.ts
+    8:10  warning  'getDb' is defined but never used  @typescript-eslint/no-unused-vars
+  199:12  warning  'err' is defined but never used    @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/lib/openclaw/client.ts
+  70:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/openclaw/.openclaw/mission-control/src/lib/orchestration.ts
+  127:66  warning  'summary' is defined but never used       @typescript-eslint/no-unused-vars
+  152:64  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/openclaw/.openclaw/mission-control/src/lib/rollback.ts
+  17:24  warning  'Task' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/lib/task-governance.ts
+  1:10  warning  'queryAll' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/openclaw/.openclaw/mission-control/src/lib/workspace-isolation.ts
+   19:21  warning  'Product' is defined but never used   @typescript-eslint/no-unused-vars
+  359:12  warning  'err' is defined but never used       @typescript-eslint/no-unused-vars
+  551:3   warning  '_options' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 106 problems (1 error, 105 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+

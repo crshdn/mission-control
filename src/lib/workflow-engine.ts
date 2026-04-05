@@ -10,6 +10,7 @@ import { queryOne, queryAll, run } from '@/lib/db';
 import { pickDynamicAgent, escalateFailureIfNeeded, recordLearnerOnTransition } from '@/lib/task-governance';
 import { getMissionControlUrl } from '@/lib/config';
 import { broadcast } from '@/lib/events';
+import { getApiToken } from '@/lib/runtime-compat';
 import type { Task, WorkflowTemplate, WorkflowStage, TaskRole } from '@/lib/types';
 
 interface StageTransitionResult {
@@ -217,8 +218,9 @@ export async function handleStageTransition(
   const missionControlUrl = getMissionControlUrl();
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (process.env.AUTENSA_API_TOKEN) {
-      headers['Authorization'] = `Bearer ${process.env.AUTENSA_API_TOKEN}`;
+    const apiToken = getApiToken();
+    if (apiToken) {
+      headers['Authorization'] = `Bearer ${apiToken}`;
     }
 
     const dispatchRes = await fetch(`${missionControlUrl}/api/tasks/${taskId}/dispatch`, {
