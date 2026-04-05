@@ -167,6 +167,7 @@ export const CreateCostEventSchema = z.object({
   tokens_input: z.number().int().min(0).optional(),
   tokens_output: z.number().int().min(0).optional(),
   cost_usd: z.number().min(0),
+  source_id: z.string().optional().nullable(),
   metadata: z.string().optional(),
 });
 
