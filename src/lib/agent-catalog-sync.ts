@@ -58,7 +58,7 @@ export async function syncGatewayAgentsToCatalog(options?: { force?: boolean; re
 
         if (existingId) {
           run(
-            `UPDATE agents SET name = ?, role = ?, model = COALESCE(?, model), source = 'gateway', updated_at = ? WHERE id = ?`,
+            `UPDATE agents SET name = ?, role = CASE WHEN role IS NULL OR role = 'builder' THEN ? ELSE role END, model = COALESCE(?, model), source = 'gateway', updated_at = ? WHERE id = ?`,
             [name, role, ga.model || null, ts, existingId]
           );
         } else {
