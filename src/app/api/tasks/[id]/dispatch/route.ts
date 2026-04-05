@@ -15,7 +15,7 @@ import { getPendingNotesForDispatch } from '@/lib/task-notes';
 import { createTaskWorkspace, determineIsolationStrategy } from '@/lib/workspace-isolation';
 import { buildOpenClawSessionKey } from '@/lib/openclaw/session-routing';
 import { ensureTaskSession, findActiveTaskSession } from '@/lib/openclaw/task-session-registry';
-import type { Task, Agent, Product, OpenClawSession, WorkflowStage, TaskImage } from '@/lib/types';
+import type { Task, Agent, Product, WorkflowStage, TaskImage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 interface RouteParams {
@@ -50,7 +50,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
-    let assignedAgentId = task.assigned_agent_id;
+    const originalTaskStatus = task.status;
+    const originalAssignedAgentId = task.assigned_agent_id;
+    let assignedAgentId = originalAssignedAgentId;
     if (!assignedAgentId) {
       const statusRoleMap: Record<string, string> = {
         assigned: 'builder',
@@ -430,9 +432,10 @@ If you need help or clarification, ask the orchestrator.`;
         idempotencyKey: `dispatch-${task.id}-${Date.now()}`
       });
 
-      // Only move to in_progress for builder dispatch (task is in 'assigned' status)
-      // For tester/reviewer/verifier, the task status is already correct
-      if (task.status === 'assigned') {
+      // Move builder tasks into the active queue once the message has been delivered.
+      // Direct dispatch from inbox should still surface as active work in the UI/health checks.
+      // For tester/reviewer/verifier, the task status is already correct.
+      if (task.status === 'assigned' || task.status === 'inbox') {
         run(
           'UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?',
           ['in_progress', now, id]
@@ -483,10 +486,15 @@ If you need help or clarification, ask the orchestrator.`;
       // Force-reconnect so the next dispatch attempt gets a fresh WebSocket
       const client2 = getOpenClawClient();
       client2.forceReconnect();
-      // Reset task to 'assigned' so dispatch can be retried
+      // Restore the task to its original state so the retry path preserves workflow context.
       run(
-        `UPDATE tasks SET status = 'assigned', planning_dispatch_error = ?, updated_at = datetime('now') WHERE id = ? AND status != 'done'`,
-        [`Dispatch delivery failed: ${(err as Error).message}`, id]
+        `UPDATE tasks SET status = ?, assigned_agent_id = ?, planning_dispatch_error = ?, updated_at = datetime('now') WHERE id = ? AND status != 'done'`,
+        [
+          originalTaskStatus,
+          originalAssignedAgentId,
+          `Dispatch delivery failed: ${(err as Error).message}`,
+          id,
+        ]
       );
       const failedTask = queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [id]);
       if (failedTask) {
