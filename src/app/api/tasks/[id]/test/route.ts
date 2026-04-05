@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Task Test API
  * Runs automated browser tests on task deliverables
@@ -219,7 +220,7 @@ export async function POST(
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Test execution error:', error);
+    logger.error('Test execution error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

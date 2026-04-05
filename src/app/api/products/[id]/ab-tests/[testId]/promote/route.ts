@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { promoteWinner, analyzeWinnerDelta } from '@/lib/autopilot/ab-testing';
 
@@ -25,7 +26,7 @@ export async function POST(
       analysis,
     });
   } catch (error) {
-    console.error('Failed to promote winner:', error);
+    logger.error('Failed to promote winner:', error);
     return NextResponse.json({ error: 'Failed to promote winner' }, { status: 500 });
   }
 }

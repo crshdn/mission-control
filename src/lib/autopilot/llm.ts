@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Lightweight LLM completion via OpenClaw Gateway's OpenAI-compatible endpoint.
  * Uses /v1/chat/completions for stateless prompt→response (no agent sessions).
@@ -52,7 +53,7 @@ export async function complete(prompt: string, options: CompletionOptions = {}):
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     if (attempt > 0) {
       const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
-      console.log(`[LLM] Retry ${attempt}/${MAX_RETRIES} after ${delay}ms...`);
+      logger.info(`[LLM] Retry ${attempt}/${MAX_RETRIES} after ${delay}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
 
@@ -88,7 +89,7 @@ export async function complete(prompt: string, options: CompletionOptions = {}):
 
       const content = data.choices?.[0]?.message?.content || '';
 
-      console.log(`[LLM] Response usage:`, JSON.stringify(data.usage || null), `model: ${data.model}`);
+      logger.info(`[LLM] Response usage:`, JSON.stringify(data.usage || null), `model: ${data.model}`);
 
       return {
         content,
@@ -106,7 +107,7 @@ export async function complete(prompt: string, options: CompletionOptions = {}):
       const isNetwork = lastError.message.includes('fetch failed') || lastError.message.includes('ECONNREFUSED') || lastError.message.includes('ECONNRESET');
 
       if (isAbort || isNetwork) {
-        console.error(`[LLM] Attempt ${attempt + 1} failed (${isAbort ? 'timeout/abort' : 'network'}): ${lastError.message}`);
+        logger.error(`[LLM] Attempt ${attempt + 1} failed (${isAbort ? 'timeout/abort' : 'network'}): ${lastError.message}`);
         continue; // retry
       }
 

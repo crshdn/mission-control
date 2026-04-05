@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
@@ -182,19 +183,19 @@ export async function runResearchCycle(productId: string, existingCycleId?: stri
 
       // Recalculate health score after research cycle completes
       try { recalculateAndBroadcast(productId); } catch (err) {
-        console.error('[Research] Health score recalc failed:', err);
+        logger.error('[Research] Health score recalc failed:', err);
       }
 
-      console.log(`[Research] Cycle ${cycleId} completed successfully (tokens: ${totalTokens})`);
+      logger.info(`[Research] Cycle ${cycleId} completed successfully (tokens: ${totalTokens})`);
 
       // Auto-chain: kick off ideation using this research cycle
       // Pass variant metadata so ideation can tag ideas correctly
       if (chainIdeation) {
         try {
           const ideationId = await runIdeationCycle(productId, cycleId);
-          console.log(`[Research] Auto-chained ideation cycle ${ideationId} for product ${productId}`);
+          logger.info(`[Research] Auto-chained ideation cycle ${ideationId} for product ${productId}`);
         } catch (ideaErr) {
-          console.error(`[Research] Auto-chain ideation failed for product ${productId}:`, ideaErr);
+          logger.error(`[Research] Auto-chain ideation failed for product ${productId}:`, ideaErr);
         }
       }
     } catch (error) {
@@ -209,7 +210,7 @@ export async function runResearchCycle(productId: string, existingCycleId?: stri
         message: 'Research cycle failed',
         detail: errMsg,
       });
-      console.error(`[Research] Cycle ${cycleId} failed:`, error);
+      logger.error(`[Research] Cycle ${cycleId} failed:`, error);
     }
   })();
 

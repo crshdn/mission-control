@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Product Health Score Computation Engine
  *
@@ -350,7 +351,7 @@ export function recalculateAndBroadcast(productId: string): void {
       payload: { productId, score: score.overall_score },
     });
   } catch (err) {
-    console.error(`[HealthScore] Failed to recalculate for product ${productId}:`, err);
+    logger.error(`[HealthScore] Failed to recalculate for product ${productId}:`, err);
   }
 }
 
@@ -401,7 +402,7 @@ export function takeAllDailySnapshots(): void {
     try {
       takeDailySnapshot(p.id);
     } catch (err) {
-      console.error(`[HealthScore] Snapshot failed for product ${p.id}:`, err);
+      logger.error(`[HealthScore] Snapshot failed for product ${p.id}:`, err);
     }
   }
 }

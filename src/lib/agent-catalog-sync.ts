@@ -1,12 +1,8 @@
+import { logger } from '@/lib/logger';
 import { queryAll, queryOne, run, transaction } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
-
-interface GatewayAgent {
-  id?: string;
-  name?: string;
-  label?: string;
-  model?: string;
-}
+import { normalizeGatewayAgent } from '@/lib/openclaw/gateway-compat';
+import { getDefaultSessionKeyPrefix } from '@/lib/openclaw/session-routing';
 
 const SYNC_INTERVAL_MS = Number(process.env.AGENT_CATALOG_SYNC_INTERVAL_MS || 60_000);
 let lastSyncAt = 0;
@@ -38,7 +34,9 @@ export async function syncGatewayAgentsToCatalog(options?: { force?: boolean; re
       await client.connect();
     }
 
-    const gatewayAgents = (await client.listAgents()) as GatewayAgent[];
+    const gatewayAgents = (await client.listAgents())
+      .map((agent) => normalizeGatewayAgent(agent))
+      .filter((agent): agent is NonNullable<typeof agent> => agent !== null);
     const existing = queryAll<{ id: string; gateway_agent_id: string | null }>(
       `SELECT id, gateway_agent_id FROM agents WHERE gateway_agent_id IS NOT NULL`
     );
@@ -49,23 +47,25 @@ export async function syncGatewayAgentsToCatalog(options?: { force?: boolean; re
 
     transaction(() => {
       for (const ga of gatewayAgents) {
-        const gatewayId = ga.id || ga.name;
-        if (!gatewayId) continue;
-
-        const name = ga.name || ga.label || gatewayId;
+        const gatewayId = ga.id;
+        const name = ga.name;
         const role = normalizeRole(name);
         const existingId = existingByGatewayId.get(gatewayId) || null;
+        const defaultSessionKeyPrefix = getDefaultSessionKeyPrefix({ gateway_agent_id: gatewayId });
 
         if (existingId) {
           run(
-            `UPDATE agents SET name = ?, role = ?, model = COALESCE(?, model), source = 'gateway', updated_at = ? WHERE id = ?`,
-            [name, role, ga.model || null, ts, existingId]
+            `UPDATE agents
+             SET name = ?, role = ?, model = COALESCE(?, model), source = 'gateway',
+                 session_key_prefix = COALESCE(session_key_prefix, ?), updated_at = ?
+             WHERE id = ?`,
+            [name, role, ga.model || null, defaultSessionKeyPrefix, ts, existingId]
           );
         } else {
           run(
-            `INSERT INTO agents (id, name, role, description, avatar_emoji, is_master, workspace_id, model, source, gateway_agent_id, created_at, updated_at)
-             VALUES (lower(hex(randomblob(16))), ?, ?, ?, '🔗', 0, 'default', ?, 'gateway', ?, ?, ?)`,
-            [name, role, `Auto-synced from OpenClaw (${gatewayId})`, ga.model || null, gatewayId, ts, ts]
+            `INSERT INTO agents (id, name, role, description, avatar_emoji, is_master, workspace_id, model, source, gateway_agent_id, session_key_prefix, created_at, updated_at)
+             VALUES (lower(hex(randomblob(16))), ?, ?, ?, '🔗', 0, 'default', ?, 'gateway', ?, ?, ?, ?)`,
+            [name, role, `Auto-synced from OpenClaw (${gatewayId})`, ga.model || null, gatewayId, defaultSessionKeyPrefix, ts, ts]
           );
         }
         changed += 1;
@@ -99,11 +99,11 @@ export function ensureCatalogSyncScheduled(): void {
   if (g.__mcAgentCatalogTimer) return;
   g.__mcAgentCatalogTimer = setInterval(() => {
     syncGatewayAgentsToCatalog({ reason: 'scheduled' }).catch((err) => {
-      console.error('[AgentCatalog] scheduled sync failed:', err);
+      logger.error('[AgentCatalog] scheduled sync failed:', err);
     });
   }, SYNC_INTERVAL_MS);
   syncGatewayAgentsToCatalog({ reason: 'startup' }).catch((err) => {
-    console.error('[AgentCatalog] startup sync failed:', err);
+    logger.error('[AgentCatalog] startup sync failed:', err);
   });
 }
 

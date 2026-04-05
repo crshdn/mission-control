@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 
 
 interface AutoDispatchOptions {
@@ -25,16 +26,16 @@ export async function triggerAutoDispatch(options: AutoDispatchOptions): Promise
     });
 
     if (dispatchRes.ok) {
-      console.log(`[Auto-Dispatch] Task "${taskTitle}" auto-dispatched to ${agentName}`);
+      logger.info(`[Auto-Dispatch] Task "${taskTitle}" auto-dispatched to ${agentName}`);
       return { success: true };
     } else {
       const errorData = await dispatchRes.json().catch(() => ({ error: 'Unknown error' }));
-      console.error(`[Auto-Dispatch] Failed for task "${taskTitle}":`, errorData);
+      logger.error(`[Auto-Dispatch] Failed for task "${taskTitle}":`, errorData);
       return { success: false, error: errorData.error || 'Dispatch failed' };
     }
   } catch (dispatchError) {
     const errorMessage = dispatchError instanceof Error ? dispatchError.message : 'Unknown error';
-    console.error(`[Auto-Dispatch] Error for task "${taskTitle}":`, errorMessage);
+    logger.error(`[Auto-Dispatch] Error for task "${taskTitle}":`, errorMessage);
     return { success: false, error: errorMessage };
   }
 }

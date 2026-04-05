@@ -362,11 +362,13 @@ export interface OpenClawMessage {
 }
 
 export interface OpenClawSessionInfo {
-  id: string;
-  channel: string;
+  id?: string;
+  key?: string;
+  sessionId?: string;
+  channel?: string;
   peer?: string;
   model?: string;
-  status: string;
+  status?: string;
 }
 
 // OpenClaw history message format (from Gateway)
@@ -848,15 +850,38 @@ export type SSEEventType =
   | 'skill_promoted'
   | 'skills_extracted';
 
+// API response types
+export interface ApiError {
+  error: string;
+  details?: unknown;
+}
+
+export interface ApiSuccess<T> {
+  data: T;
+}
+
+export type ApiResponse<T> = ApiSuccess<T> | ApiError;
+
+// SSE event payload types for better type safety
+export interface SSETaskPayload {
+  taskId: string;
+  sessionId: string;
+  agentName?: string;
+  summary?: string;
+  deleted?: boolean;
+}
+
+export interface SSETaskDeletePayload {
+  id: string;
+}
+
+export interface SSEAutopilotPayload extends Record<string, unknown> {
+  eventType?: string;
+  message?: string;
+  detail?: string;
+}
+
 export interface SSEEvent {
   type: SSEEventType;
-  payload: Task | TaskActivity | TaskDeliverable | {
-    taskId: string;
-    sessionId: string;
-    agentName?: string;
-    summary?: string;
-    deleted?: boolean;
-  } | {
-    id: string;  // For task_deleted events
-  } | Record<string, unknown>; // Autopilot + extensible event payloads
+  payload: Task | TaskActivity | TaskDeliverable | SSETaskPayload | SSETaskDeletePayload | SSEAutopilotPayload;
 }

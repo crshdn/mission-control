@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, run } from '@/lib/db';
@@ -38,7 +39,7 @@ export async function POST(
 
     return NextResponse.json({ success: true, last_read_at: now });
   } catch (error) {
-    console.error('Failed to mark task as read:', error);
+    logger.error('Failed to mark task as read:', error);
     return NextResponse.json({ error: 'Failed to mark as read' }, { status: 500 });
   }
 }

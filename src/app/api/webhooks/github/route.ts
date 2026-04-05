@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * GitHub Webhook Handler
  *
@@ -30,7 +31,7 @@ function verifyGitHubSignature(signature: string | null, rawBody: string): boole
 
   if (!secret) {
     // Dev mode — skip validation but log warning
-    console.warn('[GitHub Webhook] No GITHUB_WEBHOOK_SECRET set — skipping signature validation');
+    logger.warn('[GitHub Webhook] No GITHUB_WEBHOOK_SECRET set — skipping signature validation');
     return true;
   }
 
@@ -78,19 +79,19 @@ async function handlePullRequestMerged(payload: {
 
   const product = findProductByRepo(payload.repository.full_name);
   if (!product) {
-    console.log(`[GitHub Webhook] No product found for repo ${payload.repository.full_name} — skipping`);
+    logger.info(`[GitHub Webhook] No product found for repo ${payload.repository.full_name} — skipping`);
     return;
   }
 
   const settings = getProductSettings(product);
   if (!settings.health_check_url) {
-    console.log(`[GitHub Webhook] Product ${product.name} has no health_check_url — skipping monitor`);
+    logger.info(`[GitHub Webhook] Product ${product.name} has no health_check_url — skipping monitor`);
     return;
   }
 
   // Only monitor if automation tier is semi_auto or full_auto
   if (!settings.automation_tier || settings.automation_tier === 'supervised') {
-    console.log(`[GitHub Webhook] Product ${product.name} is supervised — skipping auto-monitor`);
+    logger.info(`[GitHub Webhook] Product ${product.name} is supervised — skipping auto-monitor`);
     return;
   }
 
@@ -105,7 +106,7 @@ async function handlePullRequestMerged(payload: {
     monitorMinutes: settings.post_merge_monitor_minutes || 5,
   });
 
-  console.log(`[GitHub Webhook] Started post-merge monitor for ${product.name} (PR: ${pr.html_url})`);
+  logger.info(`[GitHub Webhook] Started post-merge monitor for ${product.name} (PR: ${pr.html_url})`);
 }
 
 async function handleCIFailure(payload: {
@@ -153,11 +154,11 @@ async function handleCIFailure(payload: {
   );
 
   if (!task?.pr_url) {
-    console.log(`[GitHub Webhook] CI failure for ${product.name} but no recent merged PR found — skipping`);
+    logger.info(`[GitHub Webhook] CI failure for ${product.name} but no recent merged PR found — skipping`);
     return;
   }
 
-  console.log(`[GitHub Webhook] CI failure detected for ${product.name}: ${conclusion}`);
+  logger.info(`[GitHub Webhook] CI failure detected for ${product.name}: ${conclusion}`);
 
   await executeRollback({
     productId: product.id,
@@ -219,16 +220,16 @@ export async function POST(request: NextRequest) {
         break;
 
       case 'ping':
-        console.log('[GitHub Webhook] Ping received');
+        logger.info('[GitHub Webhook] Ping received');
         break;
 
       default:
-        console.log(`[GitHub Webhook] Ignoring event: ${event}`);
+        logger.info(`[GitHub Webhook] Ignoring event: ${event}`);
     }
 
     return NextResponse.json({ received: true, event });
   } catch (err) {
-    console.error('[GitHub Webhook] Error processing event:', err);
+    logger.error('[GitHub Webhook] Error processing event:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Internal error' },
       { status: 500 }

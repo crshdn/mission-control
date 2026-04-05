@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getVariant, updateVariant, deleteVariant } from '@/lib/autopilot/ab-testing';
 
@@ -16,7 +17,7 @@ export async function GET(
     }
     return NextResponse.json(variant);
   } catch (error) {
-    console.error('Failed to get variant:', error);
+    logger.error('Failed to get variant:', error);
     return NextResponse.json({ error: 'Failed to get variant' }, { status: 500 });
   }
 }
@@ -41,7 +42,7 @@ export async function PATCH(
     });
     return NextResponse.json(updated);
   } catch (error) {
-    console.error('Failed to update variant:', error);
+    logger.error('Failed to update variant:', error);
     return NextResponse.json({ error: 'Failed to update variant' }, { status: 500 });
   }
 }
@@ -64,7 +65,7 @@ export async function DELETE(
     }
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete variant:', error);
+    logger.error('Failed to delete variant:', error);
     return NextResponse.json({ error: 'Failed to delete variant' }, { status: 500 });
   }
 }

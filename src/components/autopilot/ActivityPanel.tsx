@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Activity, ChevronRight, ChevronLeft, Zap, Clock, CheckCircle, AlertCircle, Loader, X } from 'lucide-react';
 import type { AutopilotActivityEntry } from '@/lib/types';
@@ -77,7 +79,7 @@ export function ActivityPanel({ productId }: ActivityPanelProps) {
         // Mark initial load done after a tick so the scroll effect skips this batch
         requestAnimationFrame(() => { initialLoadDone.current = true; });
       })
-      .catch(err => console.error('[ActivityPanel] Fetch failed:', err));
+      .catch(err => logger.error('[ActivityPanel] Fetch failed:', err));
   }, [productId]);
 
   // Subscribe to SSE for live updates

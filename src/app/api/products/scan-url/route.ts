@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -168,7 +169,7 @@ export async function POST(request: NextRequest) {
     return await handleWebsite(url);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to fetch URL';
-    console.error(`[scan-url] Error scanning ${url}:`, message);
+    logger.error(`[scan-url] Error scanning ${url}:`, message);
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }

@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect, useCallback } from 'react';
 import { Undo2 } from 'lucide-react';
 import type { SwipeAction } from '@/lib/types';
@@ -62,12 +64,12 @@ export function UndoToast({ swipeId, ideaTitle, action, productId, onUndo, onExp
         onUndo(data.idea);
       } else {
         const err = await res.json().catch(() => ({ error: 'Undo failed' }));
-        console.error('Undo failed:', err.error);
+        logger.error('Undo failed:', err.error);
         // If expired server-side, just dismiss
         onExpire();
       }
     } catch (error) {
-      console.error('Undo request failed:', error);
+      logger.error('Undo request failed:', error);
       onExpire();
     }
   }, [swipeId, productId, onUndo, onExpire, undoing]);

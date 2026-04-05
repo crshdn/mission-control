@@ -1,14 +1,13 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['better-sqlite3'],
-  },
-  webpack: (config) => {
-    config.externals.push({
-      'better-sqlite3': 'commonjs better-sqlite3',
-      '@aws-sdk/client-s3': 'commonjs @aws-sdk/client-s3',
-    });
-    return config;
+  serverExternalPackages: ['better-sqlite3', '@aws-sdk/client-s3'],
+  turbopack: {
+    root: rootDir,
   },
   async headers() {
     return [

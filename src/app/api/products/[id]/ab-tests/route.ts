@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { startTest, listTests } from '@/lib/autopilot/ab-testing';
 
@@ -13,7 +14,7 @@ export async function GET(
     const tests = listTests(id);
     return NextResponse.json(tests);
   } catch (error) {
-    console.error('Failed to list A/B tests:', error);
+    logger.error('Failed to list A/B tests:', error);
     return NextResponse.json({ error: 'Failed to list A/B tests' }, { status: 500 });
   }
 }
@@ -56,7 +57,7 @@ export async function POST(
 
     return NextResponse.json(result.test, { status: 201 });
   } catch (error) {
-    console.error('Failed to start A/B test:', error);
+    logger.error('Failed to start A/B test:', error);
     return NextResponse.json({ error: 'Failed to start A/B test' }, { status: 500 });
   }
 }

@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect, useCallback } from 'react';
 import { Play, Loader2, Clock } from 'lucide-react';
 import type { ResearchCycle } from '@/lib/types';
@@ -31,7 +33,7 @@ export function ResearchReport({ productId }: ResearchReportProps) {
       setCycles(data);
       return data;
     } catch (error) {
-      console.error('Failed to load cycles:', error);
+      logger.error('Failed to load cycles:', error);
       return [];
     } finally {
       setLoading(false);
@@ -62,7 +64,7 @@ export function ResearchReport({ productId }: ResearchReportProps) {
       await fetch(`/api/products/${productId}/research/run`, { method: 'POST' });
       await loadCycles();
     } catch (error) {
-      console.error('Failed to start research:', error);
+      logger.error('Failed to start research:', error);
     } finally {
       setStarting(false);
     }
@@ -76,7 +78,7 @@ export function ResearchReport({ productId }: ResearchReportProps) {
         body: JSON.stringify({ cycle_id: cycleId }),
       });
     } catch (error) {
-      console.error('Failed to start ideation:', error);
+      logger.error('Failed to start ideation:', error);
     }
   };
 

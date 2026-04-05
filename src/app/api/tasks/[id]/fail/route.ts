@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne } from '@/lib/db';
 import { handleStageFailure, drainQueue } from '@/lib/workflow-engine';
@@ -48,7 +49,7 @@ export async function POST(
       newStatus: 'in_progress',
       passed: false,
       failReason: reason,
-    }).catch(err => console.error('[Learner] notification failed:', err));
+    }).catch(err => logger.error('[Learner] notification failed:', err));
 
     // Trigger the fail-loopback via the workflow engine
     const result = await handleStageFailure(taskId, task.status, reason);
@@ -56,7 +57,7 @@ export async function POST(
     if (result.success) {
       // Fail-loopback freed a slot (testing/verification) — drain the queue
       drainQueue(taskId, task.workspace_id).catch(err =>
-        console.error('[Workflow] drainQueue after fail failed:', err)
+        logger.error('[Workflow] drainQueue after fail failed:', err)
       );
 
       return NextResponse.json({
@@ -71,7 +72,7 @@ export async function POST(
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('Failed to process stage failure:', error);
+    logger.error('Failed to process stage failure:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

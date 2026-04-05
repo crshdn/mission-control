@@ -26,14 +26,19 @@ const ActivityType = z.enum([
 
 const DeliverableType = z.enum(['file', 'url', 'artifact']);
 
+// Agent IDs are not always UUIDs.
+// Local agents typically use UUIDs, while gateway-synced agents may use
+// 32-char hex ids generated via lower(hex(randomblob(16))).
+const AgentId = z.string().min(1).max(128);
+
 // Task validation schemas
 export const CreateTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(500, 'Title must be 500 characters or less'),
   description: z.string().max(10000, 'Description must be 10000 characters or less').optional(),
   status: TaskStatus.optional(),
   priority: TaskPriority.optional(),
-  assigned_agent_id: z.string().uuid().optional().nullable(),
-  created_by_agent_id: z.string().uuid().optional().nullable(),
+  assigned_agent_id: AgentId.optional().nullable(),
+  created_by_agent_id: AgentId.optional().nullable(),
   business_id: z.string().optional(),
   workspace_id: z.string().optional(),
   due_date: z.string().optional().nullable(),
@@ -44,10 +49,10 @@ export const UpdateTaskSchema = z.object({
   description: z.string().max(10000).optional(),
   status: TaskStatus.optional(),
   priority: TaskPriority.optional(),
-  assigned_agent_id: z.string().uuid().optional().nullable(),
+  assigned_agent_id: AgentId.optional().nullable(),
   workflow_template_id: z.string().optional().nullable(),
   due_date: z.string().optional().nullable(),
-  updated_by_agent_id: z.string().uuid().optional(),
+  updated_by_agent_id: AgentId.optional(),
   status_reason: z.string().max(2000).optional(),
   board_override: z.boolean().optional(),
   override_reason: z.string().max(2000).optional(),
@@ -59,7 +64,7 @@ export const UpdateTaskSchema = z.object({
 export const CreateActivitySchema = z.object({
   activity_type: ActivityType,
   message: z.string().min(1, 'Message is required').max(5000, 'Message must be 5000 characters or less'),
-  agent_id: z.string().uuid().optional(),
+  agent_id: AgentId.optional(),
   metadata: z.string().optional(),
 });
 

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 
@@ -26,7 +27,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     const history = await client.getSessionHistory(id);
     return NextResponse.json({ history });
   } catch (error) {
-    console.error('Failed to get OpenClaw session history:', error);
+    logger.error('Failed to get OpenClaw session history:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

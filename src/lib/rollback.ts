@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Automated Rollback Pipeline
  *
@@ -151,13 +152,13 @@ export async function createRevertPR(
 ): Promise<{ url: string; number: number } | null> {
   const token = getGitHubToken();
   if (!token) {
-    console.error('[Rollback] No GitHub token available for revert PR creation');
+    logger.error('[Rollback] No GitHub token available for revert PR creation');
     return null;
   }
 
   const parsed = parseGitHubPrUrl(mergedPrUrl);
   if (!parsed) {
-    console.error('[Rollback] Cannot parse PR URL:', mergedPrUrl);
+    logger.error('[Rollback] Cannot parse PR URL:', mergedPrUrl);
     return null;
   }
 
@@ -177,7 +178,7 @@ export async function createRevertPR(
     // Get the ref for default branch
     const refRes = await fetch(`${apiBase}/git/ref/heads/${defaultBranch}`, { headers });
     if (!refRes.ok) {
-      console.error('[Rollback] Failed to get default branch ref:', await refRes.text());
+      logger.error('[Rollback] Failed to get default branch ref:', await refRes.text());
       return null;
     }
     const refData = await refRes.json();
@@ -193,7 +194,7 @@ export async function createRevertPR(
       }),
     });
     if (!createRefRes.ok) {
-      console.error('[Rollback] Failed to create revert branch:', await createRefRes.text());
+      logger.error('[Rollback] Failed to create revert branch:', await createRefRes.text());
       return null;
     }
 
@@ -215,7 +216,7 @@ export async function createRevertPR(
       // Use the more reliable approach: create PR from the merge commit's parent
       const parentRes = await fetch(`${apiBase}/commits/${mergedCommitSha}`, { headers });
       if (!parentRes.ok) {
-        console.error('[Rollback] Failed to get commit info:', await parentRes.text());
+        logger.error('[Rollback] Failed to get commit info:', await parentRes.text());
         return null;
       }
       const commitData = await parentRes.json();
@@ -229,7 +230,7 @@ export async function createRevertPR(
           body: JSON.stringify({ sha: parentSha, force: true }),
         });
         if (!updateRefRes.ok) {
-          console.error('[Rollback] Failed to update revert branch:', await updateRefRes.text());
+          logger.error('[Rollback] Failed to update revert branch:', await updateRefRes.text());
           return null;
         }
       }
@@ -261,16 +262,16 @@ export async function createRevertPR(
 
     if (!prRes.ok) {
       const errText = await prRes.text();
-      console.error('[Rollback] Failed to create revert PR:', errText);
+      logger.error('[Rollback] Failed to create revert PR:', errText);
       return null;
     }
 
     const prData = await prRes.json();
-    console.log(`[Rollback] Revert PR created: ${prData.html_url}`);
+    logger.info(`[Rollback] Revert PR created: ${prData.html_url}`);
 
     return { url: prData.html_url, number: prData.number };
   } catch (err) {
-    console.error('[Rollback] Error creating revert PR:', err);
+    logger.error('[Rollback] Error creating revert PR:', err);
     return null;
   }
 }
@@ -303,14 +304,14 @@ export async function mergeRevertPR(prUrl: string): Promise<boolean> {
     );
 
     if (res.ok) {
-      console.log(`[Rollback] Revert PR #${prNumber} merged successfully`);
+      logger.info(`[Rollback] Revert PR #${prNumber} merged successfully`);
       return true;
     }
 
-    console.error('[Rollback] Failed to merge revert PR:', await res.text());
+    logger.error('[Rollback] Failed to merge revert PR:', await res.text());
     return false;
   } catch (err) {
-    console.error('[Rollback] Error merging revert PR:', err);
+    logger.error('[Rollback] Error merging revert PR:', err);
     return false;
   }
 }
@@ -478,7 +479,7 @@ export async function executeRollback(params: {
   // 4. Pause automation tier → supervised
   if (settings.automation_tier && settings.automation_tier !== 'supervised') {
     updateProductSettings(params.productId, { automation_tier: 'supervised' });
-    console.log(`[Rollback] Product ${product.name}: automation tier paused to supervised (was: ${settings.automation_tier})`);
+    logger.info(`[Rollback] Product ${product.name}: automation tier paused to supervised (was: ${settings.automation_tier})`);
   }
 
   // 5. Broadcast SSE event
@@ -517,7 +518,7 @@ export async function executeRollback(params: {
     ]
   );
 
-  console.log(`[Rollback] Pipeline complete for product ${product.name}: success=${success}, revertPR=${revertPrUrl || 'none'}`);
+  logger.info(`[Rollback] Pipeline complete for product ${product.name}: success=${success}, revertPR=${revertPrUrl || 'none'}`);
 
   return { rollbackId, revertPrUrl, success };
 }
@@ -559,7 +560,7 @@ export function startPostMergeMonitor(params: {
   activeMonitors.set(productId, controller);
 
   const monitorKey = `${productId}:${mergedCommitSha.slice(0, 7)}`;
-  console.log(`[Rollback Monitor] Starting health monitor for ${monitorKey} — polling ${healthCheckUrl} every ${pollIntervalSeconds}s for ${monitorMinutes}min`);
+  logger.info(`[Rollback Monitor] Starting health monitor for ${monitorKey} — polling ${healthCheckUrl} every ${pollIntervalSeconds}s for ${monitorMinutes}min`);
 
   const totalMs = monitorMinutes * 60 * 1000;
   const intervalMs = pollIntervalSeconds * 1000;
@@ -569,12 +570,12 @@ export function startPostMergeMonitor(params: {
 
   const poll = async () => {
     if (controller.signal.aborted) {
-      console.log(`[Rollback Monitor] Monitor ${monitorKey} aborted`);
+      logger.info(`[Rollback Monitor] Monitor ${monitorKey} aborted`);
       return;
     }
 
     if (Date.now() - startTime > totalMs) {
-      console.log(`[Rollback Monitor] Monitor ${monitorKey} completed — no issues detected`);
+      logger.info(`[Rollback Monitor] Monitor ${monitorKey} completed — no issues detected`);
       activeMonitors.delete(productId);
       return;
     }
@@ -585,12 +586,12 @@ export function startPostMergeMonitor(params: {
       consecutiveFailures = 0;
     } else {
       consecutiveFailures++;
-      console.warn(
+      logger.warn(
         `[Rollback Monitor] Health check failed (${consecutiveFailures}/${FAILURE_THRESHOLD}) for ${monitorKey}: ${result.error || `HTTP ${result.statusCode}`}`
       );
 
       if (consecutiveFailures >= FAILURE_THRESHOLD) {
-        console.error(`[Rollback Monitor] Triggering rollback for ${monitorKey} after ${FAILURE_THRESHOLD} consecutive failures`);
+        logger.error(`[Rollback Monitor] Triggering rollback for ${monitorKey} after ${FAILURE_THRESHOLD} consecutive failures`);
         activeMonitors.delete(productId);
 
         await executeRollback({

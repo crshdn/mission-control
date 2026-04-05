@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { recordSwipe, getPendingCount } from '@/lib/autopilot/swipe';
 import { SwipeActionSchema } from '@/lib/validation';
@@ -18,7 +19,7 @@ export async function POST(
     const result = recordSwipe(id, validation.data);
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Failed to record swipe:', error);
+    logger.error('Failed to record swipe:', error);
     const message = error instanceof Error ? error.message : 'Failed to record swipe';
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -33,7 +34,7 @@ export async function GET(
     const count = getPendingCount(id);
     return NextResponse.json({ pending_count: count });
   } catch (error) {
-    console.error('Failed to get pending count:', error);
+    logger.error('Failed to get pending count:', error);
     return NextResponse.json({ error: 'Failed to get pending count' }, { status: 500 });
   }
 }

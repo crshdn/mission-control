@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryAll, queryOne, run } from '@/lib/db';
 
@@ -34,7 +35,7 @@ export async function GET(
 
     return NextResponse.json(parsed);
   } catch (error) {
-    console.error('Failed to fetch workflow templates:', error);
+    logger.error('Failed to fetch workflow templates:', error);
     return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 });
   }
 }
@@ -84,7 +85,7 @@ export async function POST(
 
     return NextResponse.json(template, { status: 201 });
   } catch (error) {
-    console.error('Failed to create workflow template:', error);
+    logger.error('Failed to create workflow template:', error);
     return NextResponse.json({ error: 'Failed to create template' }, { status: 500 });
   }
 }

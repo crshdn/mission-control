@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 import { Plus, ArrowRight, Folder, Users, CheckSquare, Trash2, AlertTriangle, Activity, Rocket } from 'lucide-react';
 import Link from 'next/link';
@@ -22,7 +24,7 @@ export function WorkspaceDashboard() {
         setWorkspaces(data);
       }
     } catch (error) {
-      console.error('Failed to load workspaces:', error);
+      logger.error('Failed to load workspaces:', error);
     } finally {
       setLoading(false);
     }

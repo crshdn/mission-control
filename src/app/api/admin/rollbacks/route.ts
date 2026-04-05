@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * GET  /api/admin/rollbacks — List rollback history (optionally filtered by product)
  */
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
       activeMonitors: getActiveMonitors(),
     });
   } catch (err) {
-    console.error('[API] Failed to list rollbacks:', err);
+    logger.error('[API] Failed to list rollbacks:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Failed to list rollbacks' },
       { status: 500 }

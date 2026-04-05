@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getCostOverview } from '@/lib/costs/reporting';
 
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
     const overview = getCostOverview(workspaceId);
     return NextResponse.json(overview);
   } catch (error) {
-    console.error('Failed to fetch cost overview:', error);
+    logger.error('Failed to fetch cost overview:', error);
     return NextResponse.json({ error: 'Failed to fetch cost overview' }, { status: 500 });
   }
 }

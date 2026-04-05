@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { batchSwipe } from '@/lib/autopilot/swipe';
 import { z } from 'zod';
@@ -36,7 +37,7 @@ export async function POST(
       })),
     });
   } catch (error) {
-    console.error('Failed to process batch swipe:', error);
+    logger.error('Failed to process batch swipe:', error);
     const message = error instanceof Error ? error.message : 'Failed to process batch swipe';
     // If a concurrent session conflict, return 409
     const status = message.includes('not in pending status') ? 409 : 500;

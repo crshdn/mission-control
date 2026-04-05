@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run, transaction } from '@/lib/db';
 import { broadcast } from '@/lib/events';
@@ -79,12 +80,12 @@ export function recordSwipe(productId: string, input: SwipeInput): { idea: Idea;
 
   // Rebuild preference model after each swipe (non-blocking)
   try { rebuildPreferenceModel(productId); } catch (err) {
-    console.error('[Swipe] Failed to rebuild preferences:', err);
+    logger.error('[Swipe] Failed to rebuild preferences:', err);
   }
 
   // Recalculate health score after swipe (non-blocking)
   try { recalculateAndBroadcast(productId); } catch (err) {
-    console.error('[Swipe] Failed to recalculate health score:', err);
+    logger.error('[Swipe] Failed to recalculate health score:', err);
   }
 
   return result;
@@ -170,12 +171,12 @@ export function undoSwipe(productId: string, swipeId: string): { idea: Idea } {
 
   // Rebuild preference model after undo
   try { rebuildPreferenceModel(productId); } catch (err) {
-    console.error('[Swipe] Failed to rebuild preferences after undo:', err);
+    logger.error('[Swipe] Failed to rebuild preferences after undo:', err);
   }
 
   // Recalculate health score after undo
   try { recalculateAndBroadcast(productId); } catch (err) {
-    console.error('[Swipe] Failed to recalculate health score after undo:', err);
+    logger.error('[Swipe] Failed to recalculate health score after undo:', err);
   }
 
   return result;
@@ -259,7 +260,7 @@ export function batchSwipe(
 
   // Rebuild preference model once after entire batch
   try { rebuildPreferenceModel(productId); } catch (err) {
-    console.error('[Swipe] Failed to rebuild preferences after batch:', err);
+    logger.error('[Swipe] Failed to rebuild preferences after batch:', err);
   }
 
   broadcast({ type: 'idea_swiped', payload: { productId, action: 'batch', count: results.length } });
@@ -312,7 +313,7 @@ function createTaskFromIdea(idea: Idea, opts?: { urgent?: boolean; notes?: strin
     if (monthlySpend && monthlySpend.total >= product.cost_cap_monthly) {
       // Cap exceeded — queue to inbox instead of auto-dispatching
       status = 'inbox';
-      console.warn(`[AutoBuild] Monthly cap exceeded for product ${product.name}: $${monthlySpend.total}/$${product.cost_cap_monthly} — queuing to inbox`);
+      logger.warn(`[AutoBuild] Monthly cap exceeded for product ${product.name}: $${monthlySpend.total}/$${product.cost_cap_monthly} — queuing to inbox`);
     }
   }
 
@@ -362,8 +363,8 @@ function queueDispatch(taskId: string): void {
     headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
   }
   fetch(`${url}/api/tasks/${taskId}/dispatch`, { method: 'POST', headers, signal: AbortSignal.timeout(30_000) })
-    .then(res => { if (!res.ok) console.error('[AutoDispatch] Failed:', res.status); })
-    .catch(err => console.error('[AutoDispatch] Error:', err));
+    .then(res => { if (!res.ok) logger.error('[AutoDispatch] Failed:', res.status); })
+    .catch(err => logger.error('[AutoDispatch] Error:', err));
 }
 
 /**

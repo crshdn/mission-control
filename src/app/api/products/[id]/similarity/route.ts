@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { backfillEmbeddings } from '@/lib/autopilot/similarity';
 import { queryAll, queryOne } from '@/lib/db';
@@ -54,7 +55,7 @@ export async function GET(
       recentSuppressions,
     });
   } catch (error) {
-    console.error('Failed to fetch similarity stats:', error);
+    logger.error('Failed to fetch similarity stats:', error);
     return NextResponse.json({ error: 'Failed to fetch similarity stats' }, { status: 500 });
   }
 }
@@ -71,7 +72,7 @@ export async function POST(
     const count = backfillEmbeddings(id);
     return NextResponse.json({ backfilled: count, message: `Backfilled ${count} idea embeddings` });
   } catch (error) {
-    console.error('Failed to backfill embeddings:', error);
+    logger.error('Failed to backfill embeddings:', error);
     return NextResponse.json({ error: 'Failed to backfill embeddings' }, { status: 500 });
   }
 }

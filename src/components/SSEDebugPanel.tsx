@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -41,9 +43,9 @@ export function SSEDebugPanel() {
 
     if (!debugEnabled) return;
 
-    // Intercept console.log for SSE events
-    const originalLog = console.log;
-    console.log = (...args: unknown[]) => {
+    // Intercept logger.info for SSE events
+    const originalLog = logger.info;
+    logger.info = (...args: unknown[]) => {
       originalLog.apply(console, args);
 
       // Capture SSE and STORE logs
@@ -58,7 +60,7 @@ export function SSEDebugPanel() {
     };
 
     return () => {
-      console.log = originalLog;
+      logger.info = originalLog;
     };
   }, [addLog]);
 

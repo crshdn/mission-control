@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 
@@ -37,7 +38,7 @@ export async function GET() {
       });
     }
   } catch (error) {
-    console.error('OpenClaw status check failed:', error);
+    logger.error('OpenClaw status check failed:', error);
     return NextResponse.json(
       {
         connected: false,

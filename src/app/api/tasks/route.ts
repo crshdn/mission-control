@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryAll, queryOne, run } from '@/lib/db';
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(transformedTasks);
   } catch (error) {
-    console.error('Failed to fetch tasks:', error);
+    logger.error('Failed to fetch tasks:', error);
     return NextResponse.json({ error: 'Failed to fetch tasks' }, { status: 500 });
   }
 }
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body: CreateTaskRequest = await request.json();
-    console.log('[POST /api/tasks] Received body:', JSON.stringify(body));
+    logger.info('[POST /api/tasks] Received body:', JSON.stringify(body));
 
     // Validate input with Zod
     const validation = CreateTaskSchema.safeParse(body);
@@ -169,7 +170,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(task, { status: 201 });
   } catch (error) {
-    console.error('Failed to create task:', error);
+    logger.error('Failed to create task:', error);
     return NextResponse.json({ error: 'Failed to create task' }, { status: 500 });
   }
 }

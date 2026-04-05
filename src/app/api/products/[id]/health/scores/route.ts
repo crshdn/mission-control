@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllProductScores } from '@/lib/autopilot/health-score';
 
@@ -12,7 +13,7 @@ export async function GET() {
     const scores = getAllProductScores();
     return NextResponse.json(scores);
   } catch (error) {
-    console.error('[API] Batch health scores error:', error);
+    logger.error('[API] Batch health scores error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch health scores' },
       { status: 500 }

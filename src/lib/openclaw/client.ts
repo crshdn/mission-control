@@ -1,9 +1,12 @@
+import { logger } from '@/lib/logger';
 // OpenClaw Gateway WebSocket Client
 
 import { EventEmitter } from 'events';
 import type { OpenClawMessage, OpenClawSessionInfo } from '../types';
 import { loadOrCreateDeviceIdentity, signDevicePayload, buildDeviceAuthPayload, publicKeyRawBase64Url } from './device-identity';
 import { createHash } from 'crypto';
+import { extractGatewayAgents, extractGatewaySessions } from './gateway-compat';
+import { WS_CONNECTION_TIMEOUT_MS, WS_RECONNECT_DELAY_MS } from '@/lib/constants';
 
 // Types for gateway model discovery (matches OpenClaw models.list response)
 export interface GatewayModelChoice {
@@ -117,7 +120,7 @@ export class OpenClawClient extends EventEmitter {
     }
 
     if (removed > 0) {
-      console.log(`[OpenClaw] Cache cleanup: removed ${removed} entries (size: ${initialSize} -> ${globalProcessedEvents.size})`);
+      logger.info(`[OpenClaw] Cache cleanup: removed ${removed} entries (size: ${initialSize} -> ${globalProcessedEvents.size})`);
     }
   }
 
@@ -129,9 +132,9 @@ export class OpenClawClient extends EventEmitter {
     // Load device identity for pairing
     try {
       this.deviceIdentity = loadOrCreateDeviceIdentity();
-      console.log('[OpenClaw] Device identity loaded:', this.deviceIdentity.deviceId);
+      logger.info('[OpenClaw] Device identity loaded:', this.deviceIdentity.deviceId);
     } catch (err) {
-      console.warn('[OpenClaw] Failed to load device identity, will connect without:', err);
+      logger.warn('[OpenClaw] Failed to load device identity, will connect without:', err);
     }
 // Start periodic cleanup to prevent unbounded cache growth
     this.startPeriodicCleanup();
@@ -148,10 +151,11 @@ export class OpenClawClient extends EventEmitter {
         // Perform cleanup even if no new events have arrived
         this.performCacheCleanup();
       }, this.PERIODIC_CLEANUP_INTERVAL_MS);
+      timer.unref?.();
 
       // Store the timer globally so all instances share it
       (globalThis as Record<string, unknown>)[GLOBAL_CACHE_CLEANUP_KEY] = timer;
-      console.log('[OpenClaw] Started periodic cache cleanup (interval:', this.PERIODIC_CLEANUP_INTERVAL_MS, 'ms)');
+      logger.info('[OpenClaw] Started periodic cache cleanup (interval:', this.PERIODIC_CLEANUP_INTERVAL_MS, 'ms)');
     }
 
     // Keep a reference to stop it when the last instance disconnects
@@ -201,8 +205,8 @@ export class OpenClawClient extends EventEmitter {
         if (this.token) {
           wsUrl.searchParams.set('token', this.token);
         }
-        console.log('[OpenClaw] Connecting to:', wsUrl.toString().replace(/token=[^&]+/, 'token=***'));
-        console.log('[OpenClaw] Token in URL:', wsUrl.searchParams.has('token'));
+        logger.info('[OpenClaw] Connecting to:', wsUrl.toString().replace(/token=[^&]+/, 'token=***'));
+        logger.info('[OpenClaw] Token in URL:', wsUrl.searchParams.has('token'));
         this.ws = new WebSocket(wsUrl.toString());
 
         const connectionTimeout = setTimeout(() => {
@@ -210,11 +214,11 @@ export class OpenClawClient extends EventEmitter {
             this.ws?.close();
             reject(new Error('Connection timeout'));
           }
-        }, 10000); // 10 second connection timeout
+        }, WS_CONNECTION_TIMEOUT_MS);
 
         this.ws.onopen = async () => {
           clearTimeout(connectionTimeout);
-          console.log('[OpenClaw] WebSocket opened, waiting for challenge...');
+          logger.info('[OpenClaw] WebSocket opened, waiting for challenge...');
           // Don't send anything yet - wait for Gateway challenge
           // Token is in URL query string
         };
@@ -229,7 +233,7 @@ export class OpenClawClient extends EventEmitter {
           // Note: globalProcessedEvents is NOT cleared as it's shared across all instances
           this.emit('disconnected');
           // Log close reason for debugging
-          console.log(`[OpenClaw] Disconnected from Gateway (code: ${event.code}, reason: "${event.reason}", wasClean: ${event.wasClean})`);
+          logger.info(`[OpenClaw] Disconnected from Gateway (code: ${event.code}, reason: "${event.reason}", wasClean: ${event.wasClean})`);
           // Only auto-reconnect if we were previously connected (not on initial connection failure)
           if (this.autoReconnect && wasConnected) {
             this.scheduleReconnect();
@@ -238,7 +242,7 @@ export class OpenClawClient extends EventEmitter {
 
         this.ws.onerror = (error) => {
           clearTimeout(connectionTimeout);
-          console.error('[OpenClaw] WebSocket error');
+          logger.error('[OpenClaw] WebSocket error');
           this.emit('error', error);
           if (!this.connected) {
             this.connecting = null;
@@ -263,7 +267,7 @@ export class OpenClawClient extends EventEmitter {
 
               // Skip if we've already processed this event (using global cache for all instances)
               if (globalProcessedEvents.has(eventId)) {
-                console.log('[OpenClaw] Skipping duplicate event:', eventId.slice(0, 16));
+                logger.info('[OpenClaw] Skipping duplicate event:', eventId.slice(0, 16));
                 return;
               }
 
@@ -275,7 +279,7 @@ export class OpenClawClient extends EventEmitter {
               this.performCacheCleanup();
             }
 
-            console.log('[OpenClaw] Received:', data.type === 'res' ? `res:${String(data.id).slice(0, 8)}` : this.generateEventId(data).slice(0, 16));
+            logger.info('[OpenClaw] Received:', data.type === 'res' ? `res:${String(data.id).slice(0, 8)}` : this.generateEventId(data).slice(0, 16));
 
             // Forward gateway streaming events so subscribers can tap in
             if (data.type === 'event' && data.event === 'agent' && data.payload) {
@@ -287,7 +291,7 @@ export class OpenClawClient extends EventEmitter {
 
             // Handle challenge-response authentication (OpenClaw RequestFrame format)
             if (data.type === 'event' && data.event === 'connect.challenge') {
-              console.log('[OpenClaw] Challenge received, responding...');
+              logger.info('[OpenClaw] Challenge received, responding...');
               const nonce = data.payload?.nonce;
               const requestId = crypto.randomUUID();
               const signedAtMs = Date.now();
@@ -316,7 +320,7 @@ export class OpenClawClient extends EventEmitter {
                   signedAt: signedAtMs,
                   nonce,
                 };
-                console.log('[OpenClaw] Device identity prepared:', {
+                logger.info('[OpenClaw] Device identity prepared:', {
                   deviceId: this.deviceIdentity.deviceId,
                   hasSignature: !!signature,
                   nonce,
@@ -350,7 +354,7 @@ export class OpenClawClient extends EventEmitter {
                   this.authenticated = true;
                   this.connecting = null;
                   this.emit('connected');
-                  console.log('[OpenClaw] Authenticated successfully');
+                  logger.info('[OpenClaw] Authenticated successfully');
                   resolve();
                 },
                 reject: (error: Error) => {
@@ -360,7 +364,7 @@ export class OpenClawClient extends EventEmitter {
                 }
               });
 
-              console.log('[OpenClaw] Sending challenge response');
+              logger.info('[OpenClaw] Sending challenge response');
               this.ws!.send(JSON.stringify(response));
               return;
             }
@@ -368,7 +372,7 @@ export class OpenClawClient extends EventEmitter {
             // Handle RPC responses and other messages
             this.handleMessage(data as OpenClawMessage);
           } catch (err) {
-            console.error('[OpenClaw] Failed to parse message:', err);
+            logger.error('[OpenClaw] Failed to parse message:', err);
           }
         };
 
@@ -430,14 +434,14 @@ export class OpenClawClient extends EventEmitter {
       this.reconnectTimer = null;
       if (!this.autoReconnect) return;
 
-      console.log('[OpenClaw] Attempting reconnect...');
+      logger.info('[OpenClaw] Attempting reconnect...');
       try {
         await this.connect();
       } catch {
         // Don't spam logs on reconnect failure, just schedule another attempt
         this.scheduleReconnect();
       }
-    }, 10000); // 10 seconds between reconnect attempts
+    }, WS_RECONNECT_DELAY_MS);
   }
 
   async call<T = unknown>(method: string, params?: Record<string, unknown>): Promise<T> {
@@ -465,7 +469,8 @@ export class OpenClawClient extends EventEmitter {
 
   // Session management methods
   async listSessions(): Promise<OpenClawSessionInfo[]> {
-    return this.call<OpenClawSessionInfo[]>('sessions.list');
+    const result = await this.call<unknown>('sessions.list');
+    return extractGatewaySessions(result) as OpenClawSessionInfo[];
   }
 
   async getSessionHistory(sessionId: string): Promise<unknown[]> {
@@ -482,16 +487,8 @@ export class OpenClawClient extends EventEmitter {
 
   // Agent methods
   async listAgents(): Promise<unknown[]> {
-    const result = await this.call<{ agents?: unknown[] }>('agents.list');
-    // Gateway returns { requester, allowAny, agents: [...] }
-    if (result && typeof result === 'object' && Array.isArray((result as Record<string, unknown>).agents)) {
-      return (result as Record<string, unknown>).agents as unknown[];
-    }
-    // Fallback: if the response is already an array
-    if (Array.isArray(result)) {
-      return result;
-    }
-    return [];
+    const result = await this.call<unknown>('agents.list');
+    return extractGatewayAgents(result);
   }
 
   // Node methods (device capabilities)
@@ -525,7 +522,7 @@ export class OpenClawClient extends EventEmitter {
    * Unlike disconnect(), this preserves autoReconnect so the client can recover.
    */
   forceReconnect(): void {
-    console.log('[OpenClaw] Force-reconnecting (dropping stale connection)');
+    logger.info('[OpenClaw] Force-reconnecting (dropping stale connection)');
     if (this.ws) {
       this.ws.onclose = null;
       this.ws.onerror = null;

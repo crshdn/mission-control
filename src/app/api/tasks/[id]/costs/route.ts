@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getTaskCosts } from '@/lib/costs/tracker';
 
@@ -12,7 +13,7 @@ export async function GET(
     const costs = getTaskCosts(id);
     return NextResponse.json(costs);
   } catch (error) {
-    console.error('Failed to fetch task costs:', error);
+    logger.error('Failed to fetch task costs:', error);
     return NextResponse.json({ error: 'Failed to fetch task costs' }, { status: 500 });
   }
 }

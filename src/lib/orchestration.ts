@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Orchestration Helper
  * 
@@ -56,12 +57,12 @@ export async function logActivity(params: LogActivityParams): Promise<void> {
 
     if (!response.ok) {
       const error = await response.text();
-      console.error(`Failed to log activity: ${error}`);
+      logger.error(`Failed to log activity: ${error}`);
     } else {
-      console.log(`✓ Activity logged: ${params.message}`);
+      logger.info(`✓ Activity logged: ${params.message}`);
     }
   } catch (error) {
-    console.error('Error logging activity:', error);
+    logger.error('Error logging activity:', error);
   }
 }
 
@@ -84,12 +85,12 @@ export async function logDeliverable(params: LogDeliverableParams): Promise<void
 
     if (!response.ok) {
       const error = await response.text();
-      console.error(`Failed to log deliverable: ${error}`);
+      logger.error(`Failed to log deliverable: ${error}`);
     } else {
-      console.log(`✓ Deliverable logged: ${params.title}`);
+      logger.info(`✓ Deliverable logged: ${params.title}`);
     }
   } catch (error) {
-    console.error('Error logging deliverable:', error);
+    logger.error('Error logging deliverable:', error);
   }
 }
 
@@ -110,12 +111,12 @@ export async function registerSubAgentSession(params: RegisterSubAgentParams): P
 
     if (!response.ok) {
       const error = await response.text();
-      console.error(`Failed to register sub-agent session: ${error}`);
+      logger.error(`Failed to register sub-agent session: ${error}`);
     } else {
-      console.log(`✓ Sub-agent session registered: ${params.sessionId}`);
+      logger.info(`✓ Sub-agent session registered: ${params.sessionId}`);
     }
   } catch (error) {
-    console.error('Error registering sub-agent session:', error);
+    logger.error('Error registering sub-agent session:', error);
   }
 }
 
@@ -136,12 +137,12 @@ export async function completeSubAgentSession(sessionId: string, summary?: strin
 
     if (!response.ok) {
       const error = await response.text();
-      console.error(`Failed to complete sub-agent session: ${error}`);
+      logger.error(`Failed to complete sub-agent session: ${error}`);
     } else {
-      console.log(`✓ Sub-agent session completed: ${sessionId}`);
+      logger.info(`✓ Sub-agent session completed: ${sessionId}`);
     }
   } catch (error) {
-    console.error('Error completing sub-agent session:', error);
+    logger.error('Error completing sub-agent session:', error);
   }
 }
 
@@ -156,7 +157,7 @@ export async function getDeliverables(taskId: string): Promise<any[]> {
     }
     return await response.json();
   } catch (error) {
-    console.error('Error fetching deliverables:', error);
+    logger.error('Error fetching deliverables:', error);
     return [];
   }
 }
@@ -267,7 +268,7 @@ export async function onSubAgentCompleted(params: {
  * // Before approving (review -> done):
  * const hasDeliverables = await orchestrator.verifyTaskHasDeliverables('task-123');
  * if (!hasDeliverables) {
- *   console.log('⚠️ Task has no deliverables - cannot approve');
+ *   logger.info('⚠️ Task has no deliverables - cannot approve');
  *   return;
  * }
  * ```

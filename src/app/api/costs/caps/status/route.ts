@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkCaps } from '@/lib/costs/caps';
 
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
     const status = checkCaps(workspaceId, productId);
     return NextResponse.json(status);
   } catch (error) {
-    console.error('Failed to check cost caps:', error);
+    logger.error('Failed to check cost caps:', error);
     return NextResponse.json({ error: 'Failed to check cost caps' }, { status: 500 });
   }
 }

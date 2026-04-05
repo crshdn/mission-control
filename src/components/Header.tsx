@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -33,7 +35,7 @@ export function Header({ workspace, isPortrait = true }: HeaderProps) {
           setActiveSubAgents(sessions.length);
         }
       } catch (error) {
-        console.error('Failed to load sub-agent count:', error);
+        logger.error('Failed to load sub-agent count:', error);
       }
     };
 

@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, AlertTriangle, Activity, Clock, Filter, RefreshCw } from 'lucide-react';
@@ -55,7 +57,7 @@ export function AgentActivityDashboard({ workspace }: AgentActivityDashboardProp
         if (tasksRes.ok) setTasks(await tasksRes.json());
         if (eventsRes.ok) setEvents(await eventsRes.json());
       } catch (error) {
-        console.error('Failed to load activity dashboard data:', error);
+        logger.error('Failed to load activity dashboard data:', error);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -81,7 +83,7 @@ export function AgentActivityDashboard({ workspace }: AgentActivityDashboardProp
         if (tasksRes.ok) setTasks(await tasksRes.json());
         if (eventsRes.ok) setEvents(await eventsRes.json());
       } catch (error) {
-        console.error('Failed to refresh activity dashboard data:', error);
+        logger.error('Failed to refresh activity dashboard data:', error);
       }
     };
 

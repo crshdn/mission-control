@@ -1,8 +1,10 @@
+import { logger } from '@/lib/logger';
 import { v4 as uuidv4 } from 'uuid';
-import { queryOne, queryAll, run } from '@/lib/db';
+import { getDb, queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
 import { buildCheckpointContext } from '@/lib/checkpoint';
+import { endTaskSession } from '@/lib/openclaw/task-session-registry';
 import type { Agent, AgentHealth, AgentHealthState, Task } from '@/lib/types';
 
 const STALL_THRESHOLD_MINUTES = 5;
@@ -137,7 +139,7 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
       if (updatedHealth.consecutive_stall_checks >= AUTO_NUDGE_AFTER_STALLS && healthState === 'stuck') {
         // Auto-nudge is fire-and-forget
         nudgeAgent(agentId).catch(err =>
-          console.error(`[Health] Auto-nudge failed for agent ${agentId}:`, err)
+          logger.error(`[Health] Auto-nudge failed for agent ${agentId}:`, err)
         );
       }
     }
@@ -154,7 +156,7 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
   );
 
   for (const task of orphanedTasks) {
-    console.log(`[Health] Orphaned assigned task detected: "${task.title}" (${task.id}) — stale for >${ASSIGNED_STALE_MINUTES}min, auto-dispatching`);
+    logger.info(`[Health] Orphaned assigned task detected: "${task.title}" (${task.id}) — stale for >${ASSIGNED_STALE_MINUTES}min, auto-dispatching`);
     
     const missionControlUrl = getMissionControlUrl();
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -170,7 +172,7 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
       });
 
       if (res.ok) {
-        console.log(`[Health] Auto-dispatched orphaned task "${task.title}"`);
+        logger.info(`[Health] Auto-dispatched orphaned task "${task.title}"`);
         run(
           `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
            VALUES (?, ?, ?, 'status_changed', 'Auto-dispatched by health sweeper (was stuck in assigned)', ?)`,
@@ -178,7 +180,7 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
         );
       } else {
         const errorText = await res.text();
-        console.error(`[Health] Failed to auto-dispatch orphaned task "${task.title}": ${errorText}`);
+        logger.error(`[Health] Failed to auto-dispatch orphaned task "${task.title}": ${errorText}`);
         // Record the failure so it shows in the UI
         run(
           `UPDATE tasks SET planning_dispatch_error = ?, updated_at = ? WHERE id = ?`,
@@ -186,7 +188,7 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
         );
       }
     } catch (err) {
-      console.error(`[Health] Auto-dispatch error for orphaned task "${task.title}":`, (err as Error).message);
+      logger.error(`[Health] Auto-dispatch error for orphaned task "${task.title}":`, (err as Error).message);
     }
   }
 
@@ -225,10 +227,7 @@ export async function nudgeAgent(agentId: string): Promise<{ success: boolean; e
   const now = new Date().toISOString();
 
   // Kill current session
-  run(
-    `UPDATE openclaw_sessions SET status = 'ended', ended_at = ?, updated_at = ? WHERE agent_id = ? AND status = 'active'`,
-    [now, now, agentId]
-  );
+  endTaskSession(getDb(), agentId, activeTask.id, now);
 
   // Build checkpoint context
   const checkpointCtx = buildCheckpointContext(activeTask.id);

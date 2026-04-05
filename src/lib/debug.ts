@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Debug Logging Utility
  * Enable with localStorage.setItem('MC_DEBUG', 'true')
@@ -12,27 +13,27 @@ const isDebugEnabled = (): boolean => {
 export const debug = {
   sse: (message: string, data?: unknown) => {
     if (isDebugEnabled()) {
-      console.log(`[SSE] ${message}`, data !== undefined ? data : '');
+      logger.info(`[SSE] ${message}`, data !== undefined ? data : '');
     }
   },
   store: (message: string, data?: unknown) => {
     if (isDebugEnabled()) {
-      console.log(`[STORE] ${message}`, data !== undefined ? data : '');
+      logger.info(`[STORE] ${message}`, data !== undefined ? data : '');
     }
   },
   api: (message: string, data?: unknown) => {
     if (isDebugEnabled()) {
-      console.log(`[API] ${message}`, data !== undefined ? data : '');
+      logger.info(`[API] ${message}`, data !== undefined ? data : '');
     }
   },
   config: (message: string, data?: unknown) => {
     if (isDebugEnabled()) {
-      console.log(`[CONFIG] ${message}`, data !== undefined ? data : '');
+      logger.info(`[CONFIG] ${message}`, data !== undefined ? data : '');
     }
   },
   file: (message: string, data?: unknown) => {
     if (isDebugEnabled()) {
-      console.log(`[FILE] ${message}`, data !== undefined ? data : '');
+      logger.info(`[FILE] ${message}`, data !== undefined ? data : '');
     }
   }
 };
@@ -41,14 +42,14 @@ export const debug = {
 export const enableDebug = () => {
   if (typeof window !== 'undefined') {
     localStorage.setItem('MC_DEBUG', 'true');
-    console.log('[DEBUG] Debug mode enabled. Refresh to see all logs.');
+    logger.info('[DEBUG] Debug mode enabled. Refresh to see all logs.');
   }
 };
 
 export const disableDebug = () => {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('MC_DEBUG');
-    console.log('[DEBUG] Debug mode disabled.');
+    logger.info('[DEBUG] Debug mode disabled.');
   }
 };
 

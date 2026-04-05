@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Database Backup Service
  * 
@@ -45,11 +46,11 @@ export interface RestoreResult {
 // ---------------------------------------------------------------------------
 
 function getDbPath(): string {
-  return process.env.DATABASE_PATH || path.join(process.cwd(), 'mission-control.db');
+  return process.env.DATABASE_PATH || path.join(/* turbopackIgnore: true */ process.cwd(), 'mission-control.db');
 }
 
 function getBackupDir(): string {
-  return path.join(process.cwd(), 'backups');
+  return path.join(/* turbopackIgnore: true */ process.cwd(), 'backups');
 }
 
 function ensureBackupDir(): string {
@@ -127,11 +128,11 @@ export async function createBackup(): Promise<BackupResult> {
       s3Uploaded = true;
     } catch (err) {
       s3Error = err instanceof Error ? err.message : String(err);
-      console.warn('[Backup] S3 upload failed (local backup still created):', s3Error);
+      logger.warn('[Backup] S3 upload failed (local backup still created):', s3Error);
     }
   }
 
-  console.log(`[Backup] Created: ${filename} (${formatBytes(stat.size)})`);
+  logger.info(`[Backup] Created: ${filename} (${formatBytes(stat.size)})`);
 
   return { backup: metadata, s3Uploaded, s3Error };
 }
@@ -214,7 +215,7 @@ export async function restoreBackup(filename: string): Promise<RestoreResult> {
     // Copy current DB as safety backup
     if (fs.existsSync(dbPath)) {
       fs.copyFileSync(dbPath, safetyPath);
-      console.log(`[Backup] Safety backup created: ${safetyFilename}`);
+      logger.info(`[Backup] Safety backup created: ${safetyFilename}`);
     }
 
     // 2. Restore: overwrite current DB with backup
@@ -226,10 +227,10 @@ export async function restoreBackup(filename: string): Promise<RestoreResult> {
     if (fs.existsSync(walPath)) fs.unlinkSync(walPath);
     if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
 
-    console.log(`[Backup] Restored from: ${filename}`);
+    logger.info(`[Backup] Restored from: ${filename}`);
   } catch (err) {
     // If restore fails, try to re-open the DB (which may use the safety backup)
-    console.error('[Backup] Restore failed:', err);
+    logger.error('[Backup] Restore failed:', err);
     throw err;
   }
 
@@ -259,14 +260,14 @@ export async function deleteBackup(filename: string): Promise<void> {
   }
 
   fs.unlinkSync(filepath);
-  console.log(`[Backup] Deleted: ${filename}`);
+  logger.info(`[Backup] Deleted: ${filename}`);
 
   // Optionally delete from S3
   if (isS3Configured()) {
     try {
       await deleteFromS3(filename);
     } catch (err) {
-      console.warn('[Backup] S3 delete failed (local deleted):', err);
+      logger.warn('[Backup] S3 delete failed (local deleted):', err);
     }
   }
 }
@@ -333,7 +334,7 @@ export async function uploadToS3(filepath: string, key: string): Promise<void> {
     ContentType: 'application/x-sqlite3',
   }));
 
-  console.log(`[Backup] Uploaded to S3: ${key}`);
+  logger.info(`[Backup] Uploaded to S3: ${key}`);
 }
 
 async function deleteFromS3(key: string): Promise<void> {
@@ -346,7 +347,7 @@ async function deleteFromS3(key: string): Promise<void> {
     Key: `mission-control-backups/${key}`,
   }));
 
-  console.log(`[Backup] Deleted from S3: ${key}`);
+  logger.info(`[Backup] Deleted from S3: ${key}`);
 }
 
 export async function listS3Backups(): Promise<BackupMetadata[]> {
@@ -380,7 +381,7 @@ export async function listS3Backups(): Promise<BackupMetadata[]> {
         };
       });
   } catch (err) {
-    console.warn('[Backup] Failed to list S3 backups:', err);
+    logger.warn('[Backup] Failed to list S3 backups:', err);
     return [];
   }
 }

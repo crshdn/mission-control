@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { listIdeas, createManualIdea } from '@/lib/autopilot/ideation';
 import { CreateIdeaSchema } from '@/lib/validation';
@@ -19,7 +20,7 @@ export async function GET(
     const ideas = listIdeas(id, filters);
     return NextResponse.json(ideas);
   } catch (error) {
-    console.error('Failed to list ideas:', error);
+    logger.error('Failed to list ideas:', error);
     return NextResponse.json({ error: 'Failed to list ideas' }, { status: 500 });
   }
 }
@@ -38,7 +39,7 @@ export async function POST(
     const idea = createManualIdea(id, validation.data);
     return NextResponse.json(idea, { status: 201 });
   } catch (error) {
-    console.error('Failed to create idea:', error);
+    logger.error('Failed to create idea:', error);
     return NextResponse.json({ error: 'Failed to create idea' }, { status: 500 });
   }
 }

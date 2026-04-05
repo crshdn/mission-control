@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -39,7 +41,7 @@ export default function ProductDashboardPage() {
         const res = await fetch(`/api/products/${productId}`);
         if (res.ok) setProduct(await res.json());
       } catch (error) {
-        console.error('Failed to load product:', error);
+        logger.error('Failed to load product:', error);
       } finally {
         setLoading(false);
       }

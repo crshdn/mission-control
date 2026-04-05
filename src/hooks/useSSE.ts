@@ -5,17 +5,19 @@
 
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useEffect, useRef } from 'react';
 import { useMissionControl } from '@/lib/store';
 import { debug } from '@/lib/debug';
 import { showToast } from '@/components/Toast';
 import type { SSEEvent, Task } from '@/lib/types';
+import { SSE_RECONNECT_DELAY_MS } from '@/lib/constants';
 
 export function useSSE() {
   const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   // Use ref to track selectedTask ID without causing re-renders
-  const selectedTaskIdRef = useRef<string | undefined>();
+  const selectedTaskIdRef = useRef<string | undefined>(undefined);
   const {
     updateTask,
     addTask,
@@ -31,26 +33,28 @@ export function useSSE() {
   }, [selectedTask]);
 
   useEffect(() => {
-    let isConnecting = false;
+    let mounted = true;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const connect = () => {
-      if (isConnecting || eventSourceRef.current?.readyState === EventSource.OPEN) {
+      if (!mounted) return;
+      if (eventSourceRef.current?.readyState === EventSource.OPEN) {
         return;
       }
 
-      isConnecting = true;
       debug.sse('Connecting to event stream...');
 
       const eventSource = new EventSource('/api/events/stream');
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {
+        if (!mounted) return;
         debug.sse('Connected');
         setIsOnline(true);
-        isConnecting = false;
         // Clear any pending reconnect
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
+        if (reconnectTimeout) {
+          clearTimeout(reconnectTimeout);
+          reconnectTimeout = null;
         }
       };
 
@@ -189,24 +193,28 @@ export function useSSE() {
               debug.sse('Unknown event type', sseEvent);
           }
         } catch (error) {
-          console.error('[SSE] Error parsing event:', error);
+          logger.error('[SSE] Error parsing event:', error);
         }
       };
 
       eventSource.onerror = (error) => {
+        if (!mounted) return;
         debug.sse('Connection error', error);
         setIsOnline(false);
-        isConnecting = false;
 
         // Close the connection
         eventSource.close();
         eventSourceRef.current = null;
 
-        // Attempt reconnection after 5 seconds
-        reconnectTimeoutRef.current = setTimeout(() => {
-          debug.sse('Attempting to reconnect...');
-          connect();
-        }, 5000);
+        // Attempt reconnection after delay only if still mounted
+        if (mounted) {
+          reconnectTimeout = setTimeout(() => {
+            if (mounted) {
+              debug.sse('Attempting to reconnect...');
+              connect();
+            }
+          }, SSE_RECONNECT_DELAY_MS);
+        }
       };
     };
 
@@ -215,13 +223,15 @@ export function useSSE() {
 
     // Cleanup on unmount
     return () => {
+      mounted = false;
       if (eventSourceRef.current) {
         debug.sse('Disconnecting...');
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
       }
     };
   // selectedTask removed from deps to prevent re-connection loop

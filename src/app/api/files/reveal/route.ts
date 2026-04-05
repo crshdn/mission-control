@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * File Reveal API
  * Opens a file's location in Finder (macOS) or Explorer (Windows)
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!isAllowed) {
-      console.warn(`[FILE] Blocked access to: ${filePath}`);
+      logger.warn(`[FILE] Blocked access to: ${filePath}`);
       return NextResponse.json(
         { error: 'Path not in allowed directories' },
         { status: 403 }
@@ -66,10 +67,10 @@ export async function POST(request: NextRequest) {
 
     await execAsync(command);
 
-    console.log(`[FILE] Revealed: ${normalizedPath}`);
+    logger.info(`[FILE] Revealed: ${normalizedPath}`);
     return NextResponse.json({ success: true, path: normalizedPath });
   } catch (error) {
-    console.error('[FILE] Error revealing file:', error);
+    logger.error('[FILE] Error revealing file:', error);
     return NextResponse.json(
       { error: 'Failed to reveal file' },
       { status: 500 }

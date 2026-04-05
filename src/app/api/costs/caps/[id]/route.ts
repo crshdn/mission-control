@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { updateCostCap, deleteCostCap } from '@/lib/costs/caps';
 import { UpdateCostCapSchema } from '@/lib/validation';
@@ -19,7 +20,7 @@ export async function PATCH(
     if (!cap) return NextResponse.json({ error: 'Cost cap not found' }, { status: 404 });
     return NextResponse.json(cap);
   } catch (error) {
-    console.error('Failed to update cost cap:', error);
+    logger.error('Failed to update cost cap:', error);
     return NextResponse.json({ error: 'Failed to update cost cap' }, { status: 500 });
   }
 }
@@ -34,7 +35,7 @@ export async function DELETE(
     if (!deleted) return NextResponse.json({ error: 'Cost cap not found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete cost cap:', error);
+    logger.error('Failed to delete cost cap:', error);
     return NextResponse.json({ error: 'Failed to delete cost cap' }, { status: 500 });
   }
 }

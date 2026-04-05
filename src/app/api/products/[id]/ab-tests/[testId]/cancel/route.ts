@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { cancelTest } from '@/lib/autopilot/ab-testing';
 
@@ -18,7 +19,7 @@ export async function PATCH(
 
     return NextResponse.json(result.test);
   } catch (error) {
-    console.error('Failed to cancel A/B test:', error);
+    logger.error('Failed to cancel A/B test:', error);
     return NextResponse.json({ error: 'Failed to cancel A/B test' }, { status: 500 });
   }
 }

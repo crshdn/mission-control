@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { AgentActivityDashboard } from '@/components/AgentActivityDashboard';
@@ -18,7 +20,7 @@ export default function WorkspaceActivityPage() {
           setWorkspace(await res.json());
         }
       } catch (error) {
-        console.error('Failed to load workspace for activity page:', error);
+        logger.error('Failed to load workspace for activity page:', error);
       }
     }
 

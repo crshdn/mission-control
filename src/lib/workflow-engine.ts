@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Workflow Engine
  *
@@ -122,12 +123,12 @@ export async function handleStageTransition(
   if (!targetStage.role) {
     if (targetStage.status !== 'done') {
       // Queue stage (no role, not done) — park the task here, then try to drain
-      console.log(`[Workflow] Task ${taskId} entered queue stage "${targetStage.label}"`);
+      logger.info(`[Workflow] Task ${taskId} entered queue stage "${targetStage.label}"`);
       const task = queryOne<{ workspace_id: string }>('SELECT workspace_id FROM tasks WHERE id = ?', [taskId]);
       if (task) {
         // Non-blocking drain attempt — picks up immediately if next stage is free
         drainQueue(taskId, task.workspace_id, workflow).catch(err =>
-          console.error('[Workflow] drainQueue error:', err)
+          logger.error('[Workflow] drainQueue error:', err)
         );
       }
     }
@@ -148,7 +149,7 @@ export async function handleStageTransition(
         [task.assigned_agent_id]
       );
       if (agent) {
-        console.log(`[Workflow] No task_role for "${targetStage.role}", using assigned agent "${agent.name}"`);
+        logger.info(`[Workflow] No task_role for "${targetStage.role}", using assigned agent "${agent.name}"`);
         roleAgent = agent;
       }
     }
@@ -164,7 +165,7 @@ export async function handleStageTransition(
       'UPDATE tasks SET planning_dispatch_error = ?, updated_at = datetime(\'now\') WHERE id = ?',
       [errorMsg, taskId]
     );
-    console.warn(`[Workflow] ${errorMsg} (task ${taskId})`);
+    logger.warn(`[Workflow] ${errorMsg} (task ${taskId})`);
     return { success: false, handedOff: false, error: errorMsg };
   }
 
@@ -205,7 +206,7 @@ export async function handleStageTransition(
   );
 
   recordLearnerOnTransition(taskId, options?.previousStatus || newStatus, newStatus, true).catch(err =>
-    console.error('[Learner] transition record failed:', err)
+    logger.error('[Learner] transition record failed:', err)
   );
 
   if (options?.skipDispatch) {
@@ -229,16 +230,16 @@ export async function handleStageTransition(
     if (!dispatchRes.ok) {
       const errorText = await dispatchRes.text();
       const error = `Auto-dispatch to ${roleAgent.name} failed (${dispatchRes.status}): ${errorText}`;
-      console.error(`[Workflow] ${error}`);
+      logger.error(`[Workflow] ${error}`);
       run('UPDATE tasks SET planning_dispatch_error = ?, updated_at = ? WHERE id = ?', [error, now, taskId]);
       return { success: false, handedOff: true, newAgentId: roleAgent.id, newAgentName: roleAgent.name, error };
     }
 
-    console.log(`[Workflow] Dispatched task ${taskId} to ${roleAgent.name} (role: ${targetStage.role})`);
+    logger.info(`[Workflow] Dispatched task ${taskId} to ${roleAgent.name} (role: ${targetStage.role})`);
     return { success: true, handedOff: true, newAgentId: roleAgent.id, newAgentName: roleAgent.name };
   } catch (err) {
     const error = `Dispatch error: ${(err as Error).message}`;
-    console.error(`[Workflow] ${error}`);
+    logger.error(`[Workflow] ${error}`);
     run('UPDATE tasks SET planning_dispatch_error = ?, updated_at = ? WHERE id = ?', [error, now, taskId]);
     return { success: false, handedOff: true, newAgentId: roleAgent.id, newAgentName: roleAgent.name, error };
   }
@@ -350,7 +351,7 @@ export function populateTaskRolesFromAgents(taskId: string, workspaceId: string)
   }
 
   if (Object.keys(roleMap).length > 0) {
-    console.log(`[Workflow] Auto-populated ${Object.keys(roleMap).length} role(s) for task ${taskId}`);
+    logger.info(`[Workflow] Auto-populated ${Object.keys(roleMap).length} role(s) for task ${taskId}`);
   }
 }
 
@@ -388,7 +389,7 @@ export async function drainQueue(
       [workspaceId, nextStage.status]
     );
     if (occupant) {
-      console.log(`[Workflow] Next stage "${nextStage.label}" is occupied by task ${occupant.id} — queue holds`);
+      logger.info(`[Workflow] Next stage "${nextStage.label}" is occupied by task ${occupant.id} — queue holds`);
       continue;
     }
 
@@ -399,7 +400,7 @@ export async function drainQueue(
     );
     if (!oldest) continue;
 
-    console.log(`[Workflow] Draining queue: advancing task ${oldest.id} from "${stage.label}" → "${nextStage.label}"`);
+    logger.info(`[Workflow] Draining queue: advancing task ${oldest.id} from "${stage.label}" → "${nextStage.label}"`);
 
     const now = new Date().toISOString();
     run('UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?', [nextStage.status, now, oldest.id]);

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne, run, getDb, queryAll } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
@@ -61,7 +62,7 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
         );
       }
     } else if (!allowDynamicAgents && parsed.agents && parsed.agents.length > 0) {
-      console.log(`[Planning Poll] Dynamic agent generation disabled (ALLOW_DYNAMIC_AGENTS=false), skipping creation of ${parsed.agents.length} agent(s)`);
+      logger.info(`[Planning Poll] Dynamic agent generation disabled (ALLOW_DYNAMIC_AGENTS=false), skipping creation of ${parsed.agents.length} agent(s)`);
     }
 
     // Save planning data + assign the first agent + mark complete in one atomic step
@@ -104,7 +105,7 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
 
       if (otherOrchestrators.length > 0) {
         dispatchError = `Cannot auto-dispatch: ${otherOrchestrators.length} other orchestrator(s) available in workspace`;
-        console.warn(`[Planning Poll] ${dispatchError}:`, otherOrchestrators.map(o => o.name).join(', '));
+        logger.warn(`[Planning Poll] ${dispatchError}:`, otherOrchestrators.map(o => o.name).join(', '));
         firstAgentId = null;
       }
     }
@@ -123,10 +124,10 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
         [taskId]
       );
       if (recentActivity && recentActivity.cnt > 0) {
-        console.log('[Planning Poll] Task in progress with recent agent activity, skipping dispatch');
+        logger.info('[Planning Poll] Task in progress with recent agent activity, skipping dispatch');
         skipDispatch = true;
       } else {
-        console.log('[Planning Poll] Task in_progress but no recent agent activity — retrying dispatch (likely lost message)');
+        logger.info('[Planning Poll] Task in_progress but no recent agent activity — retrying dispatch (likely lost message)');
         // Reset to assigned so dispatch can proceed cleanly
         run('UPDATE tasks SET status = ?, updated_at = datetime(\'now\') WHERE id = ?', ['assigned', taskId]);
       }
@@ -137,7 +138,7 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
   if (firstAgentId && !skipDispatch) {
     const missionControlUrl = getMissionControlUrl();
     const dispatchUrl = `${missionControlUrl}/api/tasks/${taskId}/dispatch`;
-    console.log(`[Planning Poll] Triggering dispatch: ${dispatchUrl}`);
+    logger.info(`[Planning Poll] Triggering dispatch: ${dispatchUrl}`);
 
     try {
       const dispatchHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -152,15 +153,15 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
       });
 
       if (dispatchRes.ok) {
-        console.log(`[Planning Poll] Dispatch successful`);
+        logger.info(`[Planning Poll] Dispatch successful`);
       } else {
         const errorText = await dispatchRes.text();
         dispatchError = `Dispatch failed (${dispatchRes.status}): ${errorText}`;
-        console.error(`[Planning Poll] ${dispatchError}`);
+        logger.error(`[Planning Poll] ${dispatchError}`);
       }
     } catch (err) {
       dispatchError = `Dispatch error: ${(err as Error).message}`;
-      console.error(`[Planning Poll] ${dispatchError}`);
+      logger.error(`[Planning Poll] ${dispatchError}`);
     }
   }
 
@@ -171,7 +172,7 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
       `UPDATE tasks SET planning_dispatch_error = ?, status_reason = ?, updated_at = datetime('now') WHERE id = ?`,
       [dispatchError, 'Dispatch failed: ' + dispatchError, taskId]
     );
-    console.log(`[Planning Poll] Dispatch failed for task ${taskId}, planning data preserved: ${dispatchError}`);
+    logger.info(`[Planning Poll] Dispatch failed for task ${taskId}, planning data preserved: ${dispatchError}`);
   } else if (!firstAgentId) {
     // No agent created — move to inbox for manual assignment
     run(
@@ -225,21 +226,21 @@ export async function GET(
     // Count only assistant messages for comparison, since OpenClaw only returns assistant messages
     const initialAssistantCount = messages.filter((m: any) => m.role === 'assistant').length;
 
-    console.log('[Planning Poll] Task', taskId, 'has', messages.length, 'total messages,', initialAssistantCount, 'assistant messages');
+    logger.info('[Planning Poll] Task', taskId, 'has', messages.length, 'total messages,', initialAssistantCount, 'assistant messages');
 
     // Check OpenClaw for new messages (lightweight check, not a loop)
     const openclawMessages = await getMessagesFromOpenClaw(task.planning_session_key);
 
-    console.log('[Planning Poll] Comparison: stored_assistant=', initialAssistantCount, 'openclaw_assistant=', openclawMessages.length);
+    logger.info('[Planning Poll] Comparison: stored_assistant=', initialAssistantCount, 'openclaw_assistant=', openclawMessages.length);
 
     if (openclawMessages.length > initialAssistantCount) {
       let currentQuestion = null;
       const newMessages = openclawMessages.slice(initialAssistantCount);
-      console.log('[Planning Poll] Processing', newMessages.length, 'new messages');
+      logger.info('[Planning Poll] Processing', newMessages.length, 'new messages');
 
       // Find new assistant messages
       for (const msg of newMessages) {
-        console.log('[Planning Poll] Processing new message, role:', msg.role, 'content length:', msg.content?.length || 0);
+        logger.info('[Planning Poll] Processing new message, role:', msg.role, 'content length:', msg.content?.length || 0);
 
         if (msg.role === 'assistant') {
           const lastMessage = { role: 'assistant', content: msg.content, timestamp: Date.now() };
@@ -261,7 +262,7 @@ export async function GET(
             execution_plan?: object;
           } | null;
 
-          console.log('[Planning Poll] Parsed message content:', {
+          logger.info('[Planning Poll] Parsed message content:', {
             hasStatus: !!parsed?.status,
             hasQuestion: !!parsed?.question,
             hasOptions: !!parsed?.options,
@@ -272,7 +273,7 @@ export async function GET(
 
           if (parsed && parsed.status === 'complete') {
             // Handle completion
-            console.log('[Planning Poll] Planning complete, handling...');
+            logger.info('[Planning Poll] Planning complete, handling...');
             const { firstAgentId, parsed: fullParsed, dispatchError } = await handlePlanningCompletion(taskId, parsed, messages);
 
             return NextResponse.json({
@@ -295,7 +296,7 @@ export async function GET(
                   { id: 'continue', label: 'Continue' },
                   { id: 'other', label: 'Other' },
                 ];
-            console.log('[Planning Poll] Found question with', normalizedOptions.length, 'options');
+            logger.info('[Planning Poll] Found question with', normalizedOptions.length, 'options');
             currentQuestion = {
               question: parsed.question,
               options: normalizedOptions,
@@ -304,7 +305,7 @@ export async function GET(
         }
       }
 
-      console.log('[Planning Poll] Returning updates: currentQuestion =', currentQuestion ? 'YES' : 'NO');
+      logger.info('[Planning Poll] Returning updates: currentQuestion =', currentQuestion ? 'YES' : 'NO');
 
       // Update database
       run('UPDATE tasks SET planning_messages = ? WHERE id = ?', [JSON.stringify(messages), taskId]);
@@ -324,7 +325,7 @@ export async function GET(
     if (lastAssistantMsg) {
       const parsed = extractJSON(lastAssistantMsg.content) as { status?: string; spec?: object; agents?: any[]; execution_plan?: object } | null;
       if (parsed && parsed.status === 'complete') {
-        console.log('[Planning Poll] FALLBACK: Found unprocessed completion in stored messages — handling now');
+        logger.info('[Planning Poll] FALLBACK: Found unprocessed completion in stored messages — handling now');
         const { firstAgentId, parsed: fullParsed, dispatchError } = await handlePlanningCompletion(taskId, parsed, messages);
         return NextResponse.json({
           hasUpdates: true,
@@ -344,14 +345,14 @@ export async function GET(
     const stalePlanningMs = 10 * 60 * 1000; // 10 minutes
     const isStalePlanning = lastMsgTimestamp && (Date.now() - lastMsgTimestamp) > stalePlanningMs;
 
-    console.log('[Planning Poll] No new messages found', isStalePlanning ? '(STALE — over 10min since last message)' : '');
+    logger.info('[Planning Poll] No new messages found', isStalePlanning ? '(STALE — over 10min since last message)' : '');
     return NextResponse.json({ 
       hasUpdates: false,
       stalePlanning: isStalePlanning || undefined,
       staleSinceMs: isStalePlanning ? (Date.now() - lastMsgTimestamp) : undefined,
     });
   } catch (error) {
-    console.error('Failed to poll for updates:', error);
+    logger.error('Failed to poll for updates:', error);
     return NextResponse.json({ error: 'Failed to poll for updates' }, { status: 500 });
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { updateSchedule, deleteSchedule } from '@/lib/autopilot/scheduling';
 import { UpdateScheduleSchema } from '@/lib/validation';
@@ -19,7 +20,7 @@ export async function PATCH(
     if (!schedule) return NextResponse.json({ error: 'Schedule not found' }, { status: 404 });
     return NextResponse.json(schedule);
   } catch (error) {
-    console.error('Failed to update schedule:', error);
+    logger.error('Failed to update schedule:', error);
     return NextResponse.json({ error: 'Failed to update schedule' }, { status: 500 });
   }
 }
@@ -34,7 +35,7 @@ export async function DELETE(
     if (!deleted) return NextResponse.json({ error: 'Schedule not found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete schedule:', error);
+    logger.error('Failed to delete schedule:', error);
     return NextResponse.json({ error: 'Failed to delete schedule' }, { status: 500 });
   }
 }

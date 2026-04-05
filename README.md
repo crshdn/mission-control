@@ -924,7 +924,7 @@ If Autensa has been useful to you, consider buying me a coffee!
 ---
 
 <p align="center">
-  <a href="https://discord.gg/TJ7GtMCx">
+  <a href="https://discord.gg/3u62kySzM">
     <img src="https://img.shields.io/badge/Join_Our_Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join Our Discord" />
   </a>
 </p>

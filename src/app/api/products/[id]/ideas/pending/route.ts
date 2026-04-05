@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPendingIdeas } from '@/lib/autopilot/ideation';
 import { queryAll } from '@/lib/db';
@@ -38,7 +39,7 @@ export async function GET(
     const ideas = getPendingIdeas(id);
     return NextResponse.json(ideas);
   } catch (error) {
-    console.error('Failed to fetch pending ideas:', error);
+    logger.error('Failed to fetch pending ideas:', error);
     return NextResponse.json({ error: 'Failed to fetch pending ideas' }, { status: 500 });
   }
 }

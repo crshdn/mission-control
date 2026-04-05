@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { updateIdea } from '@/lib/autopilot/ideation';
 
@@ -14,7 +15,7 @@ export async function PATCH(
     if (!idea) return NextResponse.json({ error: 'Idea not found' }, { status: 404 });
     return NextResponse.json(idea);
   } catch (error) {
-    console.error('Failed to update idea:', error);
+    logger.error('Failed to update idea:', error);
     return NextResponse.json({ error: 'Failed to update idea' }, { status: 500 });
   }
 }

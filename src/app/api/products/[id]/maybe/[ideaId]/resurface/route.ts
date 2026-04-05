@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { resurfaceIdea } from '@/lib/autopilot/maybe-pool';
 
@@ -13,7 +14,7 @@ export async function POST(
     const idea = resurfaceIdea(ideaId, body.reason);
     return NextResponse.json(idea);
   } catch (error) {
-    console.error('Failed to resurface idea:', error);
+    logger.error('Failed to resurface idea:', error);
     const message = error instanceof Error ? error.message : 'Failed to resurface idea';
     return NextResponse.json({ error: message }, { status: 500 });
   }

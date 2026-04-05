@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { saveCheckpoint, getLatestCheckpoint } from '@/lib/checkpoint';
 import { deliverPendingNotesAtCheckpoint } from '@/lib/task-notes';
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Deliver any pending operator notes at this checkpoint
     deliverPendingNotesAtCheckpoint(id).catch(err => {
-      console.warn('[Checkpoint] Failed to deliver pending notes:', err);
+      logger.warn('[Checkpoint] Failed to deliver pending notes:', err);
     });
 
     return NextResponse.json(checkpoint, { status: 201 });

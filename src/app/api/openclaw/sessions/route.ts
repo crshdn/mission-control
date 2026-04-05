@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { queryAll } from '@/lib/db';
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
     const sessions = await client.listSessions();
     return NextResponse.json({ sessions });
   } catch (error) {
-    console.error('Failed to list OpenClaw sessions:', error);
+    logger.error('Failed to list OpenClaw sessions:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
     const session = await client.createSession(channel, peer);
     return NextResponse.json({ session }, { status: 201 });
   } catch (error) {
-    console.error('Failed to create OpenClaw session:', error);
+    logger.error('Failed to create OpenClaw session:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

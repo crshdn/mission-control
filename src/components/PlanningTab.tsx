@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { CheckCircle, Circle, Lock, AlertCircle, Loader2, X } from 'lucide-react';
 
@@ -85,7 +87,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
         // Don't call onSpecLocked on initial load - only when planning completes actively
       }
     } catch (err) {
-      console.error('Failed to load planning state:', err);
+      logger.error('Failed to load planning state:', err);
       setError('Failed to load planning state');
     } finally {
       setLoading(false);
@@ -189,11 +191,11 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
         }
       }
     } catch (err) {
-      console.error('Failed to poll for updates:', err);
+      logger.error('Failed to poll for updates:', err);
     } finally {
       isPollingRef.current = false;
     }
-  }, [taskId, onSpecLocked, stopPolling, setState, setError, setIsSubmittingAnswer, setSelectedOption, setOtherText]);
+  }, [taskId, onSpecLocked, stopPolling, setState, setError, setIsSubmittingAnswer, setSelectedOption, setOtherText, isWaitingForResponse]);
 
   // Start polling when waiting for response
   const startPolling = useCallback(() => {
@@ -367,7 +369,7 @@ export function PlanningTab({ taskId, onSpecLocked }: PlanningTabProps) {
       const data = await res.json();
 
       if (res.ok) {
-        console.log('Dispatch retry successful:', data.message);
+        logger.info('Dispatch retry successful:', data.message);
         setError(null);
       } else {
         setError(`Failed to retry dispatch: ${data.error}`);

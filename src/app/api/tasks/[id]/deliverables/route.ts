@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Task Deliverables API
  * Endpoints for managing task deliverables (files, URLs, artifacts)
@@ -7,7 +8,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { CreateDeliverableSchema } from '@/lib/validation';
-import { existsSync } from 'fs';
 
 import type { TaskDeliverable } from '@/lib/types';
 
@@ -18,10 +18,10 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const taskId = params.id;
+    const { id: taskId } = await params;
     const db = getDb();
 
     const deliverables = db.prepare(`
@@ -33,7 +33,7 @@ export async function GET(
 
     return NextResponse.json(deliverables);
   } catch (error) {
-    console.error('Error fetching deliverables:', error);
+    logger.error('Error fetching deliverables:', error);
     return NextResponse.json(
       { error: 'Failed to fetch deliverables' },
       { status: 500 }
@@ -47,10 +47,10 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const taskId = params.id;
+    const { id: taskId } = await params;
     const body = await request.json();
     
     // Validate input with Zod
@@ -62,19 +62,12 @@ export async function POST(
       );
     }
 
-    const { deliverable_type, title, path, description } = validation.data;
-
-    // Validate file existence for file deliverables
-    let fileExists = true;
-    let normalizedPath = path;
-    if (deliverable_type === 'file' && path) {
-      // Expand tilde
-      normalizedPath = path.replace(/^~/, process.env.HOME || '');
-      fileExists = existsSync(normalizedPath);
-      if (!fileExists) {
-        console.warn(`[DELIVERABLE] Warning: File does not exist: ${normalizedPath}`);
-      }
-    }
+    const {
+      deliverable_type,
+      title,
+      path: deliverablePath,
+      description,
+    } = validation.data;
 
     const db = getDb();
     const id = crypto.randomUUID();
@@ -88,7 +81,7 @@ export async function POST(
       taskId,
       deliverable_type,
       title,
-      path || null,
+      deliverablePath || null,
       description || null
     );
 
@@ -105,20 +98,9 @@ export async function POST(
       payload: deliverable,
     });
 
-    // Return with warning if file doesn't exist
-    if (deliverable_type === 'file' && !fileExists) {
-      return NextResponse.json(
-        {
-          ...deliverable,
-          warning: `File does not exist at path: ${normalizedPath}. Please create the file.`
-        },
-        { status: 201 }
-      );
-    }
-
     return NextResponse.json(deliverable, { status: 201 });
   } catch (error) {
-    console.error('Error creating deliverable:', error);
+    logger.error('Error creating deliverable:', error);
     return NextResponse.json(
       { error: 'Failed to create deliverable' },
       { status: 500 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * GET  /api/admin/backups — List all available backups (local + S3)
  * POST /api/admin/backups — Create a new on-demand backup
@@ -49,7 +50,7 @@ export async function GET() {
       s3: getS3Status(),
     });
   } catch (err) {
-    console.error('[API] Failed to list backups:', err);
+    logger.error('[API] Failed to list backups:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Failed to list backups' },
       { status: 500 }
@@ -72,7 +73,7 @@ export async function POST() {
       s3Error: result.s3Error,
     }, { status: 201 });
   } catch (err) {
-    console.error('[API] Failed to create backup:', err);
+    logger.error('[API] Failed to create backup:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Failed to create backup' },
       { status: 500 }

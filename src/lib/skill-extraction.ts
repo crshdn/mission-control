@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Skill Extraction — runs after task completion to capture reusable procedures.
  * Uses the LLM to analyze task activities and deliverables, then stores structured skills.
@@ -39,7 +40,7 @@ export async function extractSkillsFromTask(taskId: string): Promise<void> {
   );
 
   if (activities.length === 0 && deliverables.length === 0) {
-    console.log(`[SkillExtraction] No activities/deliverables for task ${taskId}, skipping`);
+    logger.info(`[SkillExtraction] No activities/deliverables for task ${taskId}, skipping`);
     return;
   }
 
@@ -87,7 +88,7 @@ Respond with ONLY a JSON array. If no skills are worth extracting, return an emp
     const extracted = Array.isArray(skills) ? skills : [];
 
     if (extracted.length === 0) {
-      console.log(`[SkillExtraction] No skills extracted from task ${taskId}`);
+      logger.info(`[SkillExtraction] No skills extracted from task ${taskId}`);
       return;
     }
 
@@ -109,7 +110,7 @@ Respond with ONLY a JSON array. If no skills are worth extracting, return an emp
       });
     }
 
-    console.log(`[SkillExtraction] Extracted ${extracted.length} skill(s) from task ${taskId}`);
+    logger.info(`[SkillExtraction] Extracted ${extracted.length} skill(s) from task ${taskId}`);
 
     if (task.product_id) {
       emitAutopilotActivity({
@@ -123,6 +124,6 @@ Respond with ONLY a JSON array. If no skills are worth extracting, return an emp
     }
   } catch (err) {
     // Non-blocking — skill extraction failure should never break the task flow
-    console.error(`[SkillExtraction] Failed for task ${taskId}:`, err);
+    logger.error(`[SkillExtraction] Failed for task ${taskId}:`, err);
   }
 }

@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 import type { Task } from '@/lib/types';
 
@@ -26,7 +28,7 @@ export function BuildQueue({ productId }: BuildQueueProps) {
           setTasks(tasksData);
         }
       } catch (error) {
-        console.error('Failed to load build queue:', error);
+        logger.error('Failed to load build queue:', error);
       } finally {
         setLoading(false);
       }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Idea Similarity Detection & Deduplication
  *
@@ -384,6 +385,6 @@ export function backfillEmbeddings(productId: string): number {
     storeEmbedding(idea.id, productId, idea.title, idea.description);
   }
 
-  console.log(`[Similarity] Backfilled ${ideas.length} embeddings for product ${productId}`);
+  logger.info(`[Similarity] Backfilled ${ideas.length} embeddings for product ${productId}`);
   return ideas.length;
 }

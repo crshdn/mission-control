@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Database Migrations System
  * 
@@ -27,14 +28,14 @@ const migrations: Migration[] = [
     up: (db) => {
       // Core tables - these are created in schema.ts on fresh databases
       // This migration exists to mark the baseline for existing databases
-      console.log('[Migration 001] Baseline schema marker');
+      logger.info('[Migration 001] Baseline schema marker');
     }
   },
   {
     id: '002',
     name: 'add_workspaces',
     up: (db) => {
-      console.log('[Migration 002] Adding workspaces table and columns...');
+      logger.info('[Migration 002] Adding workspaces table and columns...');
       
       // Create workspaces table if not exists
       db.exec(`
@@ -60,7 +61,7 @@ const migrations: Migration[] = [
       if (!tasksInfo.some(col => col.name === 'workspace_id')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN workspace_id TEXT DEFAULT 'default' REFERENCES workspaces(id)`);
         db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_workspace ON tasks(workspace_id)`);
-        console.log('[Migration 002] Added workspace_id to tasks');
+        logger.info('[Migration 002] Added workspace_id to tasks');
       }
       
       // Add workspace_id to agents if not exists
@@ -68,7 +69,7 @@ const migrations: Migration[] = [
       if (!agentsInfo.some(col => col.name === 'workspace_id')) {
         db.exec(`ALTER TABLE agents ADD COLUMN workspace_id TEXT DEFAULT 'default' REFERENCES workspaces(id)`);
         db.exec(`CREATE INDEX IF NOT EXISTS idx_agents_workspace ON agents(workspace_id)`);
-        console.log('[Migration 002] Added workspace_id to agents');
+        logger.info('[Migration 002] Added workspace_id to agents');
       }
     }
   },
@@ -76,7 +77,7 @@ const migrations: Migration[] = [
     id: '003',
     name: 'add_planning_tables',
     up: (db) => {
-      console.log('[Migration 003] Adding planning tables...');
+      logger.info('[Migration 003] Adding planning tables...');
       
       // Create planning_questions table if not exists
       db.exec(`
@@ -113,7 +114,7 @@ const migrations: Migration[] = [
       // SQLite doesn't support ALTER CONSTRAINT, so we check if it's needed
       const taskSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='tasks'").get() as { sql: string } | undefined;
       if (taskSchema && !taskSchema.sql.includes("'planning'")) {
-        console.log('[Migration 003] Note: tasks table needs planning status - will be handled by schema recreation on fresh dbs');
+        logger.info('[Migration 003] Note: tasks table needs planning status - will be handled by schema recreation on fresh dbs');
       }
     }
   },
@@ -121,38 +122,38 @@ const migrations: Migration[] = [
     id: '004',
     name: 'add_planning_session_columns',
     up: (db) => {
-      console.log('[Migration 004] Adding planning session columns to tasks...');
+      logger.info('[Migration 004] Adding planning session columns to tasks...');
 
       const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
 
       // Add planning_session_key column
       if (!tasksInfo.some(col => col.name === 'planning_session_key')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN planning_session_key TEXT`);
-        console.log('[Migration 004] Added planning_session_key');
+        logger.info('[Migration 004] Added planning_session_key');
       }
 
       // Add planning_messages column (stores JSON array of messages)
       if (!tasksInfo.some(col => col.name === 'planning_messages')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN planning_messages TEXT`);
-        console.log('[Migration 004] Added planning_messages');
+        logger.info('[Migration 004] Added planning_messages');
       }
 
       // Add planning_complete column
       if (!tasksInfo.some(col => col.name === 'planning_complete')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN planning_complete INTEGER DEFAULT 0`);
-        console.log('[Migration 004] Added planning_complete');
+        logger.info('[Migration 004] Added planning_complete');
       }
 
       // Add planning_spec column (stores final spec JSON)
       if (!tasksInfo.some(col => col.name === 'planning_spec')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN planning_spec TEXT`);
-        console.log('[Migration 004] Added planning_spec');
+        logger.info('[Migration 004] Added planning_spec');
       }
 
       // Add planning_agents column (stores generated agents JSON)
       if (!tasksInfo.some(col => col.name === 'planning_agents')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN planning_agents TEXT`);
-        console.log('[Migration 004] Added planning_agents');
+        logger.info('[Migration 004] Added planning_agents');
       }
     }
   },
@@ -160,14 +161,14 @@ const migrations: Migration[] = [
     id: '005',
     name: 'add_agent_model_field',
     up: (db) => {
-      console.log('[Migration 005] Adding model field to agents...');
+      logger.info('[Migration 005] Adding model field to agents...');
 
       const agentsInfo = db.prepare("PRAGMA table_info(agents)").all() as { name: string }[];
 
       // Add model column
       if (!agentsInfo.some(col => col.name === 'model')) {
         db.exec(`ALTER TABLE agents ADD COLUMN model TEXT`);
-        console.log('[Migration 005] Added model to agents');
+        logger.info('[Migration 005] Added model to agents');
       }
     }
   },
@@ -175,14 +176,14 @@ const migrations: Migration[] = [
     id: '006',
     name: 'add_planning_dispatch_error_column',
     up: (db) => {
-      console.log('[Migration 006] Adding planning_dispatch_error column to tasks...');
+      logger.info('[Migration 006] Adding planning_dispatch_error column to tasks...');
 
       const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
 
       // Add planning_dispatch_error column
       if (!tasksInfo.some(col => col.name === 'planning_dispatch_error')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN planning_dispatch_error TEXT`);
-        console.log('[Migration 006] Added planning_dispatch_error to tasks');
+        logger.info('[Migration 006] Added planning_dispatch_error to tasks');
       }
     }
   },
@@ -190,20 +191,20 @@ const migrations: Migration[] = [
     id: '007',
     name: 'add_agent_source_and_gateway_id',
     up: (db) => {
-      console.log('[Migration 007] Adding source and gateway_agent_id to agents...');
+      logger.info('[Migration 007] Adding source and gateway_agent_id to agents...');
 
       const agentsInfo = db.prepare("PRAGMA table_info(agents)").all() as { name: string }[];
 
       // Add source column: 'local' for MC-created, 'gateway' for imported from OpenClaw Gateway
       if (!agentsInfo.some(col => col.name === 'source')) {
         db.exec(`ALTER TABLE agents ADD COLUMN source TEXT DEFAULT 'local'`);
-        console.log('[Migration 007] Added source to agents');
+        logger.info('[Migration 007] Added source to agents');
       }
 
       // Add gateway_agent_id column: stores the original agent ID/name from the Gateway
       if (!agentsInfo.some(col => col.name === 'gateway_agent_id')) {
         db.exec(`ALTER TABLE agents ADD COLUMN gateway_agent_id TEXT`);
-        console.log('[Migration 007] Added gateway_agent_id to agents');
+        logger.info('[Migration 007] Added gateway_agent_id to agents');
       }
     }
   },
@@ -211,13 +212,13 @@ const migrations: Migration[] = [
     id: '008',
     name: 'add_status_reason_column',
     up: (db) => {
-      console.log('[Migration 008] Adding status_reason column to tasks...');
+      logger.info('[Migration 008] Adding status_reason column to tasks...');
 
       const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
 
       if (!tasksInfo.some(col => col.name === 'status_reason')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN status_reason TEXT`);
-        console.log('[Migration 008] Added status_reason to tasks');
+        logger.info('[Migration 008] Added status_reason to tasks');
       }
     }
   },
@@ -225,13 +226,13 @@ const migrations: Migration[] = [
     id: '009',
     name: 'add_agent_session_key_prefix',
     up: (db) => {
-      console.log('[Migration 009] Adding session_key_prefix to agents...');
+      logger.info('[Migration 009] Adding session_key_prefix to agents...');
 
       const agentsInfo = db.prepare("PRAGMA table_info(agents)").all() as { name: string }[];
 
       if (!agentsInfo.some(col => col.name === 'session_key_prefix')) {
         db.exec(`ALTER TABLE agents ADD COLUMN session_key_prefix TEXT`);
-        console.log('[Migration 009] Added session_key_prefix to agents');
+        logger.info('[Migration 009] Added session_key_prefix to agents');
       }
     }
   },
@@ -239,7 +240,7 @@ const migrations: Migration[] = [
     id: '010',
     name: 'add_workflow_templates_roles_knowledge',
     up: (db) => {
-      console.log('[Migration 010] Adding workflow templates, task roles, and knowledge tables...');
+      logger.info('[Migration 010] Adding workflow templates, task roles, and knowledge tables...');
 
       // Create workflow_templates table
       db.exec(`
@@ -292,14 +293,14 @@ const migrations: Migration[] = [
       const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
       if (!tasksInfo.some(col => col.name === 'workflow_template_id')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN workflow_template_id TEXT REFERENCES workflow_templates(id)`);
-        console.log('[Migration 010] Added workflow_template_id to tasks');
+        logger.info('[Migration 010] Added workflow_template_id to tasks');
       }
 
       // Recreate tasks table to add 'verification' + 'pending_dispatch' to status CHECK constraint
       // SQLite doesn't support ALTER CONSTRAINT, so we need table recreation
       const taskSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='tasks'").get() as { sql: string } | undefined;
       if (taskSchema && !taskSchema.sql.includes("'verification'")) {
-        console.log('[Migration 010] Recreating tasks table to add verification status...');
+        logger.info('[Migration 010] Recreating tasks table to add verification status...');
 
         // Get current column names from the old table
         const oldCols = (db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[]).map(c => c.name);
@@ -350,7 +351,7 @@ const migrations: Migration[] = [
         db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)`);
         db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_agent_id)`);
         db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_workspace ON tasks(workspace_id)`);
-        console.log('[Migration 010] Tasks table recreated with verification status');
+        logger.info('[Migration 010] Tasks table recreated with verification status');
       }
 
       // Seed default workflow templates for the 'default' workspace
@@ -407,7 +408,7 @@ const migrations: Migration[] = [
           0, now, now
         );
 
-        console.log('[Migration 010] Seeded default workflow templates');
+        logger.info('[Migration 010] Seeded default workflow templates');
       }
     }
   },
@@ -419,14 +420,14 @@ const migrations: Migration[] = [
       // rewrite FK references in ALL child tables to point to "_tasks_old_010".
       // After dropping _tasks_old_010, those FK references became dangling.
       // Fix: recreate affected tables with correct FK references.
-      console.log('[Migration 011] Fixing broken FK references from migration 010...');
+      logger.info('[Migration 011] Fixing broken FK references from migration 010...');
 
       const broken = db.prepare(
         `SELECT name FROM sqlite_master WHERE type='table' AND sql LIKE '%_tasks_old_010%'`
       ).all() as { name: string }[];
 
       if (broken.length === 0) {
-        console.log('[Migration 011] No broken FK references found — skipping');
+        logger.info('[Migration 011] No broken FK references found — skipping');
         return;
       }
 
@@ -512,7 +513,7 @@ const migrations: Migration[] = [
       for (const { name } of broken) {
         const newSql = tableDefinitions[name];
         if (!newSql) {
-          console.warn(`[Migration 011] No definition for table ${name} — skipping`);
+          logger.warn(`[Migration 011] No definition for table ${name} — skipping`);
           continue;
         }
 
@@ -525,7 +526,7 @@ const migrations: Migration[] = [
         db.exec(newSql);
         db.exec(`INSERT INTO ${name} (${cols}) SELECT ${cols} FROM ${tmpName}`);
         db.exec(`DROP TABLE ${tmpName}`);
-        console.log(`[Migration 011] Recreated table: ${name}`);
+        logger.info(`[Migration 011] Recreated table: ${name}`);
       }
 
       // Recreate indexes for affected tables
@@ -536,7 +537,7 @@ const migrations: Migration[] = [
       db.exec(`CREATE INDEX IF NOT EXISTS idx_deliverables_task ON task_deliverables(task_id)`);
       db.exec(`CREATE INDEX IF NOT EXISTS idx_openclaw_sessions_task ON openclaw_sessions(task_id)`);
 
-      console.log('[Migration 011] All broken FK references fixed');
+      logger.info('[Migration 011] All broken FK references fixed');
     }
   },
   {
@@ -545,7 +546,7 @@ const migrations: Migration[] = [
     up: (db) => {
       // Update Strict template: review is a queue (no role), verification is the active QC step.
       // Also fix the seed data in migration 010 for new databases.
-      console.log('[Migration 012] Updating Strict workflow template...');
+      logger.info('[Migration 012] Updating Strict workflow template...');
 
       const strictStages = JSON.stringify([
         { id: 'build', label: 'Build', role: 'builder', status: 'in_progress' },
@@ -562,9 +563,9 @@ const migrations: Migration[] = [
       ).run(strictStages, 'Builder → Tester → Verifier + Learner — for critical projects');
 
       if (updated.changes > 0) {
-        console.log('[Migration 012] Strict template updated (review is now a queue)');
+        logger.info('[Migration 012] Strict template updated (review is now a queue)');
       } else {
-        console.log('[Migration 012] No tpl-strict found — will be correct on fresh seed');
+        logger.info('[Migration 012] No tpl-strict found — will be correct on fresh seed');
       }
     }
   },
@@ -589,10 +590,10 @@ const migrations: Migration[] = [
       const hasRealData = taskCount > 0 || agentCount > 0;
 
       if (hasRealData) {
-        console.warn(`[Migration 013] WARNING: Skipping data wipe — database has ${taskCount} task(s) and ${agentCount} local agent(s).`);
-        console.warn('[Migration 013] This migration is a dev-only reset tool and will not destroy real data.');
+        logger.warn(`[Migration 013] WARNING: Skipping data wipe — database has ${taskCount} task(s) and ${agentCount} local agent(s).`);
+        logger.warn('[Migration 013] This migration is a dev-only reset tool and will not destroy real data.');
       } else {
-        console.log('[Migration 013] Fresh database detected — wiping seed data and bootstrapping...');
+        logger.info('[Migration 013] Fresh database detected — wiping seed data and bootstrapping...');
 
         // 1. Delete all row data (keep workspaces + workflow_templates infrastructure)
         const tablesToWipe = [
@@ -613,10 +614,10 @@ const migrations: Migration[] = [
         for (const table of tablesToWipe) {
           try {
             db.exec(`DELETE FROM ${table}`);
-            console.log(`[Migration 013] Wiped ${table}`);
+            logger.info(`[Migration 013] Wiped ${table}`);
           } catch (err) {
             // Table might not exist on fresh DBs — skip silently
-            console.log(`[Migration 013] Table ${table} not found — skipping`);
+            logger.info(`[Migration 013] Table ${table} not found — skipping`);
           }
         }
       }
@@ -639,7 +640,7 @@ const migrations: Migration[] = [
         `UPDATE workflow_templates SET stages = ?, description = ?, updated_at = datetime('now') WHERE id = 'tpl-strict'`
       ).run(fixedStages, 'Builder → Tester → Reviewer + Learner — for critical projects');
 
-      console.log('[Migration 013] Strict template is now default with reviewer role');
+      logger.info('[Migration 013] Strict template is now default with reviewer role');
 
       // 4. Bootstrap 4 core agents for the default workspace
       // (bootstrapCoreAgentsRaw already guards against duplicate inserts — it checks
@@ -648,9 +649,9 @@ const migrations: Migration[] = [
       bootstrapCoreAgentsRaw(db, 'default', missionControlUrl);
 
       if (hasRealData) {
-        console.log(`[Migration 013] Complete (data wipe skipped — ${taskCount} task(s) and ${agentCount} local agent(s) preserved)`);
+        logger.info(`[Migration 013] Complete (data wipe skipped — ${taskCount} task(s) and ${agentCount} local agent(s) preserved)`);
       } else {
-        console.log('[Migration 013] Fresh start complete');
+        logger.info('[Migration 013] Fresh start complete');
       }
     }
   },
@@ -658,13 +659,13 @@ const migrations: Migration[] = [
     id: '014',
     name: 'add_task_images_column',
     up: (db) => {
-      console.log('[Migration 014] Adding images column to tasks...');
+      logger.info('[Migration 014] Adding images column to tasks...');
 
       const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
 
       if (!tasksInfo.some(col => col.name === 'images')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN images TEXT`);
-        console.log('[Migration 014] Added images column to tasks');
+        logger.info('[Migration 014] Added images column to tasks');
       }
     }
   },
@@ -672,7 +673,7 @@ const migrations: Migration[] = [
     id: '015',
     name: 'add_convoy_mode',
     up: (db) => {
-      console.log('[Migration 015] Adding convoy mode tables and columns...');
+      logger.info('[Migration 015] Adding convoy mode tables and columns...');
 
       // 1. Create new tables
       db.exec(`
@@ -747,17 +748,17 @@ const migrations: Migration[] = [
       const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
       if (!tasksInfo.some(col => col.name === 'convoy_id')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN convoy_id TEXT`);
-        console.log('[Migration 015] Added convoy_id to tasks');
+        logger.info('[Migration 015] Added convoy_id to tasks');
       }
       if (!tasksInfo.some(col => col.name === 'is_subtask')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN is_subtask INTEGER DEFAULT 0`);
-        console.log('[Migration 015] Added is_subtask to tasks');
+        logger.info('[Migration 015] Added is_subtask to tasks');
       }
 
       // 3. Recreate tasks table to add 'convoy_active' to status CHECK constraint
       const taskSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='tasks'").get() as { sql: string } | undefined;
       if (taskSchema && !taskSchema.sql.includes("'convoy_active'")) {
-        console.log('[Migration 015] Recreating tasks table to add convoy_active status...');
+        logger.info('[Migration 015] Recreating tasks table to add convoy_active status...');
 
         const oldCols = (db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[]).map(c => c.name);
 
@@ -804,7 +805,7 @@ const migrations: Migration[] = [
         db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)`);
         db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_agent_id)`);
         db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_workspace ON tasks(workspace_id)`);
-        console.log('[Migration 015] Tasks table recreated with convoy_active status');
+        logger.info('[Migration 015] Tasks table recreated with convoy_active status');
       }
 
       // 4. Create indexes for new tables
@@ -818,14 +819,14 @@ const migrations: Migration[] = [
       db.exec(`CREATE INDEX IF NOT EXISTS idx_agent_mailbox_to ON agent_mailbox(to_agent_id, read_at)`);
       db.exec(`CREATE INDEX IF NOT EXISTS idx_agent_mailbox_convoy ON agent_mailbox(convoy_id)`);
 
-      console.log('[Migration 015] Convoy mode tables and indexes created');
+      logger.info('[Migration 015] Convoy mode tables and indexes created');
     }
   },
   {
     id: '016',
     name: 'add_product_autopilot',
     up: (db) => {
-      console.log('[Migration 016] Adding Product Autopilot tables...');
+      logger.info('[Migration 016] Adding Product Autopilot tables...');
 
       // 1. Create new tables
       db.exec(`
@@ -1095,29 +1096,29 @@ const migrations: Migration[] = [
       const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
       if (!tasksInfo.some(col => col.name === 'product_id')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN product_id TEXT REFERENCES products(id)`);
-        console.log('[Migration 016] Added product_id to tasks');
+        logger.info('[Migration 016] Added product_id to tasks');
       }
       if (!tasksInfo.some(col => col.name === 'idea_id')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN idea_id TEXT REFERENCES ideas(id)`);
-        console.log('[Migration 016] Added idea_id to tasks');
+        logger.info('[Migration 016] Added idea_id to tasks');
       }
       if (!tasksInfo.some(col => col.name === 'estimated_cost_usd')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN estimated_cost_usd REAL`);
-        console.log('[Migration 016] Added estimated_cost_usd to tasks');
+        logger.info('[Migration 016] Added estimated_cost_usd to tasks');
       }
       if (!tasksInfo.some(col => col.name === 'actual_cost_usd')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN actual_cost_usd REAL DEFAULT 0`);
-        console.log('[Migration 016] Added actual_cost_usd to tasks');
+        logger.info('[Migration 016] Added actual_cost_usd to tasks');
       }
 
       const agentsInfo = db.prepare("PRAGMA table_info(agents)").all() as { name: string }[];
       if (!agentsInfo.some(col => col.name === 'total_cost_usd')) {
         db.exec(`ALTER TABLE agents ADD COLUMN total_cost_usd REAL DEFAULT 0`);
-        console.log('[Migration 016] Added total_cost_usd to agents');
+        logger.info('[Migration 016] Added total_cost_usd to agents');
       }
       if (!agentsInfo.some(col => col.name === 'total_tokens_used')) {
         db.exec(`ALTER TABLE agents ADD COLUMN total_tokens_used INTEGER DEFAULT 0`);
-        console.log('[Migration 016] Added total_tokens_used to agents');
+        logger.info('[Migration 016] Added total_tokens_used to agents');
       }
 
       // 3. Create indexes
@@ -1140,14 +1141,14 @@ const migrations: Migration[] = [
       db.exec(`CREATE INDEX IF NOT EXISTS idx_seo_keywords_product ON seo_keywords(product_id)`);
       db.exec(`CREATE INDEX IF NOT EXISTS idx_product_feedback_product ON product_feedback(product_id, processed)`);
 
-      console.log('[Migration 016] Product Autopilot tables and indexes created');
+      logger.info('[Migration 016] Product Autopilot tables and indexes created');
     }
   },
   {
     id: '017',
     name: 'add_task_notes',
     up: (db) => {
-      console.log('[Migration 017] Adding task_notes table...');
+      logger.info('[Migration 017] Adding task_notes table...');
 
       db.exec(`
         CREATE TABLE IF NOT EXISTS task_notes (
@@ -1164,14 +1165,14 @@ const migrations: Migration[] = [
       db.exec(`CREATE INDEX IF NOT EXISTS idx_task_notes_task ON task_notes(task_id, created_at DESC)`);
       db.exec(`CREATE INDEX IF NOT EXISTS idx_task_notes_pending ON task_notes(task_id, status) WHERE status = 'pending'`);
 
-      console.log('[Migration 017] task_notes table created');
+      logger.info('[Migration 017] task_notes table created');
     }
   },
   {
     id: '018',
     name: 'autopilot_resilience_activity',
     up: (db) => {
-      console.log('[Migration 018] Adding autopilot resilience and activity log...');
+      logger.info('[Migration 018] Adding autopilot resilience and activity log...');
 
       // Add phase tracking columns to research_cycles
       const rcInfo = db.prepare("PRAGMA table_info(research_cycles)").all() as { name: string }[];
@@ -1229,66 +1230,66 @@ const migrations: Migration[] = [
       db.exec(`CREATE INDEX IF NOT EXISTS idx_autopilot_activity_product ON autopilot_activity_log(product_id, created_at DESC)`);
       db.exec(`CREATE INDEX IF NOT EXISTS idx_autopilot_activity_cycle ON autopilot_activity_log(cycle_id, created_at)`);
 
-      console.log('[Migration 018] Autopilot resilience tables and columns created');
+      logger.info('[Migration 018] Autopilot resilience tables and columns created');
     }
   },
   {
     id: '019',
     name: 'add_build_pipeline_columns',
     up: (db) => {
-      console.log('[Migration 019] Adding build pipeline columns to products and tasks...');
+      logger.info('[Migration 019] Adding build pipeline columns to products and tasks...');
 
       // Add columns to products
       const productsInfo = db.prepare("PRAGMA table_info(products)").all() as { name: string }[];
       if (!productsInfo.some(col => col.name === 'build_mode')) {
         db.exec(`ALTER TABLE products ADD COLUMN build_mode TEXT DEFAULT 'plan_first' CHECK (build_mode IN ('auto_build', 'plan_first'))`);
-        console.log('[Migration 019] Added build_mode to products');
+        logger.info('[Migration 019] Added build_mode to products');
       }
       if (!productsInfo.some(col => col.name === 'default_branch')) {
         db.exec(`ALTER TABLE products ADD COLUMN default_branch TEXT DEFAULT 'main'`);
-        console.log('[Migration 019] Added default_branch to products');
+        logger.info('[Migration 019] Added default_branch to products');
       }
       if (!productsInfo.some(col => col.name === 'cost_cap_per_task')) {
         db.exec(`ALTER TABLE products ADD COLUMN cost_cap_per_task REAL`);
-        console.log('[Migration 019] Added cost_cap_per_task to products');
+        logger.info('[Migration 019] Added cost_cap_per_task to products');
       }
       if (!productsInfo.some(col => col.name === 'cost_cap_monthly')) {
         db.exec(`ALTER TABLE products ADD COLUMN cost_cap_monthly REAL`);
-        console.log('[Migration 019] Added cost_cap_monthly to products');
+        logger.info('[Migration 019] Added cost_cap_monthly to products');
       }
 
       // Add columns to tasks
       const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
       if (!tasksInfo.some(col => col.name === 'repo_url')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN repo_url TEXT`);
-        console.log('[Migration 019] Added repo_url to tasks');
+        logger.info('[Migration 019] Added repo_url to tasks');
       }
       if (!tasksInfo.some(col => col.name === 'repo_branch')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN repo_branch TEXT`);
-        console.log('[Migration 019] Added repo_branch to tasks');
+        logger.info('[Migration 019] Added repo_branch to tasks');
       }
       if (!tasksInfo.some(col => col.name === 'pr_url')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN pr_url TEXT`);
-        console.log('[Migration 019] Added pr_url to tasks');
+        logger.info('[Migration 019] Added pr_url to tasks');
       }
       if (!tasksInfo.some(col => col.name === 'pr_status')) {
         db.exec(`ALTER TABLE tasks ADD COLUMN pr_status TEXT CHECK (pr_status IN ('pending', 'open', 'merged', 'closed'))`);
-        console.log('[Migration 019] Added pr_status to tasks');
+        logger.info('[Migration 019] Added pr_status to tasks');
       }
 
-      console.log('[Migration 019] Build pipeline columns added');
+      logger.info('[Migration 019] Build pipeline columns added');
     }
   },
   {
     id: '020',
     name: 'add_chat_role_column',
     up: (db) => {
-      console.log('[Migration 020] Adding role column to task_notes for agent responses...');
+      logger.info('[Migration 020] Adding role column to task_notes for agent responses...');
 
       const notesInfo = db.prepare("PRAGMA table_info(task_notes)").all() as { name: string }[];
       if (!notesInfo.some(col => col.name === 'role')) {
         db.exec(`ALTER TABLE task_notes ADD COLUMN role TEXT DEFAULT 'user'`);
-        console.log('[Migration 020] Added role column to task_notes');
+        logger.info('[Migration 020] Added role column to task_notes');
       }
     }
   },
@@ -1296,7 +1297,7 @@ const migrations: Migration[] = [
     id: '021',
     name: 'add_parallel_build_isolation',
     up: (db) => {
-      console.log('[Migration 021] Adding parallel build isolation columns and tables...');
+      logger.info('[Migration 021] Adding parallel build isolation columns and tables...');
 
       // Add workspace columns to tasks
       const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
@@ -1352,14 +1353,14 @@ const migrations: Migration[] = [
       `);
       db.exec(`CREATE INDEX IF NOT EXISTS idx_workspace_merges_task ON workspace_merges(task_id)`);
 
-      console.log('[Migration 021] Parallel build isolation tables and columns created');
+      logger.info('[Migration 021] Parallel build isolation tables and columns created');
     }
   },
   {
     id: '022',
     name: 'add_product_health_scores',
     up: (db) => {
-      console.log('[Migration 022] Adding product health scores table and weight config...');
+      logger.info('[Migration 022] Adding product health scores table and weight config...');
 
       db.exec(`
         CREATE TABLE IF NOT EXISTS product_health_scores (
@@ -1382,17 +1383,17 @@ const migrations: Migration[] = [
       const productsInfo = db.prepare("PRAGMA table_info(products)").all() as { name: string }[];
       if (!productsInfo.some(col => col.name === 'health_weight_config')) {
         db.exec(`ALTER TABLE products ADD COLUMN health_weight_config TEXT`);
-        console.log('[Migration 022] Added health_weight_config to products');
+        logger.info('[Migration 022] Added health_weight_config to products');
       }
 
-      console.log('[Migration 022] Product health scores table and indexes created');
+      logger.info('[Migration 022] Product health scores table and indexes created');
     }
   },
   {
     id: '023',
     name: 'add_idea_similarity_detection',
     up: (db) => {
-      console.log('[Migration 023] Adding idea similarity detection tables and columns...');
+      logger.info('[Migration 023] Adding idea similarity detection tables and columns...');
 
       db.exec(`
         CREATE TABLE IF NOT EXISTS idea_embeddings (
@@ -1434,14 +1435,14 @@ const migrations: Migration[] = [
       `);
       db.exec(`CREATE INDEX IF NOT EXISTS idx_idea_suppressions_product ON idea_suppressions(product_id, created_at DESC)`);
 
-      console.log('[Migration 023] Idea similarity detection tables and columns created');
+      logger.info('[Migration 023] Idea similarity detection tables and columns created');
     }
   },
   {
     id: '024',
     name: 'add_user_task_reads',
     up: (db) => {
-      console.log('[Migration 024] Adding user_task_reads table for unread tracking...');
+      logger.info('[Migration 024] Adding user_task_reads table for unread tracking...');
 
       db.exec(`
         CREATE TABLE IF NOT EXISTS user_task_reads (
@@ -1456,19 +1457,19 @@ const migrations: Migration[] = [
 
       db.exec(`CREATE INDEX IF NOT EXISTS idx_user_task_reads_user_task ON user_task_reads(user_id, task_id)`);
 
-      console.log('[Migration 024] user_task_reads table created');
+      logger.info('[Migration 024] user_task_reads table created');
     }
   },
   {
     id: '025',
     name: 'add_batch_review_threshold',
     up: (db) => {
-      console.log('[Migration 025] Adding batch_review_threshold column to products...');
+      logger.info('[Migration 025] Adding batch_review_threshold column to products...');
 
       const productsInfo = db.prepare("PRAGMA table_info(products)").all() as { name: string }[];
       if (!productsInfo.some(col => col.name === 'batch_review_threshold')) {
         db.exec(`ALTER TABLE products ADD COLUMN batch_review_threshold INTEGER DEFAULT 10`);
-        console.log('[Migration 025] Added batch_review_threshold to products');
+        logger.info('[Migration 025] Added batch_review_threshold to products');
       }
     }
   },
@@ -1476,7 +1477,7 @@ const migrations: Migration[] = [
     id: '026',
     name: 'add_rollback_history',
     up: (db) => {
-      console.log('[Migration 026] Adding rollback history table...');
+      logger.info('[Migration 026] Adding rollback history table...');
 
       db.exec(`
         CREATE TABLE IF NOT EXISTS rollback_history (
@@ -1500,14 +1501,14 @@ const migrations: Migration[] = [
       db.exec('CREATE INDEX IF NOT EXISTS idx_rollback_history_product ON rollback_history(product_id)');
       db.exec('CREATE INDEX IF NOT EXISTS idx_rollback_history_unack ON rollback_history(acknowledged, product_id)');
 
-      console.log('[Migration 026] Rollback history table created');
+      logger.info('[Migration 026] Rollback history table created');
     }
   },
   {
     id: '027',
     name: 'add_product_program_ab_testing',
     up: (db) => {
-      console.log('[Migration 027] Adding Product Program A/B testing tables and columns...');
+      logger.info('[Migration 027] Adding Product Program A/B testing tables and columns...');
 
       db.exec(`
         CREATE TABLE IF NOT EXISTS product_program_variants (
@@ -1542,17 +1543,17 @@ const migrations: Migration[] = [
       if (!ideasInfo.some(col => col.name === 'variant_id')) {
         db.exec(`ALTER TABLE ideas ADD COLUMN variant_id TEXT REFERENCES product_program_variants(id)`);
         db.exec(`CREATE INDEX IF NOT EXISTS idx_ideas_variant ON ideas(variant_id)`);
-        console.log('[Migration 027] Added variant_id to ideas');
+        logger.info('[Migration 027] Added variant_id to ideas');
       }
 
-      console.log('[Migration 027] Product Program A/B testing tables created');
+      logger.info('[Migration 027] Product Program A/B testing tables created');
     }
   },
   {
     id: '028',
     name: 'add_product_skills',
     up: (db) => {
-      console.log('[Migration 028] Adding product_skills table...');
+      logger.info('[Migration 028] Adding product_skills table...');
 
       db.exec(`
         CREATE TABLE IF NOT EXISTS product_skills (
@@ -1593,7 +1594,7 @@ const migrations: Migration[] = [
       `);
       db.exec(`CREATE INDEX IF NOT EXISTS idx_skill_reports_skill ON skill_reports(skill_id)`);
 
-      console.log('[Migration 028] product_skills and skill_reports tables created');
+      logger.info('[Migration 028] product_skills and skill_reports tables created');
     }
   }
 ];
@@ -1621,7 +1622,7 @@ function createPreMigrationBackup(db: Database.Database): void {
 
   // Skip backup for in-memory or temp-file databases (used in tests)
   if (!dbPath || dbPath === ':memory:' || dbPath === '') {
-    console.log('[DB] Skipping pre-migration backup for non-file database');
+    logger.info('[DB] Skipping pre-migration backup for non-file database');
     return;
   }
 
@@ -1648,7 +1649,7 @@ function createPreMigrationBackup(db: Database.Database): void {
   // Single-quote escaping prevents SQL injection via filesystem paths.
   db.exec(`VACUUM INTO '${backupPath.replace(/'/g, "''")}'`);
 
-  console.log(`[DB] Pre-migration backup created: ${backupFilename}`);
+  logger.info(`[DB] Pre-migration backup created: ${backupFilename}`);
 
   // Prune old backups — keep only the most recent MAX_BACKUPS to limit disk usage.
   // ISO timestamps sort lexicographically, so a simple .sort() gives correct order.
@@ -1664,10 +1665,10 @@ function createPreMigrationBackup(db: Database.Database): void {
       const toDelete = backupFiles.slice(0, backupFiles.length - MAX_BACKUPS);
       for (const filename of toDelete) {
         fs.unlinkSync(path.join(backupDir, filename));
-        console.log(`[DB] Removed old backup: ${filename}`);
+        logger.info(`[DB] Removed old backup: ${filename}`);
       }
     } catch (cleanupError) {
-      console.warn('[DB] Warning: could not remove old backup file(s) — cleanup failed, but the backup itself is intact:', cleanupError);
+      logger.warn('[DB] Warning: could not remove old backup file(s) — cleanup failed, but the backup itself is intact:', cleanupError);
     }
   }
 }
@@ -1710,7 +1711,7 @@ export function runMigrations(db: Database.Database): void {
 
   // Run pending migrations in order
   for (const migration of pending) {
-    console.log(`[DB] Running migration ${migration.id}: ${migration.name}`);
+    logger.info(`[DB] Running migration ${migration.id}: ${migration.name}`);
 
     try {
       // Disable FK checks during migrations (required for table recreation).
@@ -1728,11 +1729,11 @@ export function runMigrations(db: Database.Database): void {
       db.pragma('legacy_alter_table = OFF');
       db.pragma('foreign_keys = ON');
 
-      console.log(`[DB] Migration ${migration.id} completed`);
+      logger.info(`[DB] Migration ${migration.id} completed`);
     } catch (error) {
       // Re-enable FK checks even on failure
       db.pragma('foreign_keys = ON');
-      console.error(`[DB] Migration ${migration.id} failed:`, error);
+      logger.error(`[DB] Migration ${migration.id} failed:`, error);
       throw error;
     }
   }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { evaluateMaybePool } from '@/lib/autopilot/maybe-pool';
 
@@ -12,7 +13,7 @@ export async function POST(
     const result = evaluateMaybePool(id);
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Failed to evaluate maybe pool:', error);
+    logger.error('Failed to evaluate maybe pool:', error);
     return NextResponse.json({ error: 'Failed to evaluate maybe pool' }, { status: 500 });
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne, run } from '@/lib/db';
 import { extractJSON } from '@/lib/planning-utils';
@@ -43,11 +44,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const messages = task.planning_messages ? JSON.parse(task.planning_messages) : [];
     
     // Scan messages from the end looking for the completion JSON
-    let completionParsed: any = null;
+    let completionParsed: { status?: string; agents?: { name: string; role: string; description: string; instructions?: string; avatar_emoji?: string; soul_md?: string }[]; spec?: Record<string, unknown> } | null = null;
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === 'assistant') {
-        const parsed = extractJSON(messages[i].content);
-        if (parsed && (parsed as any).status === 'complete') {
+        const parsed = extractJSON(messages[i].content) as { status?: string; agents?: { name: string; role: string; description: string; instructions?: string; avatar_emoji?: string; soul_md?: string }[]; spec?: Record<string, unknown> } | null;
+        if (parsed && parsed.status === 'complete') {
           completionParsed = parsed;
           break;
         }
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (!completionParsed) {
       // No completion found in stored messages — mark as complete anyway
       // so the user isn't stuck, but skip agent creation
-      console.log(`[Force Complete] No completion JSON found for task ${taskId} — marking complete without spec`);
+      logger.info(`[Force Complete] No completion JSON found for task ${taskId} — marking complete without spec`);
       run(
         `UPDATE tasks SET planning_complete = 1, status = 'inbox', 
          status_reason = 'Force-completed by user (no completion spec found)', 
@@ -76,19 +77,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Found completion JSON — create agents, save spec, dispatch
-    console.log(`[Force Complete] Found completion JSON for task ${taskId} — processing`);
+    logger.info(`[Force Complete] Found completion JSON for task ${taskId} — processing`);
 
     const allowDynamicAgents = process.env.ALLOW_DYNAMIC_AGENTS !== 'false';
     let firstAgentId: string | null = null;
 
-    if (allowDynamicAgents && completionParsed.agents?.length > 0) {
+    if (allowDynamicAgents && (completionParsed?.agents?.length ?? 0) > 0) {
       const masterAgent = queryOne<{ session_key_prefix?: string }>(
         `SELECT session_key_prefix FROM agents WHERE is_master = 1 AND workspace_id = ? ORDER BY created_at ASC LIMIT 1`,
         [task.workspace_id]
       );
       const sessionKeyPrefix = masterAgent?.session_key_prefix || 'agent:main:';
 
-      for (const agent of completionParsed.agents) {
+      for (const agent of completionParsed?.agents || []) {
         const agentId = crypto.randomUUID();
         if (!firstAgentId) firstAgentId = agentId;
 
@@ -147,10 +148,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
         if (res.ok) {
           dispatched = true;
-          console.log(`[Force Complete] Dispatch successful for task ${taskId}`);
+          logger.info(`[Force Complete] Dispatch successful for task ${taskId}`);
         } else {
           dispatchError = await res.text();
-          console.error(`[Force Complete] Dispatch failed: ${dispatchError}`);
+          logger.error(`[Force Complete] Dispatch failed: ${dispatchError}`);
           run(
             `UPDATE tasks SET planning_dispatch_error = ?, updated_at = datetime('now') WHERE id = ?`,
             [`Force-complete dispatch failed: ${dispatchError.substring(0, 200)}`, taskId]
@@ -158,7 +159,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }
       } catch (err) {
         dispatchError = (err as Error).message;
-        console.error(`[Force Complete] Dispatch error: ${dispatchError}`);
+        logger.error(`[Force Complete] Dispatch error: ${dispatchError}`);
       }
     }
 
@@ -176,7 +177,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       dispatchError,
     });
   } catch (error) {
-    console.error('[Force Complete] Error:', error);
+    logger.error('[Force Complete] Error:', error);
     return NextResponse.json({ error: 'Failed to force-complete planning' }, { status: 500 });
   }
 }

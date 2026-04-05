@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -22,7 +24,7 @@ export default function BatchReviewPage() {
           setIdeas(data);
         }
       } catch (error) {
-        console.error('Failed to load pending ideas:', error);
+        logger.error('Failed to load pending ideas:', error);
       } finally {
         setLoading(false);
       }

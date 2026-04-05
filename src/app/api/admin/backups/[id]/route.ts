@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * DELETE /api/admin/backups/[id] — Delete a specific backup
  * 
@@ -11,10 +12,11 @@ export const dynamic = 'force-dynamic';
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const filename = decodeURIComponent(params.id);
+    const { id } = await params;
+    const filename = decodeURIComponent(id);
 
     if (!filename || typeof filename !== 'string') {
       return NextResponse.json(
@@ -38,7 +40,7 @@ export async function DELETE(
       deleted: filename,
     });
   } catch (err) {
-    console.error('[API] Failed to delete backup:', err);
+    logger.error('[API] Failed to delete backup:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Failed to delete backup' },
       { status: 500 }

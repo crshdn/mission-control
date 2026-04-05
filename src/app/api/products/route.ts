@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createProduct, listProducts } from '@/lib/autopilot/products';
 import { CreateProductSchema } from '@/lib/validation';
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
     const products = listProducts(workspaceId);
     return NextResponse.json(products);
   } catch (error) {
-    console.error('Failed to list products:', error);
+    logger.error('Failed to list products:', error);
     return NextResponse.json({ error: 'Failed to list products' }, { status: 500 });
   }
 }
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     const product = createProduct(validation.data);
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
-    console.error('Failed to create product:', error);
+    logger.error('Failed to create product:', error);
     return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
   }
 }

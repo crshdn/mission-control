@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { backfillAllPreferences } from '@/lib/autopilot/preferences';
 
@@ -8,7 +9,7 @@ export async function POST() {
     const count = backfillAllPreferences();
     return NextResponse.json({ rebuilt: count });
   } catch (error) {
-    console.error('Failed to backfill preferences:', error);
+    logger.error('Failed to backfill preferences:', error);
     return NextResponse.json({ error: 'Failed to backfill' }, { status: 500 });
   }
 }

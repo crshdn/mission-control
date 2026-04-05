@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useEffect, useState } from 'react';
 import { Plus, ChevronRight, GripVertical, ArrowRightLeft, AlertTriangle, MessageSquare } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
@@ -123,12 +125,12 @@ export function MissionQueue({ workspaceId, mobileMode = false, isPortrait = tru
           });
 
           if (!result.success) {
-            console.error('Auto-dispatch failed:', result.error);
+            logger.error('Auto-dispatch failed:', result.error);
           }
         }
       }
     } catch (error) {
-      console.error('Failed to update task status:', error);
+      logger.error('Failed to update task status:', error);
       updateTaskStatus(task.id, task.status);
     }
   };
@@ -348,10 +350,10 @@ function AssignedStatusBadge({ task, portraitMode }: { task: Task; portraitMode:
       const res = await fetch(`/api/tasks/${task.id}/dispatch`, { method: 'POST' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        console.error('Retry dispatch failed:', data.error);
+        logger.error('Retry dispatch failed:', data.error);
       }
     } catch (err) {
-      console.error('Retry dispatch error:', err);
+      logger.error('Retry dispatch error:', err);
     } finally {
       setRetrying(false);
     }

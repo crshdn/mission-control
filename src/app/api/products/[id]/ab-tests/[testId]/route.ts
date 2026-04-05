@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getTest } from '@/lib/autopilot/ab-testing';
 
@@ -16,7 +17,7 @@ export async function GET(
     }
     return NextResponse.json(test);
   } catch (error) {
-    console.error('Failed to get A/B test:', error);
+    logger.error('Failed to get A/B test:', error);
     return NextResponse.json({ error: 'Failed to get A/B test' }, { status: 500 });
   }
 }

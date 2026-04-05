@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect, useCallback } from 'react';
 import { CostCapManager } from './CostCapManager';
 
@@ -61,7 +63,7 @@ export function CostDashboard({ productId, workspaceId = 'default' }: CostDashbo
         }
       }
     } catch (error) {
-      console.error('Failed to load product caps:', error);
+      logger.error('Failed to load product caps:', error);
     }
   }, [productId, overview]);
 
@@ -75,7 +77,7 @@ export function CostDashboard({ productId, workspaceId = 'default' }: CostDashbo
         if (overviewRes.ok) setOverview(await overviewRes.json());
         if (breakdownRes.ok) setBreakdown(await breakdownRes.json());
       } catch (error) {
-        console.error('Failed to load costs:', error);
+        logger.error('Failed to load costs:', error);
       } finally {
         setLoading(false);
       }
@@ -106,7 +108,7 @@ export function CostDashboard({ productId, workspaceId = 'default' }: CostDashbo
         }),
       });
     } catch (error) {
-      console.error('Failed to save product caps:', error);
+      logger.error('Failed to save product caps:', error);
     } finally {
       setSavingCaps(false);
     }

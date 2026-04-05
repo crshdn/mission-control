@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Activity, ArrowRight } from 'lucide-react';
@@ -37,7 +39,7 @@ export default function ActivityPickerPage() {
           setTaskCounts(counts);
         }
       } catch (error) {
-        console.error('Failed to load workspaces:', error);
+        logger.error('Failed to load workspaces:', error);
       } finally {
         setLoading(false);
       }

@@ -5,6 +5,8 @@
 
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import type { TaskActivity } from '@/lib/types';
@@ -31,7 +33,7 @@ export function ActivityLog({ taskId }: ActivityLogProps) {
         lastCountRef.current = data.length;
       }
     } catch (error) {
-      console.error('Failed to load activities:', error);
+      logger.error('Failed to load activities:', error);
     } finally {
       setLoading(false);
     }
@@ -55,7 +57,7 @@ export function ActivityLog({ taskId }: ActivityLogProps) {
         }
       }
     } catch (error) {
-      console.error('Polling error:', error);
+      logger.error('Polling error:', error);
     }
   }, [taskId]); // setActivities is stable from React, no need to include
 

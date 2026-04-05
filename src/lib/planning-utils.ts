@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { getOpenClawClient } from './openclaw/client';
 
 // Maximum input length for extractJSON to prevent ReDoS attacks
@@ -13,7 +14,7 @@ const MAX_EXTRACT_JSON_LENGTH = 1_000_000; // 1MB
 export function extractJSON(text: string): object | null {
   // Security: Prevent ReDoS on massive inputs
   if (text.length > MAX_EXTRACT_JSON_LENGTH) {
-    console.warn('[Planning Utils] Input exceeds maximum length for JSON extraction:', text.length);
+    logger.warn('[Planning Utils] Input exceeds maximum length for JSON extraction:', text.length);
     return null;
   }
 
@@ -115,7 +116,7 @@ export async function getMessagesFromOpenClaw(
 
     return messages;
   } catch (err) {
-    console.error('[Planning Utils] Failed to get messages from OpenClaw:', err);
+    logger.error('[Planning Utils] Failed to get messages from OpenClaw:', err);
     return [];
   }
 }

@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Check, Rocket, Search, Loader, AlertTriangle, FileText, Sparkles } from 'lucide-react';
@@ -67,7 +69,7 @@ export default function NewProductPage() {
       }));
     } catch (error) {
       setScanError('Failed to connect to scan service');
-      console.error('Scan failed:', error);
+      logger.error('Scan failed:', error);
     } finally {
       setScanning(false);
     }
@@ -158,7 +160,7 @@ export default function NewProductPage() {
         setStep('program');
       }
     } catch (error) {
-      console.error('Failed to create product:', error);
+      logger.error('Failed to create product:', error);
     } finally {
       setSaving(false);
     }
@@ -175,7 +177,7 @@ export default function NewProductPage() {
       });
       setStep('schedule');
     } catch (error) {
-      console.error('Failed to save program:', error);
+      logger.error('Failed to save program:', error);
     } finally {
       setSaving(false);
     }

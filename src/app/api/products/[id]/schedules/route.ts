@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createSchedule, listSchedules } from '@/lib/autopilot/scheduling';
 import { CreateScheduleSchema } from '@/lib/validation';
@@ -13,7 +14,7 @@ export async function GET(
     const schedules = listSchedules(id);
     return NextResponse.json(schedules);
   } catch (error) {
-    console.error('Failed to list schedules:', error);
+    logger.error('Failed to list schedules:', error);
     return NextResponse.json({ error: 'Failed to list schedules' }, { status: 500 });
   }
 }
@@ -32,7 +33,7 @@ export async function POST(
     const schedule = createSchedule(id, validation.data);
     return NextResponse.json(schedule, { status: 201 });
   } catch (error) {
-    console.error('Failed to create schedule:', error);
+    logger.error('Failed to create schedule:', error);
     return NextResponse.json({ error: 'Failed to create schedule' }, { status: 500 });
   }
 }

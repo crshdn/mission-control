@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * POST /api/admin/backups/restore — Restore from a specific backup
  * 
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
       message: `Database restored from ${result.restored}. Safety backup created: ${result.safetyBackup}`,
     });
   } catch (err) {
-    console.error('[API] Failed to restore backup:', err);
+    logger.error('[API] Failed to restore backup:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Failed to restore backup' },
       { status: 500 }

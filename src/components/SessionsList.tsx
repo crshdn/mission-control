@@ -5,6 +5,8 @@
 
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useEffect, useState, useCallback } from 'react';
 import { Bot, CheckCircle, Circle, XCircle, Trash2, Check } from 'lucide-react';
 
@@ -39,7 +41,7 @@ export function SessionsList({ taskId }: SessionsListProps) {
         setSessions(data);
       }
     } catch (error) {
-      console.error('Failed to load sessions:', error);
+      logger.error('Failed to load sessions:', error);
     } finally {
       setLoading(false);
     }
@@ -104,7 +106,7 @@ export function SessionsList({ taskId }: SessionsListProps) {
         loadSessions();
       }
     } catch (error) {
-      console.error('Failed to mark session complete:', error);
+      logger.error('Failed to mark session complete:', error);
     }
   };
 
@@ -118,7 +120,7 @@ export function SessionsList({ taskId }: SessionsListProps) {
         loadSessions();
       }
     } catch (error) {
-      console.error('Failed to delete session:', error);
+      logger.error('Failed to delete session:', error);
     }
   };
 

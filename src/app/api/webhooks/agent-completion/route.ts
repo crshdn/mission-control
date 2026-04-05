@@ -1,7 +1,9 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { createHmac } from 'crypto';
-import { queryOne, queryAll, run } from '@/lib/db';
+import { getDb, queryOne, queryAll, run } from '@/lib/db';
+import { findTaskForSessionCompletion } from '@/lib/openclaw/completion-routing';
 import type { Task, Agent, OpenClawSession } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
       const signature = request.headers.get('x-webhook-signature');
       
       if (!signature || !verifyWebhookSignature(signature, rawBody)) {
-        console.warn('[WEBHOOK] Invalid signature attempt');
+        logger.warn('[WEBHOOK] Invalid signature attempt');
         return NextResponse.json(
           { error: 'Unauthorized' },
           { status: 401 }
@@ -145,16 +147,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Find active task for this agent
-      const task = queryOne<Task & { assigned_agent_name?: string }>(
-        `SELECT t.*, a.name as assigned_agent_name
-         FROM tasks t
-         LEFT JOIN agents a ON t.assigned_agent_id = a.id
-         WHERE t.assigned_agent_id = ? 
-           AND t.status IN ('assigned', 'in_progress')
-         ORDER BY t.updated_at DESC
-         LIMIT 1`,
-        [session.agent_id]
-      );
+      const task = findTaskForSessionCompletion(getDb(), session);
 
       if (!task) {
         return NextResponse.json(
@@ -207,7 +200,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error('Agent completion webhook error:', error);
+    logger.error('Agent completion webhook error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -238,7 +231,7 @@ export async function GET() {
       endpoint: '/api/webhooks/agent-completion'
     });
   } catch (error) {
-    console.error('Failed to fetch completion status:', error);
+    logger.error('Failed to fetch completion status:', error);
     return NextResponse.json(
       { error: 'Failed to fetch status' },
       { status: 500 }

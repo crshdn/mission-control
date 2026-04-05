@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 // Database seed script - creates initial data including the master orchestrator agent
 
 import { v4 as uuidv4 } from 'uuid';
@@ -89,7 +90,7 @@ If agents disagree:
 `;
 
 async function seed() {
-  console.log('🌱 Seeding database...');
+  logger.info('🌱 Seeding database...');
 
   const db = getDb();
   const now = new Date().toISOString();
@@ -200,13 +201,13 @@ async function seed() {
     now
   );
 
-  console.log('✅ Database seeded successfully!');
-  console.log(`   - Created Orchestrator (master agent): ${orchestratorId}`);
-  console.log(`   - Created ${agents.length} additional agents`);
-  console.log(`   - Created ${tasks.length} sample tasks`);
-  console.log(`   - Created team conversation`);
+  logger.info('✅ Database seeded successfully!');
+  logger.info(`   - Created Orchestrator (master agent): ${orchestratorId}`);
+  logger.info(`   - Created ${agents.length} additional agents`);
+  logger.info(`   - Created ${tasks.length} sample tasks`);
+  logger.info(`   - Created team conversation`);
 
   closeDb();
 }
 
-seed().catch(console.error);
+seed().catch(logger.error);

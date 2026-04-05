@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne, run } from '@/lib/db';
 import { triggerAutoDispatch } from '@/lib/auto-dispatch';
@@ -88,7 +89,7 @@ export async function POST(
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('Failed to retry dispatch:', error);
+    logger.error('Failed to retry dispatch:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     // Keep planning data intact — just record the error

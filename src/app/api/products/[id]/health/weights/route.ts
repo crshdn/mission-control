@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { updateWeights } from '@/lib/autopilot/health-score';
 import { getProduct } from '@/lib/autopilot/products';
@@ -8,10 +9,11 @@ import { getProduct } from '@/lib/autopilot/products';
  */
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const product = getProduct(params.id);
+    const { id } = await params;
+    const product = getProduct(id);
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
@@ -39,10 +41,10 @@ export async function PUT(
       );
     }
 
-    const updated = updateWeights(params.id, body);
+    const updated = updateWeights(id, body);
     return NextResponse.json(updated);
   } catch (error) {
-    console.error('[API] Update weights error:', error);
+    logger.error('[API] Update weights error:', error);
     return NextResponse.json(
       { error: 'Failed to update weights' },
       { status: 500 }

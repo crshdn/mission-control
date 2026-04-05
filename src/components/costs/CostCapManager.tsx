@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+
+import { logger } from '@/lib/logger';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { CostCap } from '@/lib/types';
 
@@ -15,20 +17,20 @@ export function CostCapManager({ workspaceId, productId }: CostCapManagerProps) 
   const [showCreate, setShowCreate] = useState(false);
   const [newCap, setNewCap] = useState({ cap_type: 'monthly', limit_usd: 500 });
 
-  const loadCaps = async () => {
+  const loadCaps = useCallback(async () => {
     try {
       const params = new URLSearchParams({ workspace_id: workspaceId });
       if (productId) params.set('product_id', productId);
       const res = await fetch(`/api/costs/caps?${params}`);
       if (res.ok) setCaps(await res.json());
     } catch (error) {
-      console.error('Failed to load caps:', error);
+      logger.error('Failed to load caps:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [workspaceId, productId]);
 
-  useEffect(() => { loadCaps(); }, [workspaceId, productId]);
+  useEffect(() => { loadCaps(); }, [loadCaps]);
 
   const handleCreate = async () => {
     try {
@@ -40,7 +42,7 @@ export function CostCapManager({ workspaceId, productId }: CostCapManagerProps) 
       setShowCreate(false);
       loadCaps();
     } catch (error) {
-      console.error('Failed to create cap:', error);
+      logger.error('Failed to create cap:', error);
     }
   };
 
@@ -49,7 +51,7 @@ export function CostCapManager({ workspaceId, productId }: CostCapManagerProps) 
       await fetch(`/api/costs/caps/${id}`, { method: 'DELETE' });
       loadCaps();
     } catch (error) {
-      console.error('Failed to delete cap:', error);
+      logger.error('Failed to delete cap:', error);
     }
   };
 

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne, queryAll } from '@/lib/db';
 
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
       orchestrators: additionalOrchestrators,
     });
   } catch (error) {
-    console.error('Failed to check orchestra status:', error);
+    logger.error('Failed to check orchestra status:', error);
     return NextResponse.json<OrchestraStatusResponse>(
       {
         hasOtherOrchestrators: false,

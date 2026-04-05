@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createVariant, listVariants } from '@/lib/autopilot/ab-testing';
 
@@ -13,7 +14,7 @@ export async function GET(
     const variants = listVariants(id);
     return NextResponse.json(variants);
   } catch (error) {
-    console.error('Failed to list variants:', error);
+    logger.error('Failed to list variants:', error);
     return NextResponse.json({ error: 'Failed to list variants' }, { status: 500 });
   }
 }
@@ -43,7 +44,7 @@ export async function POST(
 
     return NextResponse.json(variant, { status: 201 });
   } catch (error) {
-    console.error('Failed to create variant:', error);
+    logger.error('Failed to create variant:', error);
     return NextResponse.json({ error: 'Failed to create variant' }, { status: 500 });
   }
 }

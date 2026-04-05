@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ListChecks } from 'lucide-react';
@@ -7,6 +9,7 @@ import { IdeaCard } from './IdeaCard';
 import { UndoToast } from './UndoToast';
 import { useSwipe } from '@/hooks/useSwipe';
 import type { Idea, SwipeAction } from '@/lib/types';
+import { shouldShowReviewAll } from './swipeDeck-utils';
 
 interface SwipeDeckProps {
   productId: string;
@@ -23,31 +26,38 @@ interface LastSwipe {
 export function SwipeDeck({ productId }: SwipeDeckProps) {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [initialIdeaCount, setInitialIdeaCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [animatingOut, setAnimatingOut] = useState<string | null>(null);
   const [sessionStats, setSessionStats] = useState({ approved: 0, rejected: 0, maybe: 0, fired: 0 });
   const [lastSwipe, setLastSwipe] = useState<LastSwipe | null>(null);
-  const [pendingCount, setPendingCount] = useState(0);
 
-  const loadDeck = async () => {
+  const loadDeck = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`/api/products/${productId}/swipe/deck`);
-      if (res.ok) {
-        const data = await res.json();
-        setIdeas(data);
-        setCurrentIndex(0);
-        setPendingCount(data.length);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: 'Failed to load deck' }));
+        setError(errData.error || `Failed to load deck (${res.status})`);
+        return;
       }
-    } catch (error) {
-      console.error('Failed to load swipe deck:', error);
+      const data = await res.json();
+      setIdeas(data);
+      setInitialIdeaCount(data.length);
+      setCurrentIndex(0);
+    } catch (err) {
+      logger.error('Failed to load swipe deck:', err);
+      setError('Failed to load deck. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [productId]);
 
   useEffect(() => {
     loadDeck();
-  }, [productId]);
+  }, [loadDeck]);
 
   const handleSwipe = useCallback(async (action: SwipeAction, notes?: string) => {
     const idea = ideas[currentIndex];
@@ -90,7 +100,7 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
           prev[action === 'fire' ? 'fired' : action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'maybe'] + 1,
       }));
     } catch (error) {
-      console.error('Failed to record swipe:', error);
+      logger.error('Failed to record swipe:', error);
     }
 
     setTimeout(() => {
@@ -150,14 +160,27 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
   const currentIdea = ideas[currentIndex];
   const remaining = ideas.length - currentIndex;
 
-  // Batch review threshold — default 10
-  const BATCH_THRESHOLD = 10;
-  const showReviewAll = pendingCount >= BATCH_THRESHOLD;
+  const showReviewAll = shouldShowReviewAll(initialIdeaCount);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-mc-text-secondary animate-pulse">Loading ideas...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-4">
+        <div className="text-red-400 text-lg">Error</div>
+        <p className="text-sm text-mc-text-secondary">{error}</p>
+        <button
+          onClick={loadDeck}
+          className="px-4 py-2 bg-mc-accent/20 text-mc-accent rounded-lg hover:bg-mc-accent/30 transition-colors"
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -233,7 +256,7 @@ export function SwipeDeck({ productId }: SwipeDeckProps) {
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-mc-accent/20 text-mc-accent rounded-lg hover:bg-mc-accent/30 transition-colors"
           >
             <ListChecks className="w-3.5 h-3.5" />
-            Review All ({pendingCount})
+            Review All ({remaining})
           </Link>
         )}
       </div>

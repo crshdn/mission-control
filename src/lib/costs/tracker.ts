@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
@@ -54,7 +55,7 @@ export function recordCostEvent(input: {
   // Recalculate health score when cost event is for a product (non-blocking)
   if (input.product_id) {
     try { recalculateAndBroadcast(input.product_id); } catch (err) {
-      console.error('[CostTracker] Health score recalc failed:', err);
+      logger.error('[CostTracker] Health score recalc failed:', err);
     }
   }
 

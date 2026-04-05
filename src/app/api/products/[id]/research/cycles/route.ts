@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getResearchCycles } from '@/lib/autopilot/research';
 
@@ -12,7 +13,7 @@ export async function GET(
     const cycles = getResearchCycles(id);
     return NextResponse.json(cycles);
   } catch (error) {
-    console.error('Failed to fetch research cycles:', error);
+    logger.error('Failed to fetch research cycles:', error);
     return NextResponse.json({ error: 'Failed to fetch research cycles' }, { status: 500 });
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getMaybePool } from '@/lib/autopilot/maybe-pool';
 
@@ -12,7 +13,7 @@ export async function GET(
     const pool = getMaybePool(id);
     return NextResponse.json(pool);
   } catch (error) {
-    console.error('Failed to fetch maybe pool:', error);
+    logger.error('Failed to fetch maybe pool:', error);
     return NextResponse.json({ error: 'Failed to fetch maybe pool' }, { status: 500 });
   }
 }

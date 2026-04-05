@@ -1,7 +1,9 @@
+import { logger } from '@/lib/logger';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { getOpenClawClient } from '@/lib/openclaw/client';
+import { buildOpenClawSessionKey } from '@/lib/openclaw/session-routing';
 import type { TaskNote, OpenClawSession, Agent } from '@/lib/types';
 
 /**
@@ -88,7 +90,7 @@ export async function deliverPendingNotesAtCheckpoint(taskId: string): Promise<n
   }
 
   if (!activeSession) {
-    console.warn(`[TaskNotes] No active session for task ${taskId} — notes remain pending`);
+    logger.warn(`[TaskNotes] No active session for task ${taskId} — notes remain pending`);
     return 0;
   }
 
@@ -98,8 +100,7 @@ export async function deliverPendingNotesAtCheckpoint(taskId: string): Promise<n
 
     // Get the agent's session key prefix
     const agent = queryOne<Agent>('SELECT * FROM agents WHERE id = ?', [activeSession.agent_id]);
-    const prefix = agent?.session_key_prefix || 'agent:main:';
-    const sessionKey = `${prefix}${activeSession.openclaw_session_id}`;
+    const sessionKey = buildOpenClawSessionKey(agent, activeSession.openclaw_session_id);
 
     // Build the message
     const lines = notes.map(n => `- ${n.content}`);
@@ -114,7 +115,7 @@ export async function deliverPendingNotesAtCheckpoint(taskId: string): Promise<n
     markNotesDelivered(notes.map(n => n.id));
     return notes.length;
   } catch (error) {
-    console.error(`[TaskNotes] Failed to deliver notes for task ${taskId}:`, error);
+    logger.error(`[TaskNotes] Failed to deliver notes for task ${taskId}:`, error);
     return 0;
   }
 }
@@ -161,8 +162,7 @@ export function getActiveSessionForTask(taskId: string): { session: OpenClawSess
   if (!session) return null;
 
   const agent = queryOne<Agent>('SELECT * FROM agents WHERE id = ?', [session.agent_id]);
-  const prefix = agent?.session_key_prefix || 'agent:main:';
-  const sessionKey = `${prefix}${session.openclaw_session_id}`;
+  const sessionKey = buildOpenClawSessionKey(agent, session.openclaw_session_id);
 
   return { session, sessionKey };
 }

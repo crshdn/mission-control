@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryAll, queryOne } from '@/lib/db';
 import type { Agent, Task } from '@/lib/types';
@@ -125,7 +126,7 @@ export async function GET(
 
     return NextResponse.json(agents);
   } catch (error) {
-    console.error('Failed to fetch chat agents:', error);
+    logger.error('Failed to fetch chat agents:', error);
     return NextResponse.json({ error: 'Failed to fetch agents' }, { status: 500 });
   }
 }

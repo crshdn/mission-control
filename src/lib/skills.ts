@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Product Skills — structured, executable playbooks that agents create, consume, and improve.
  * Karpathy AutoResearch pattern: agents learn reusable procedures that compound over time.
@@ -97,7 +98,7 @@ export function createSkill(input: {
   );
 
   broadcast({ type: 'skill_created', payload: { productId: input.productId, skillId: id, title: input.title } });
-  console.log(`[Skills] Created: "${input.title}" [${input.skillType}] for product ${input.productId}`);
+  logger.info(`[Skills] Created: "${input.title}" [${input.skillType}] for product ${input.productId}`);
 
   return queryOne<ProductSkill>('SELECT * FROM product_skills WHERE id = ?', [id])!;
 }
@@ -317,14 +318,14 @@ export function reportSkillUsage(input: {
   // Inline promotion: draft → active if enough evidence
   if (skill.status === 'draft' && newSucceeded >= 2 && newConfidence >= 0.6) {
     run(`UPDATE product_skills SET status = 'active', updated_at = ? WHERE id = ?`, [now, input.skillId]);
-    console.log(`[Skills] Promoted to active: "${skill.title}" (confidence: ${newConfidence.toFixed(2)})`);
+    logger.info(`[Skills] Promoted to active: "${skill.title}" (confidence: ${newConfidence.toFixed(2)})`);
     broadcast({ type: 'skill_promoted', payload: { productId: skill.product_id, skillId: input.skillId, title: skill.title } });
   }
 
   // Inline deprecation: if tried 3+ times and confidence < 0.3
   if (newUsed >= 3 && newConfidence < 0.3) {
     run(`UPDATE product_skills SET status = 'deprecated', updated_at = ? WHERE id = ?`, [now, input.skillId]);
-    console.log(`[Skills] Deprecated: "${skill.title}" (confidence: ${newConfidence.toFixed(2)}, used: ${newUsed})`);
+    logger.info(`[Skills] Deprecated: "${skill.title}" (confidence: ${newConfidence.toFixed(2)}, used: ${newUsed})`);
   }
 
   return queryOne<ProductSkill>('SELECT * FROM product_skills WHERE id = ?', [input.skillId]);

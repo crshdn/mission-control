@@ -1,7 +1,9 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, run } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
+import { getDefaultOpenClawSessionId } from '@/lib/openclaw/session-routing';
 import type { Agent, OpenClawSession } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -30,7 +32,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ linked: true, session });
   } catch (error) {
-    console.error('Failed to get OpenClaw session:', error);
+    logger.error('Failed to get OpenClaw session:', error);
     return NextResponse.json(
       { error: 'Failed to get OpenClaw session' },
       { status: 500 }
@@ -78,7 +80,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     try {
       await client.listSessions();
     } catch (err) {
-      console.error('Failed to verify OpenClaw connection:', err);
+      logger.error('Failed to verify OpenClaw connection:', err);
       return NextResponse.json(
         { error: 'Connected but failed to communicate with OpenClaw Gateway' },
         { status: 503 }
@@ -86,9 +88,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Store the link in our database - session ID will be set when first message is sent
-    // For now, use agent name as the session identifier
+    // For gateway-backed agents, newer OpenClaw versions route the default chat via "main".
     const sessionId = uuidv4();
-    const openclawSessionId = `mission-control-${agent.name.toLowerCase().replace(/\s+/g, '-')}`;
+    const openclawSessionId = getDefaultOpenClawSessionId(agent);
     const now = new Date().toISOString();
 
     run(
@@ -111,7 +113,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ linked: true, session }, { status: 201 });
   } catch (error) {
-    console.error('Failed to link agent to OpenClaw:', error);
+    logger.error('Failed to link agent to OpenClaw:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -157,7 +159,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ linked: false, success: true });
   } catch (error) {
-    console.error('Failed to unlink agent from OpenClaw:', error);
+    logger.error('Failed to unlink agent from OpenClaw:', error);
     return NextResponse.json(
       { error: 'Failed to unlink agent from OpenClaw' },
       { status: 500 }

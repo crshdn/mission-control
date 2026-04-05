@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryAll, queryOne, run, getDb } from '@/lib/db';
 import { broadcast } from '@/lib/events';
@@ -32,7 +33,7 @@ export async function GET(
 
     return NextResponse.json(roles);
   } catch (error) {
-    console.error('Failed to fetch task roles:', error);
+    logger.error('Failed to fetch task roles:', error);
     return NextResponse.json({ error: 'Failed to fetch roles' }, { status: 500 });
   }
 }
@@ -119,7 +120,7 @@ export async function PUT(
 
     return NextResponse.json(updatedRoles);
   } catch (error) {
-    console.error('Failed to update task roles:', error);
+    logger.error('Failed to update task roles:', error);
     return NextResponse.json({ error: 'Failed to update roles' }, { status: 500 });
   }
 }

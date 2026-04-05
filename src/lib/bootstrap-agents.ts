@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Bootstrap Core Agents
  *
@@ -198,7 +199,7 @@ export function bootstrapCoreAgentsRaw(
   ).get(workspaceId) as { cnt: number };
 
   if (count.cnt > 0) {
-    console.log(`[Bootstrap] Workspace ${workspaceId} already has ${count.cnt} agent(s) — skipping`);
+    logger.info(`[Bootstrap] Workspace ${workspaceId} already has ${count.cnt} agent(s) — skipping`);
     return;
   }
 
@@ -225,7 +226,7 @@ export function bootstrapCoreAgentsRaw(
       now,
       now,
     );
-    console.log(`[Bootstrap] Created ${agent.name} (${agent.role}) for workspace ${workspaceId}`);
+    logger.info(`[Bootstrap] Created ${agent.name} (${agent.role}) for workspace ${workspaceId}`);
   }
 }
 
@@ -250,5 +251,5 @@ export function cloneWorkflowTemplates(db: Database.Database, targetWorkspaceId:
     insert.run(newId, targetWorkspaceId, tpl.name, tpl.description, tpl.stages, tpl.fail_targets, tpl.is_default, now, now);
   }
 
-  console.log(`[Bootstrap] Cloned ${templates.length} workflow template(s) to workspace ${targetWorkspaceId}`);
+  logger.info(`[Bootstrap] Cloned ${templates.length} workflow template(s) to workspace ${targetWorkspaceId}`);
 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { reportSkillUsage } from '@/lib/skills';
 
@@ -33,7 +34,7 @@ export async function POST(
 
     return NextResponse.json(skill);
   } catch (error) {
-    console.error('Failed to report skill usage:', error);
+    logger.error('Failed to report skill usage:', error);
     return NextResponse.json({ error: 'Failed to report' }, { status: 500 });
   }
 }

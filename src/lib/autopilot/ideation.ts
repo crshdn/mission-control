@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
@@ -214,7 +215,7 @@ export async function runIdeationCycle(productId: string, cycleId?: string, exis
         totalTokensUsed += usage.totalTokens;
       }
 
-      console.log(`[Ideation] Cycle ${ideationId} completed: ${totalIdeasCount} ideas (tokens: ${totalTokensUsed})`);
+      logger.info(`[Ideation] Cycle ${ideationId} completed: ${totalIdeasCount} ideas (tokens: ${totalTokensUsed})`);
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       run(
@@ -227,7 +228,7 @@ export async function runIdeationCycle(productId: string, cycleId?: string, exis
         message: 'Ideation cycle failed',
         detail: errMsg,
       });
-      console.error(`[Ideation] Cycle ${ideationId} failed:`, error);
+      logger.error(`[Ideation] Cycle ${ideationId} failed:`, error);
     }
   })();
 
@@ -269,7 +270,7 @@ export async function storeIdeasFromPhaseData(
     similarityResults = new Map(checks.map(c => [c.index, c.result]));
   } catch (err) {
     // If similarity check fails, continue without it — don't block ideation
-    console.error('[Similarity] Batch check failed, proceeding without dedup:', err);
+    logger.error('[Similarity] Batch check failed, proceeding without dedup:', err);
     similarityResults = new Map();
   }
 
@@ -307,7 +308,7 @@ export async function storeIdeasFromPhaseData(
         message: `Idea auto-suppressed: ${title}`,
         detail: simResult.suppressReason || 'Too similar to rejected idea',
       });
-      console.log(`[Similarity] Auto-suppressed: "${title}" — ${simResult.suppressReason}`);
+      logger.info(`[Similarity] Auto-suppressed: "${title}" — ${simResult.suppressReason}`);
       continue; // Skip insertion
     }
 
@@ -341,7 +342,7 @@ export async function storeIdeasFromPhaseData(
     try {
       storeEmbedding(id, productId, title, description);
     } catch (err) {
-      console.error(`[Similarity] Failed to store embedding for idea ${id}:`, err);
+      logger.error(`[Similarity] Failed to store embedding for idea ${id}:`, err);
     }
 
     emitAutopilotActivity({
@@ -362,7 +363,7 @@ export async function storeIdeasFromPhaseData(
       message: `Deduplication: ${suppressed} ideas auto-suppressed (>90% similar to rejected)`,
       detail: `${count} ideas stored, ${suppressed} duplicates removed`,
     });
-    console.log(`[Similarity] Dedup summary: ${count} stored, ${suppressed} suppressed`);
+    logger.info(`[Similarity] Dedup summary: ${count} stored, ${suppressed} suppressed`);
   }
 
   // Phase: ideas_stored
@@ -464,7 +465,7 @@ export function createManualIdea(productId: string, input: {
     const simResult = checkSimilarity(productId, input.title, input.description);
     similarityFlag = simResult.similarityFlag || null;
   } catch (err) {
-    console.error('[Similarity] Check failed for manual idea, proceeding:', err);
+    logger.error('[Similarity] Check failed for manual idea, proceeding:', err);
   }
 
   run(
@@ -486,7 +487,7 @@ export function createManualIdea(productId: string, input: {
   try {
     storeEmbedding(id, productId, input.title, input.description);
   } catch (err) {
-    console.error('[Similarity] Failed to store embedding for manual idea:', err);
+    logger.error('[Similarity] Failed to store embedding for manual idea:', err);
   }
 
   return queryOne<Idea>('SELECT * FROM ideas WHERE id = ?', [id])!;

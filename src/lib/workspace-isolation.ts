@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Parallel Build Isolation
  *
@@ -9,10 +10,12 @@
 
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
+import { access } from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { getProjectsPath } from '@/lib/config';
+import { normalizeServerPath } from '@/lib/server-paths';
 import type { Task, Product } from '@/lib/types';
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -125,10 +128,16 @@ export function determineIsolationStrategy(task: Task): IsolationStrategy | null
 
 // ─── Project Path Resolution ─────────────────────────────────────────
 
+function ensureDirectory(targetPath: string): string {
+  const resolved = normalizeServerPath(targetPath);
+  mkdirSync(resolved, { recursive: true });
+  return resolved;
+}
+
 function getProductProjectDir(task: Task): string {
   const projectsPath = getProjectsPath();
   const projectDir = task.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  return path.resolve(projectsPath.replace('~', process.env.HOME || ''), projectDir);
+  return path.join(normalizeServerPath(projectsPath), projectDir);
 }
 
 function getWorkspacesRoot(projectDir: string): string {
@@ -139,13 +148,30 @@ function getTaskWorkspaceDir(projectDir: string, taskId: string): string {
   return path.join(getWorkspacesRoot(projectDir), `task-${taskId}`);
 }
 
+async function pathExistsAsync(targetPath: string): Promise<boolean> {
+  try {
+    await access(targetPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ─── Workspace Creation ──────────────────────────────────────────────
 
 export async function createTaskWorkspace(task: Task): Promise<WorkspaceInfo> {
   const strategy = determineIsolationStrategy(task);
+  const projectDir = ensureDirectory(getProductProjectDir(task));
   if (!strategy) {
-    // No isolation needed — return the original project dir
-    const projectDir = getProductProjectDir(task);
+    // No isolation needed — ensure the output directory exists and return it.
+    run(
+      `UPDATE tasks
+       SET workspace_path = ?, workspace_strategy = NULL, workspace_port = NULL,
+           workspace_base_commit = NULL, merge_status = NULL, updated_at = ?
+       WHERE id = ?`,
+      [projectDir, new Date().toISOString(), task.id]
+    );
+
     return {
       path: projectDir,
       strategy: 'sandbox',
@@ -154,7 +180,6 @@ export async function createTaskWorkspace(task: Task): Promise<WorkspaceInfo> {
     };
   }
 
-  const projectDir = getProductProjectDir(task);
   const workspaceDir = getTaskWorkspaceDir(projectDir, task.id);
   const baseBranch = task.repo_branch || 'main';
   const port = allocatePort(task.id, task.product_id);
@@ -289,9 +314,7 @@ async function createSandboxWorkspace(
   port: number
 ): Promise<WorkspaceInfo> {
   // Ensure source directory exists
-  if (!existsSync(projectDir)) {
-    mkdirSync(projectDir, { recursive: true });
-  }
+  mkdirSync(projectDir, { recursive: true });
 
   // rsync the project directory, excluding heavy/generated dirs
   try {
@@ -309,8 +332,12 @@ async function createSandboxWorkspace(
 
 // ─── Workspace Status ────────────────────────────────────────────────
 
-export function getWorkspaceStatus(task: Task): WorkspaceStatus {
-  if (!task.workspace_path || !existsSync(task.workspace_path)) {
+export async function getWorkspaceStatus(task: Task): Promise<WorkspaceStatus> {
+  const workspacePath =
+    typeof task.workspace_path === 'string' && task.workspace_path.trim().length > 0
+      ? task.workspace_path.trim()
+      : null;
+  if (!workspacePath || !(await pathExistsAsync(workspacePath))) {
     return { exists: false };
   }
 
@@ -318,7 +345,7 @@ export function getWorkspaceStatus(task: Task): WorkspaceStatus {
   const result: WorkspaceStatus = {
     exists: true,
     strategy,
-    path: task.workspace_path,
+    path: workspacePath,
     port: task.workspace_port || undefined,
     baseBranch: task.repo_branch || 'main',
     baseCommit: task.workspace_base_commit || undefined,
@@ -326,7 +353,7 @@ export function getWorkspaceStatus(task: Task): WorkspaceStatus {
   };
 
   // Read metadata for branch info
-  const metadataPath = path.join(task.workspace_path, '.mc-workspace.json');
+  const metadataPath = path.join(workspacePath, '.mc-workspace.json');
   if (existsSync(metadataPath)) {
     try {
       const metadata: WorkspaceMetadata = JSON.parse(readFileSync(metadataPath, 'utf-8'));
@@ -337,11 +364,11 @@ export function getWorkspaceStatus(task: Task): WorkspaceStatus {
   }
 
   // Get diff stats
-  if (strategy === 'worktree' && existsSync(path.join(task.workspace_path, '.git'))) {
+  if (strategy === 'worktree' && existsSync(path.join(workspacePath, '.git'))) {
     try {
       const diffStat = execSync(
         `git diff --stat HEAD~1 2>/dev/null || git diff --stat --cached 2>/dev/null || echo ""`,
-        { cwd: task.workspace_path, encoding: 'utf-8', timeout: 10000 }
+        { cwd: workspacePath, encoding: 'utf-8', timeout: 10000 }
       );
       const lines = diffStat.trim().split('\n');
       const summary = lines[lines.length - 1] || '';
@@ -356,10 +383,10 @@ export function getWorkspaceStatus(task: Task): WorkspaceStatus {
     }
   } else if (strategy === 'sandbox') {
     // For sandbox, count files that differ from original
-    const projectDir = path.dirname(path.dirname(task.workspace_path)); // Up from .workspaces/task-xxx
+    const projectDir = path.dirname(path.dirname(workspacePath)); // Up from .workspaces/task-xxx
     try {
       const diff = execSync(
-        `diff -rq "${projectDir}" "${task.workspace_path}" --exclude='.workspaces' --exclude='node_modules' --exclude='.next' --exclude='.mc-workspace.json' 2>/dev/null | wc -l`,
+        `diff -rq "${projectDir}" "${workspacePath}" --exclude='.workspaces' --exclude='node_modules' --exclude='.next' --exclude='.mc-workspace.json' 2>/dev/null | wc -l`,
         { encoding: 'utf-8', timeout: 10000 }
       ).trim();
       result.filesChanged = parseInt(diff) || 0;
@@ -374,11 +401,15 @@ export function getWorkspaceStatus(task: Task): WorkspaceStatus {
 // ─── Merge Operations ────────────────────────────────────────────────
 
 export async function mergeWorkspace(task: Task, options?: { force?: boolean; createPR?: boolean }): Promise<MergeResult> {
-  if (!task.workspace_path || !task.workspace_strategy) {
+  const workspacePath =
+    typeof task.workspace_path === 'string' && task.workspace_path.trim().length > 0
+      ? task.workspace_path.trim()
+      : null;
+  if (!workspacePath || !task.workspace_strategy) {
     return { success: false, status: 'failed', mergeLog: 'No workspace to merge' };
   }
 
-  if (!existsSync(task.workspace_path)) {
+  if (!(await pathExistsAsync(workspacePath))) {
     return { success: false, status: 'failed', mergeLog: 'Workspace directory not found' };
   }
 
@@ -426,7 +457,7 @@ async function mergeWorktree(
       pushed = true;
     } catch (err) {
       // May not have remote push access
-      console.warn(`[Workspace] Push failed for ${branch}:`, (err as Error).message);
+      logger.warn(`[Workspace] Push failed for ${branch}:`, (err as Error).message);
     }
 
     // Create PR if pushed and requested (or if repo_url suggests GitHub)
@@ -443,7 +474,7 @@ async function mergeWorktree(
           prUrl = result.split('\n').pop()?.trim();
         }
       } catch (err) {
-        console.warn('[Workspace] PR creation failed:', (err as Error).message);
+        logger.warn('[Workspace] PR creation failed:', (err as Error).message);
       }
     }
 
@@ -594,7 +625,7 @@ export function cleanupWorkspace(task: Task): boolean {
 
     return true;
   } catch (err) {
-    console.error(`[Workspace] Cleanup failed for task ${task.id}:`, err);
+    logger.error(`[Workspace] Cleanup failed for task ${task.id}:`, err);
     return false;
   }
 }
@@ -681,7 +712,7 @@ export async function triggerWorkspaceMerge(taskId: string): Promise<MergeResult
     if (queued) {
       // Fire-and-forget the next merge
       triggerWorkspaceMerge(queued.id).catch(err =>
-        console.error('[Workspace] Queued merge failed:', err)
+        logger.error('[Workspace] Queued merge failed:', err)
       );
     }
   }

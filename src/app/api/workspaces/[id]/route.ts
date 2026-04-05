@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 
@@ -23,7 +24,7 @@ export async function GET(
     
     return NextResponse.json(workspace);
   } catch (error) {
-    console.error('Failed to fetch workspace:', error);
+    logger.error('Failed to fetch workspace:', error);
     return NextResponse.json({ error: 'Failed to fetch workspace' }, { status: 500 });
   }
 }
@@ -78,7 +79,7 @@ export async function PATCH(
     const workspace = db.prepare('SELECT * FROM workspaces WHERE id = ?').get(id);
     return NextResponse.json(workspace);
   } catch (error) {
-    console.error('Failed to update workspace:', error);
+    logger.error('Failed to update workspace:', error);
     return NextResponse.json({ error: 'Failed to update workspace' }, { status: 500 });
   }
 }
@@ -129,7 +130,7 @@ export async function DELETE(
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete workspace:', error);
+    logger.error('Failed to delete workspace:', error);
     return NextResponse.json({ error: 'Failed to delete workspace' }, { status: 500 });
   }
 }

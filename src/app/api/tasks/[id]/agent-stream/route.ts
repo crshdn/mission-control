@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest } from 'next/server';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { getActiveSessionForTask } from '@/lib/task-notes';
@@ -113,7 +114,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         // Ensure we're connected
         if (!client.isConnected()) {
           client.connect().catch(err => {
-            console.error('[AgentStream] Failed to connect:', err);
+            logger.error('[AgentStream] Failed to connect:', err);
             send({ type: 'error', message: 'Failed to connect to gateway' });
           });
         }

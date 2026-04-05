@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { queryAll, run } from '@/lib/db';
 import { emitAutopilotActivity } from './activity';
 import type { ResearchCycle, IdeationCycle } from '@/lib/types';
@@ -20,7 +21,7 @@ async function recoverResearchCycles(): Promise<void> {
   );
 
   if (orphaned.length === 0) return;
-  console.log(`[Recovery] Found ${orphaned.length} orphaned research cycle(s)`);
+  logger.info(`[Recovery] Found ${orphaned.length} orphaned research cycle(s)`);
 
   for (const cycle of orphaned) {
     const retryCount = cycle.retry_count || 0;
@@ -58,7 +59,7 @@ async function recoverResearchCycles(): Promise<void> {
             eventType: 'recovery_completed',
             message: 'Research cycle recovered and completed from saved report',
           });
-          console.log(`[Recovery] Completed research cycle ${cycle.id} from phase_data`);
+          logger.info(`[Recovery] Completed research cycle ${cycle.id} from phase_data`);
           continue;
         }
       } catch {
@@ -78,12 +79,12 @@ async function recoverResearchCycles(): Promise<void> {
       eventType: 'recovery_requeued',
       message: `Research cycle re-queued (retry ${retryCount + 1}/${MAX_RETRIES})`,
     });
-    console.log(`[Recovery] Re-queuing research cycle ${cycle.id} (retry ${retryCount + 1})`);
+    logger.info(`[Recovery] Re-queuing research cycle ${cycle.id} (retry ${retryCount + 1})`);
 
     // Dynamically import to avoid circular deps and actually re-run
     const { runResearchCycle } = await import('./research');
     runResearchCycle(cycle.product_id, cycle.id).catch(err =>
-      console.error(`[Recovery] Failed to re-run research cycle ${cycle.id}:`, err)
+      logger.error(`[Recovery] Failed to re-run research cycle ${cycle.id}:`, err)
     );
   }
 }
@@ -94,7 +95,7 @@ async function recoverIdeationCycles(): Promise<void> {
   );
 
   if (orphaned.length === 0) return;
-  console.log(`[Recovery] Found ${orphaned.length} orphaned ideation cycle(s)`);
+  logger.info(`[Recovery] Found ${orphaned.length} orphaned ideation cycle(s)`);
 
   for (const cycle of orphaned) {
     const retryCount = cycle.retry_count || 0;
@@ -127,7 +128,7 @@ async function recoverIdeationCycles(): Promise<void> {
         eventType: 'recovery_completed',
         message: 'Ideation cycle recovered and completed from stored ideas',
       });
-      console.log(`[Recovery] Completed ideation cycle ${cycle.id} from ideas_stored phase`);
+      logger.info(`[Recovery] Completed ideation cycle ${cycle.id} from ideas_stored phase`);
       continue;
     }
 
@@ -138,7 +139,7 @@ async function recoverIdeationCycles(): Promise<void> {
         if (phaseData?.ideas && Array.isArray(phaseData.ideas)) {
           const { storeIdeasFromPhaseData } = await import('./ideation');
           await storeIdeasFromPhaseData(cycle.id, cycle.product_id, cycle.research_cycle_id || null, phaseData.ideas);
-          console.log(`[Recovery] Stored ideas for ideation cycle ${cycle.id} from phase_data`);
+          logger.info(`[Recovery] Stored ideas for ideation cycle ${cycle.id} from phase_data`);
           continue;
         }
       } catch {
@@ -158,11 +159,11 @@ async function recoverIdeationCycles(): Promise<void> {
       eventType: 'recovery_requeued',
       message: `Ideation cycle re-queued (retry ${retryCount + 1}/${MAX_RETRIES})`,
     });
-    console.log(`[Recovery] Re-queuing ideation cycle ${cycle.id} (retry ${retryCount + 1})`);
+    logger.info(`[Recovery] Re-queuing ideation cycle ${cycle.id} (retry ${retryCount + 1})`);
 
     const { runIdeationCycle } = await import('./ideation');
     runIdeationCycle(cycle.product_id, cycle.research_cycle_id || undefined, cycle.id).catch(err =>
-      console.error(`[Recovery] Failed to re-run ideation cycle ${cycle.id}:`, err)
+      logger.error(`[Recovery] Failed to re-run ideation cycle ${cycle.id}:`, err)
     );
   }
 }
@@ -185,5 +186,5 @@ function markInterrupted(
     eventType: 'recovery_interrupted',
     message: `Cycle marked interrupted: ${reason}`,
   });
-  console.log(`[Recovery] Marked ${cycleType} cycle ${cycleId} as interrupted: ${reason}`);
+  logger.info(`[Recovery] Marked ${cycleType} cycle ${cycleId} as interrupted: ${reason}`);
 }

@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 import { IdeaCard } from './IdeaCard';
 import type { Idea } from '@/lib/types';
@@ -23,7 +25,7 @@ export function IdeasList({ productId }: IdeasListProps) {
         const res = await fetch(`/api/products/${productId}/ideas?${params}`);
         if (res.ok) setIdeas(await res.json());
       } catch (error) {
-        console.error('Failed to load ideas:', error);
+        logger.error('Failed to load ideas:', error);
       } finally {
         setLoading(false);
       }

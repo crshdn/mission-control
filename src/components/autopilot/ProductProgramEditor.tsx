@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState } from 'react';
 import { Save } from 'lucide-react';
 import type { Product } from '@/lib/types';
@@ -29,7 +31,7 @@ export function ProductProgramEditor({ product, onSave }: ProductProgramEditorPr
         setTimeout(() => setSaved(false), 2000);
       }
     } catch (error) {
-      console.error('Failed to save program:', error);
+      logger.error('Failed to save program:', error);
     } finally {
       setSaving(false);
     }

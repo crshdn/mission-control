@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { createConvoy } from '@/lib/convoy';
@@ -157,7 +158,7 @@ export async function POST(
       }
     } catch (err) {
       // Convoy creation from planning is best-effort
-      console.warn('[Planning Approve] Convoy auto-creation failed:', err);
+      logger.warn('[Planning Approve] Convoy auto-creation failed:', err);
     }
 
     return NextResponse.json({
@@ -167,7 +168,7 @@ export async function POST(
       convoyCreated,
     });
   } catch (error) {
-    console.error('Failed to approve spec:', error);
+    logger.error('Failed to approve spec:', error);
     return NextResponse.json({ error: 'Failed to approve spec' }, { status: 500 });
   }
 }

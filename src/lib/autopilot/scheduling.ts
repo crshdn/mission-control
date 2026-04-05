@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run } from '@/lib/db';
 import type { ProductSchedule } from '@/lib/types';
@@ -138,10 +139,10 @@ export async function checkAndRunDueSchedules(): Promise<void> {
           break;
         }
         default:
-          console.log(`[Schedule] Unhandled schedule type: ${schedule.schedule_type}`);
+          logger.info(`[Schedule] Unhandled schedule type: ${schedule.schedule_type}`);
       }
     } catch (error) {
-      console.error(`[Schedule] Failed to run ${schedule.schedule_type} for product ${schedule.product_id}:`, error);
+      logger.error(`[Schedule] Failed to run ${schedule.schedule_type} for product ${schedule.product_id}:`, error);
     }
   }
 }

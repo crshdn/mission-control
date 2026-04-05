@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryAll, run } from '@/lib/db';
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(transformedEvents);
   } catch (error) {
-    console.error('Failed to fetch events:', error);
+    logger.error('Failed to fetch events:', error);
     return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 });
   }
 }
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ id, type: body.type, message: body.message, created_at: now }, { status: 201 });
   } catch (error) {
-    console.error('Failed to create event:', error);
+    logger.error('Failed to create event:', error);
     return NextResponse.json({ error: 'Failed to create event' }, { status: 500 });
   }
 }

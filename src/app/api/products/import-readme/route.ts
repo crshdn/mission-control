@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
       { status: 404 }
     );
   } catch (error) {
-    console.error('Import README failed:', error);
+    logger.error('Import README failed:', error);
     return NextResponse.json({ error: 'Failed to import README' }, { status: 500 });
   }
 }

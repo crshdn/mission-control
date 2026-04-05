@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSwipeDeck } from '@/lib/autopilot/swipe';
 
@@ -12,7 +13,7 @@ export async function GET(
     const deck = getSwipeDeck(id);
     return NextResponse.json(deck);
   } catch (error) {
-    console.error('Failed to fetch swipe deck:', error);
+    logger.error('Failed to fetch swipe deck:', error);
     return NextResponse.json({ error: 'Failed to fetch swipe deck' }, { status: 500 });
   }
 }

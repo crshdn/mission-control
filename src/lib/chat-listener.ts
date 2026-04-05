@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Chat Listener — captures agent responses to user chat messages.
  *
@@ -10,15 +11,16 @@ import { queryOne, queryAll } from '@/lib/db';
 import { createNote } from '@/lib/task-notes';
 import { broadcast } from '@/lib/events';
 import type { OpenClawSession } from '@/lib/types';
+import { CHAT_REPLY_TIMEOUT_MS } from '@/lib/constants';
 
 const GLOBAL_LISTENER_KEY = '__chat_listener_attached__';
 
-// Sessions awaiting a reply: sessionKey → { taskId, sentAt }
+// Sessions awaiting a reply: sessionKey → { taskId, sentAt, timeoutId }
 const PENDING_KEY = '__chat_pending_replies__';
 if (!(PENDING_KEY in globalThis)) {
-  (globalThis as Record<string, unknown>)[PENDING_KEY] = new Map<string, { taskId: string; sentAt: number }>();
+  (globalThis as Record<string, unknown>)[PENDING_KEY] = new Map<string, { taskId: string; sentAt: number; timeoutId: ReturnType<typeof setTimeout> }>();
 }
-const pendingReplies = (globalThis as unknown as Record<string, Map<string, { taskId: string; sentAt: number }>>)[PENDING_KEY];
+const pendingReplies = (globalThis as unknown as Record<string, Map<string, { taskId: string; sentAt: number; timeoutId: ReturnType<typeof setTimeout> }>>)[PENDING_KEY];
 
 interface ChatEventPayload {
   runId?: string;
@@ -33,14 +35,20 @@ interface ChatEventPayload {
  * Called by the chat route after sending a message.
  */
 export function expectReply(sessionKey: string, taskId: string): void {
-  pendingReplies.set(sessionKey, { taskId, sentAt: Date.now() });
-  // Auto-expire after 5 minutes
-  setTimeout(() => {
+  // Clear any existing pending reply for this session
+  const existing = pendingReplies.get(sessionKey);
+  if (existing) {
+    clearTimeout(existing.timeoutId);
+  }
+
+  const timeoutId = setTimeout(() => {
     const entry = pendingReplies.get(sessionKey);
-    if (entry && Date.now() - entry.sentAt >= 300000) {
+    if (entry && Date.now() - entry.sentAt >= CHAT_REPLY_TIMEOUT_MS) {
       pendingReplies.delete(sessionKey);
     }
-  }, 300000);
+  }, CHAT_REPLY_TIMEOUT_MS);
+
+  pendingReplies.set(sessionKey, { taskId, sentAt: Date.now(), timeoutId });
 }
 
 function extractContent(message: ChatEventPayload['message']): string {
@@ -81,17 +89,18 @@ export function attachChatListener(): void {
         content.includes('TASK_COMPLETE:') || content.includes('TEST_PASS:') ||
         content.includes('VERIFY_PASS:')) return;
 
-    // Got the reply — store it and clear the pending flag
+    // Got the reply — clear the timeout and pending flag
+    clearTimeout(pending.timeoutId);
     pendingReplies.delete(payload.sessionKey);
 
     try {
-      console.log(`[ChatListener] Agent replied for task ${pending.taskId}: ${content.slice(0, 100)}...`);
+      logger.info(`[ChatListener] Agent replied for task ${pending.taskId}: ${content.slice(0, 100)}...`);
       const note = createNote(pending.taskId, content.trim(), 'direct', 'assistant');
       broadcast({ type: 'note_delivered', payload: { taskId: pending.taskId, noteId: note.id } });
     } catch (err) {
-      console.error('[ChatListener] Failed to store agent response:', err);
+      logger.error('[ChatListener] Failed to store agent response:', err);
     }
   });
 
-  console.log('[ChatListener] Attached to OpenClaw client');
+  logger.info('[ChatListener] Attached to OpenClaw client');
 }

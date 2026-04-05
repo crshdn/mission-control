@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Preference Learning — Karpathy AutoResearch pattern.
  * Analyzes swipe history to build a preference model that steers future research & ideation.
@@ -243,7 +244,7 @@ export function rebuildPreferenceModel(productId: string): void {
   }
 
   broadcast({ type: 'preference_updated', payload: { productId, totalSwipes, approvalRate } });
-  console.log(`[Preferences] Rebuilt model for product ${productId}: ${totalSwipes} swipes, ${approvalRate}% approval`);
+  logger.info(`[Preferences] Rebuilt model for product ${productId}: ${totalSwipes} swipes, ${approvalRate}% approval`);
 }
 
 /**
@@ -260,10 +261,10 @@ export function backfillAllPreferences(): number {
       rebuildPreferenceModel(product_id);
       rebuilt++;
     } catch (err) {
-      console.error(`[Preferences] Failed to rebuild for ${product_id}:`, err);
+      logger.error(`[Preferences] Failed to rebuild for ${product_id}:`, err);
     }
   }
 
-  console.log(`[Preferences] Backfilled ${rebuilt} product(s)`);
+  logger.info(`[Preferences] Backfilled ${rebuilt} product(s)`);
   return rebuilt;
 }

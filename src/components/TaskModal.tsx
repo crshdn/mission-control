@@ -1,6 +1,10 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useShallow } from 'zustand/react/shallow';
 import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus, Users, ImageIcon, Truck, Radio, MessageSquare, ExternalLink, HardDrive } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { triggerAutoDispatch, shouldTriggerAutoDispatch } from '@/lib/auto-dispatch';
@@ -26,7 +30,15 @@ interface TaskModalProps {
 }
 
 export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
-  const { agents, addTask, updateTask, addEvent } = useMissionControl();
+  const router = useRouter();
+  const { agents, addTask, updateTask, addEvent } = useMissionControl(
+    useShallow((state) => ({
+      agents: state.agents,
+      addTask: state.addTask,
+      updateTask: state.updateTask,
+      addEvent: state.addEvent,
+    }))
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAgentModal, setShowAgentModal] = useState(false);
   const [usePlanningMode, setUsePlanningMode] = useState(false);
@@ -35,10 +47,10 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
     task?.status === 'planning' ? 'planning' : task?.status === 'convoy_active' ? 'convoy' : 'overview'
   );
 
-  // Stable callback for when spec is locked - use window.location.reload() to refresh data
+  // Refresh data when spec is locked (planning completed)
   const handleSpecLocked = useCallback(() => {
-    window.location.reload();
-  }, []);
+    router.refresh();
+  }, [router]);
 
   const [form, setForm] = useState({
     title: task?.title || '',
@@ -110,7 +122,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
             agentId: savedTask.assigned_agent_id,
             agentName: savedTask.assigned_agent?.name || 'Unknown Agent',
             workspaceId: savedTask.workspace_id
-          }).catch((err) => console.error('Auto-dispatch failed:', err));
+          }).catch((err) => logger.error('Auto-dispatch failed:', err));
         }
 
         onClose();
@@ -131,7 +143,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
         // Start planning session (fire-and-forget), then close modal.
         // User reopens the task from the board to see the planning tab.
         fetch(`/api/tasks/${savedTask.id}/planning`, { method: 'POST' })
-          .catch((error) => console.error('Failed to start planning:', error));
+          .catch((error) => logger.error('Failed to start planning:', error));
         onClose();
         return;
       }
@@ -144,7 +156,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
           agentId: savedTask.assigned_agent_id,
           agentName: savedTask.assigned_agent?.name || 'Unknown Agent',
           workspaceId: savedTask.workspace_id
-        }).catch((err) => console.error('Auto-dispatch failed:', err));
+        }).catch((err) => logger.error('Auto-dispatch failed:', err));
       }
 
       if (keepOpen) {
@@ -162,7 +174,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
         onClose();
       }
     } catch (error) {
-      console.error('Failed to save task:', error);
+      logger.error('Failed to save task:', error);
       setSaveError(error instanceof Error ? error.message : 'Network error — please try again');
     } finally {
       setIsSubmitting(false);
@@ -181,7 +193,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
         onClose();
       }
     } catch (error) {
-      console.error('Failed to delete task:', error);
+      logger.error('Failed to delete task:', error);
     }
   };
 

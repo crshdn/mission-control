@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { complete } from '@/lib/autopilot/llm';
 
@@ -130,7 +131,7 @@ Respond with ONLY the description text, nothing else. No quotes, no labels, no m
 
     return NextResponse.json({ description: result.content.trim() });
   } catch (error) {
-    console.error('Generate description failed:', error);
+    logger.error('Generate description failed:', error);
     return NextResponse.json({ error: 'Failed to generate description' }, { status: 500 });
   }
 }

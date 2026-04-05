@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Task Activities API
  * Endpoints for logging and retrieving task activities
@@ -17,10 +18,10 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const taskId = params.id;
+    const { id: taskId } = await params;
     const db = getDb();
 
     // Get activities with agent info
@@ -34,21 +35,21 @@ export async function GET(
       LEFT JOIN agents ag ON a.agent_id = ag.id
       WHERE a.task_id = ?
       ORDER BY a.created_at DESC
-    `).all(taskId) as any[];
+    `).all(taskId) as { id: string; task_id: string; agent_id?: string; activity_type: TaskActivity['activity_type']; message: string; metadata?: string; created_at: string; agent_name?: string; agent_avatar_emoji?: string }[];
 
     // Transform to include agent object
     const result: TaskActivity[] = activities.map(row => ({
       id: row.id,
       task_id: row.task_id,
-      agent_id: row.agent_id,
+      agent_id: row.agent_id || undefined,
       activity_type: row.activity_type,
       message: row.message,
-      metadata: row.metadata,
+      metadata: row.metadata || undefined,
       created_at: row.created_at,
       agent: row.agent_id ? {
         id: row.agent_id,
-        name: row.agent_name,
-        avatar_emoji: row.agent_avatar_emoji,
+        name: row.agent_name || '',
+        avatar_emoji: row.agent_avatar_emoji || '',
         role: '',
         status: 'working' as const,
         is_master: false,
@@ -62,7 +63,7 @@ export async function GET(
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error fetching activities:', error);
+    logger.error('Error fetching activities:', error);
     return NextResponse.json(
       { error: 'Failed to fetch activities' },
       { status: 500 }
@@ -76,10 +77,10 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const taskId = params.id;
+    const { id: taskId } = await params;
     const body = await request.json();
     
     // Validate input with Zod
@@ -119,20 +120,20 @@ export async function POST(
       FROM task_activities a
       LEFT JOIN agents ag ON a.agent_id = ag.id
       WHERE a.id = ?
-    `).get(id) as any;
+    `).get(id) as { id: string; task_id: string; agent_id?: string; activity_type: TaskActivity['activity_type']; message: string; metadata?: string; created_at: string; agent_name?: string; agent_avatar_emoji?: string };
 
     const result: TaskActivity = {
       id: activity.id,
       task_id: activity.task_id,
-      agent_id: activity.agent_id,
+      agent_id: activity.agent_id || undefined,
       activity_type: activity.activity_type,
       message: activity.message,
-      metadata: activity.metadata,
+      metadata: activity.metadata || undefined,
       created_at: activity.created_at,
       agent: activity.agent_id ? {
         id: activity.agent_id,
-        name: activity.agent_name,
-        avatar_emoji: activity.agent_avatar_emoji,
+        name: activity.agent_name || '',
+        avatar_emoji: activity.agent_avatar_emoji || '',
         role: '',
         status: 'working' as const,
         is_master: false,
@@ -152,7 +153,7 @@ export async function POST(
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    console.error('Error creating activity:', error);
+    logger.error('Error creating activity:', error);
     return NextResponse.json(
       { error: 'Failed to create activity' },
       { status: 500 }

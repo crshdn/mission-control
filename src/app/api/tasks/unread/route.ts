@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryAll } from '@/lib/db';
 
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(enriched);
   } catch (error) {
-    console.error('Failed to fetch unread counts:', error);
+    logger.error('Failed to fetch unread counts:', error);
     return NextResponse.json({ error: 'Failed to fetch unread counts' }, { status: 500 });
   }
 }

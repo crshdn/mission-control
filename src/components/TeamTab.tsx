@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 import { Users, Save, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
@@ -59,7 +61,7 @@ export function TeamTab({ taskId, workspaceId }: TeamTabProps) {
           setSelectedWorkflow(task.workflow_template_id || '');
         }
       } catch (err) {
-        console.error('Failed to load team data:', err);
+        logger.error('Failed to load team data:', err);
       } finally {
         setLoading(false);
       }

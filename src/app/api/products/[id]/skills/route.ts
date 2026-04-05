@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createSkill, getSkillsForProduct } from '@/lib/skills';
 
@@ -47,7 +48,7 @@ export async function POST(
 
     return NextResponse.json(skill, { status: 201 });
   } catch (error) {
-    console.error('Failed to create skill:', error);
+    logger.error('Failed to create skill:', error);
     return NextResponse.json({ error: 'Failed to create skill' }, { status: 500 });
   }
 }

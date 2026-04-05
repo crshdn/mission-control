@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, ChevronRight, ChevronLeft, Zap, ZapOff, Loader2, Search } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
@@ -41,7 +43,7 @@ export function AgentsSidebar({ workspaceId, mobileMode = false, isPortrait = tr
           }
         }
       } catch (error) {
-        console.error(`Failed to load OpenClaw session for ${agent.name}:`, error);
+        logger.error(`Failed to load OpenClaw session for ${agent.name}:`, error);
       }
     }
   }, [agents, setAgentOpenClawSession]);
@@ -61,7 +63,7 @@ export function AgentsSidebar({ workspaceId, mobileMode = false, isPortrait = tr
           setActiveSubAgents(sessions.length);
         }
       } catch (error) {
-        console.error('Failed to load sub-agent count:', error);
+        logger.error('Failed to load sub-agent count:', error);
       }
     };
 
@@ -110,12 +112,12 @@ export function AgentsSidebar({ workspaceId, mobileMode = false, isPortrait = tr
           setAgentOpenClawSession(agent.id, data.session as OpenClawSession);
         } else {
           const error = await res.json();
-          console.error('Failed to connect to OpenClaw:', error);
+          logger.error('Failed to connect to OpenClaw:', error);
           alert(`Failed to connect: ${error.error || 'Unknown error'}`);
         }
       }
     } catch (error) {
-      console.error('OpenClaw connection error:', error);
+      logger.error('OpenClaw connection error:', error);
     } finally {
       setConnectingAgentId(null);
     }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createNote, getTaskNotes, getActiveSessionForTask, markNotesDelivered } from '@/lib/task-notes';
 import { getOpenClawClient } from '@/lib/openclaw/client';
@@ -23,7 +24,7 @@ export async function GET(
     const notes = getTaskNotes(id);
     return NextResponse.json(notes);
   } catch (error) {
-    console.error('Failed to fetch task notes:', error);
+    logger.error('Failed to fetch task notes:', error);
     return NextResponse.json({ error: 'Failed to fetch task notes' }, { status: 500 });
   }
 }
@@ -74,10 +75,10 @@ export async function POST(
           delivered = true;
           markNotesDelivered([note.id]);
           expectReply(sessionInfo.sessionKey, taskId);
-          console.log(`[Chat] Message delivered via chat.send to ${sessionInfo.sessionKey}`);
+          logger.info(`[Chat] Message delivered via chat.send to ${sessionInfo.sessionKey}`);
         }
       } catch {
-        console.log('[Chat] chat.send timed out — will try dispatch fallback');
+        logger.info('[Chat] chat.send timed out — will try dispatch fallback');
       }
     }
 
@@ -104,25 +105,25 @@ export async function POST(
           // Track the session for reply capture
           const freshSession = getActiveSessionForTask(taskId);
           if (freshSession) expectReply(freshSession.sessionKey, taskId);
-          console.log(`[Chat] Message delivered via dispatch for task ${taskId}`);
+          logger.info(`[Chat] Message delivered via dispatch for task ${taskId}`);
         } else {
           const errText = await dispatchRes.text();
-          console.warn(`[Chat] Dispatch fallback failed (${dispatchRes.status}):`, errText);
+          logger.warn(`[Chat] Dispatch fallback failed (${dispatchRes.status}):`, errText);
         }
       } catch (err) {
-        console.error('[Chat] Dispatch fallback error:', err);
+        logger.error('[Chat] Dispatch fallback error:', err);
       }
     }
 
     if (!delivered) {
-      console.log(`[Chat] Message queued as pending note for task ${taskId} (status: ${task.status})`);
+      logger.info(`[Chat] Message queued as pending note for task ${taskId} (status: ${task.status})`);
     }
 
     // Return the saved note
     const updatedNote = getTaskNotes(taskId).find(n => n.id === note.id) || note;
     return NextResponse.json(updatedNote, { status: 201 });
   } catch (error) {
-    console.error('Failed to send chat message:', error);
+    logger.error('Failed to send chat message:', error);
     return NextResponse.json({ error: 'Failed to send message' }, { status: 500 });
   }
 }

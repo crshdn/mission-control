@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ImagePlus, X, Loader2 } from 'lucide-react';
 import type { TaskImage } from '@/lib/types';
+import Image from 'next/image';
 
 interface TaskImagesProps {
   taskId: string;
@@ -107,9 +108,11 @@ export function TaskImages({ taskId }: TaskImagesProps) {
         <div className="grid grid-cols-2 gap-2">
           {images.map((img) => (
             <div key={img.filename} className="group relative rounded-lg overflow-hidden border border-mc-border bg-mc-bg">
-              <img
+              <Image
                 src={`/api/task-images/${taskId}/${img.filename}`}
                 alt={img.original_name}
+                width={400}
+                height={128}
                 className="w-full h-32 object-cover"
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSwipeHistory } from '@/lib/autopilot/swipe';
 
@@ -14,7 +15,7 @@ export async function GET(
     const history = getSwipeHistory(id, limit);
     return NextResponse.json(history);
   } catch (error) {
-    console.error('Failed to fetch swipe history:', error);
+    logger.error('Failed to fetch swipe history:', error);
     return NextResponse.json({ error: 'Failed to fetch swipe history' }, { status: 500 });
   }
 }

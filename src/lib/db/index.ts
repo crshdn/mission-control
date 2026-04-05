@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
@@ -26,14 +27,14 @@ export function getDb(): Database.Database {
 
     // Recover orphaned autopilot cycles from prior crash/restart
     import('@/lib/autopilot/recovery').then(({ recoverOrphanedCycles }) =>
-      recoverOrphanedCycles().catch(err => console.warn('[Recovery] Failed:', err))
+      recoverOrphanedCycles().catch(err => logger.warn('[Recovery] Failed:', err))
     );
 
     // Keep Mission Control's agent catalog synced with OpenClaw-installed agents
     ensureCatalogSyncScheduled();
     
     if (isNewDb) {
-      console.log('[DB] New database created at:', DB_PATH);
+      logger.info('[DB] New database created at:', DB_PATH);
     }
   }
   return db;

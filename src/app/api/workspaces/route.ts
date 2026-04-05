@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { bootstrapCoreAgents, cloneWorkflowTemplates } from '@/lib/bootstrap-agents';
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
     const workspaces = db.prepare('SELECT * FROM workspaces ORDER BY name').all();
     return NextResponse.json(workspaces);
   } catch (error) {
-    console.error('Failed to fetch workspaces:', error);
+    logger.error('Failed to fetch workspaces:', error);
     return NextResponse.json({ error: 'Failed to fetch workspaces' }, { status: 500 });
   }
 }
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
     const workspace = db.prepare('SELECT * FROM workspaces WHERE id = ?').get(id);
     return NextResponse.json(workspace, { status: 201 });
   } catch (error) {
-    console.error('Failed to create workspace:', error);
+    logger.error('Failed to create workspace:', error);
     return NextResponse.json({ error: 'Failed to create workspace' }, { status: 500 });
   }
 }

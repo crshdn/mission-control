@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, queryAll, queryOne, run } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
@@ -62,7 +63,7 @@ export async function GET(
       isStarted: messages.length > 0,
     });
   } catch (error) {
-    console.error('Failed to get planning state:', error);
+    logger.error('Failed to get planning state:', error);
     return NextResponse.json({ error: 'Failed to get planning state' }, { status: 500 });
   }
 }
@@ -196,7 +197,7 @@ Respond with ONLY valid JSON in this format:
       note: 'Planning started. Poll GET endpoint for updates.',
     });
   } catch (error) {
-    console.error('Failed to start planning:', error);
+    logger.error('Failed to start planning:', error);
     return NextResponse.json({ error: 'Failed to start planning: ' + (error as Error).message }, { status: 500 });
   }
 }
@@ -241,13 +242,13 @@ export async function DELETE(
     if (updatedTask) {
       broadcast({
         type: 'task_updated',
-        payload: updatedTask as any, // Cast to any to satisfy SSEEvent payload union type
+        payload: updatedTask as Record<string, unknown>, // Cast to Record<string, unknown> to satisfy SSEEvent payload union type
       });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to cancel planning:', error);
+    logger.error('Failed to cancel planning:', error);
     return NextResponse.json({ error: 'Failed to cancel planning: ' + (error as Error).message }, { status: 500 });
   }
 }

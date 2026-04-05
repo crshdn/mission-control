@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run } from '@/lib/db';
@@ -36,7 +37,7 @@ export async function GET(
 
     return NextResponse.json(task);
   } catch (error) {
-    console.error('Failed to fetch task:', error);
+    logger.error('Failed to fetch task:', error);
     return NextResponse.json({ error: 'Failed to fetch task' }, { status: 500 });
   }
 }
@@ -69,7 +70,7 @@ export async function PATCH(
 
     // Keep OpenClaw agent catalog synced opportunistically on task updates
     await syncGatewayAgentsToCatalog({ reason: 'task_patch' }).catch(err => {
-      console.warn('[Task PATCH] agent catalog sync failed:', err);
+      logger.warn('[Task PATCH] agent catalog sync failed:', err);
     });
 
     const updates: string[] = [];
@@ -139,7 +140,7 @@ export async function PATCH(
     if (!effectiveAssignedAgentId) readinessIssues.push('No agent assigned');
 
     // If task came from planning mode, require planning to be complete before auto-start
-    const planningComplete = Number((existing as any).planning_complete || 0) === 1;
+    const planningComplete = Number((existing as Task & { planning_complete?: number }).planning_complete || 0) === 1;
     if (existing.status === 'planning' && !planningComplete) {
       readinessIssues.push('Planning not complete');
     }
@@ -320,12 +321,12 @@ export async function PATCH(
           if (!dispatchRes.ok) {
             const errorText = await dispatchRes.text();
             const dispatchError = `Auto-dispatch failed (${dispatchRes.status}): ${errorText}`;
-            console.error(dispatchError);
+            logger.error(dispatchError);
             run('UPDATE tasks SET planning_dispatch_error = ?, updated_at = ? WHERE id = ?', [dispatchError, now, id]);
           }
         } catch (err) {
           const dispatchError = `Auto-dispatch error: ${(err as Error).message}`;
-          console.error(dispatchError);
+          logger.error(dispatchError);
           run('UPDATE tasks SET planning_dispatch_error = ?, updated_at = ? WHERE id = ?', [dispatchError, now, id]);
         }
       }
@@ -345,7 +346,7 @@ export async function PATCH(
       });
 
       if (stageResult.handedOff) {
-        console.log(`[PATCH] Workflow handoff: ${existing.status} → ${nextStatus} → agent ${stageResult.newAgentName}`);
+        logger.info(`[PATCH] Workflow handoff: ${existing.status} → ${nextStatus} → agent ${stageResult.newAgentName}`);
         // Re-fetch task to include updated agent assignment
         const refreshed = queryOne<Task>(
           `SELECT t.*, aa.name as assigned_agent_name, aa.avatar_emoji as assigned_agent_emoji
@@ -354,7 +355,7 @@ export async function PATCH(
         );
         if (refreshed) broadcast({ type: 'task_updated', payload: refreshed });
       } else if (!stageResult.success && stageResult.error) {
-        console.warn(`[PATCH] Workflow handoff blocked: ${stageResult.error}`);
+        logger.warn(`[PATCH] Workflow handoff blocked: ${stageResult.error}`);
         // Broadcast so the UI picks up the dispatch error banner
         const refreshed = queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [id]);
         if (refreshed) broadcast({ type: 'task_updated', payload: refreshed });
@@ -364,7 +365,7 @@ export async function PATCH(
     // Agent manually assigned to a task already in a workflow stage — dispatch directly
     if (shouldDispatchWorkflowStage && effectiveAssignedAgentId) {
       const currentStatus = nextStatus || existing.status;
-      console.log(`[PATCH] Agent assigned in workflow stage "${currentStatus}" — dispatching`);
+      logger.info(`[PATCH] Agent assigned in workflow stage "${currentStatus}" — dispatching`);
       // Clear any previous dispatch error
       run('UPDATE tasks SET planning_dispatch_error = NULL, updated_at = ? WHERE id = ?', [now, id]);
 
@@ -381,11 +382,11 @@ export async function PATCH(
         });
         if (!dispatchRes.ok) {
           const errorText = await dispatchRes.text();
-          console.error(`[PATCH] Workflow stage dispatch failed: ${errorText}`);
+          logger.error(`[PATCH] Workflow stage dispatch failed: ${errorText}`);
           run('UPDATE tasks SET planning_dispatch_error = ?, updated_at = ? WHERE id = ?', [`Dispatch failed (${dispatchRes.status}): ${errorText}`, now, id]);
         }
       } catch (err) {
-        console.error('[PATCH] Workflow stage dispatch error:', err);
+        logger.error('[PATCH] Workflow stage dispatch error:', err);
         run('UPDATE tasks SET planning_dispatch_error = ?, updated_at = ? WHERE id = ?', [`Dispatch error: ${(err as Error).message}`, now, id]);
       }
       // Re-broadcast with latest state
@@ -429,7 +430,7 @@ export async function PATCH(
     // Learner must record every stage transition (non-blocking)
     if (nextStatus && nextStatus !== existing.status) {
       recordLearnerOnTransition(id, existing.status, nextStatus, true).catch(err =>
-        console.error('[Learner] notification failed:', err)
+        logger.error('[Learner] notification failed:', err)
       );
     }
 
@@ -441,7 +442,7 @@ export async function PATCH(
           checkConvoyCompletion(existing.convoy_id);
         }
       } catch (err) {
-        console.error('[Convoy] progress update failed:', err);
+        logger.error('[Convoy] progress update failed:', err);
       }
     }
 
@@ -449,7 +450,7 @@ export async function PATCH(
     if (nextStatus === 'done' && existing.product_id) {
       import('@/lib/skill-extraction').then(({ extractSkillsFromTask }) =>
         extractSkillsFromTask(id).catch(err =>
-          console.error('[Skills] extraction failed:', err)
+          logger.error('[Skills] extraction failed:', err)
         )
       );
     }
@@ -457,20 +458,20 @@ export async function PATCH(
     // Drain the review queue when a task reaches 'done' (frees the verification slot)
     if (nextStatus === 'done') {
       drainQueue(id, existing.workspace_id).catch(err =>
-        console.error('[Workflow] drainQueue after done failed:', err)
+        logger.error('[Workflow] drainQueue after done failed:', err)
       );
 
       // Trigger workspace merge if task has an isolated workspace
       if (existing.workspace_path) {
         triggerWorkspaceMerge(id).catch(err =>
-          console.error('[Workspace] merge after done failed:', err)
+          logger.error('[Workspace] merge after done failed:', err)
         );
       }
     }
 
     return NextResponse.json(task);
   } catch (error) {
-    console.error('Failed to update task:', error);
+    logger.error('Failed to update task:', error);
     return NextResponse.json({ error: 'Failed to update task' }, { status: 500 });
   }
 }
@@ -540,7 +541,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete task:', error);
+    logger.error('Failed to delete task:', error);
     return NextResponse.json({ error: 'Failed to delete task' }, { status: 500 });
   }
 }

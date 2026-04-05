@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createCostCap, listCostCaps } from '@/lib/costs/caps';
 import { CreateCostCapSchema } from '@/lib/validation';
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
     const caps = listCostCaps(workspaceId, productId);
     return NextResponse.json(caps);
   } catch (error) {
-    console.error('Failed to list cost caps:', error);
+    logger.error('Failed to list cost caps:', error);
     return NextResponse.json({ error: 'Failed to list cost caps' }, { status: 500 });
   }
 }
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     const cap = createCostCap(validation.data);
     return NextResponse.json(cap, { status: 201 });
   } catch (error) {
-    console.error('Failed to create cost cap:', error);
+    logger.error('Failed to create cost cap:', error);
     return NextResponse.json({ error: 'Failed to create cost cap' }, { status: 500 });
   }
 }

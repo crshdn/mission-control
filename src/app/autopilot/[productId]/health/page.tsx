@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -60,7 +62,7 @@ export default function HealthDashboardPage() {
       if (prodRes.ok) setProduct(await prodRes.json());
       if (healthRes.ok) setHealth(await healthRes.json());
     } catch (err) {
-      console.error('Failed to load health data:', err);
+      logger.error('Failed to load health data:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -98,7 +100,7 @@ export default function HealthDashboardPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Export failed:', err);
+      logger.error('Export failed:', err);
     }
   }
 

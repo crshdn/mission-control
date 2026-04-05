@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryAll } from '@/lib/db';
 import type { IdeationCycle } from '@/lib/types';
@@ -16,7 +17,7 @@ export async function GET(
     );
     return NextResponse.json(cycles);
   } catch (error) {
-    console.error('Failed to fetch ideation cycles:', error);
+    logger.error('Failed to fetch ideation cycles:', error);
     return NextResponse.json({ error: 'Failed to fetch ideation cycles' }, { status: 500 });
   }
 }

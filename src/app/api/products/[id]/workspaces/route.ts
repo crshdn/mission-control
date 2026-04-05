@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getActiveWorkspaces } from '@/lib/workspace-isolation';
 
@@ -13,7 +14,7 @@ export async function GET(
     const workspaces = getActiveWorkspaces(id);
     return NextResponse.json({ productId: id, activeWorkspaces: workspaces });
   } catch (error) {
-    console.error('Failed to list product workspaces:', error);
+    logger.error('Failed to list product workspaces:', error);
     return NextResponse.json({ error: 'Failed to list workspaces' }, { status: 500 });
   }
 }

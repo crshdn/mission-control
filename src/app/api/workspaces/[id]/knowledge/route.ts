@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryAll, run } from '@/lib/db';
 
@@ -42,7 +43,7 @@ export async function GET(
 
     return NextResponse.json(parsed);
   } catch (error) {
-    console.error('Failed to fetch knowledge entries:', error);
+    logger.error('Failed to fetch knowledge entries:', error);
     return NextResponse.json({ error: 'Failed to fetch entries' }, { status: 500 });
   }
 }
@@ -83,7 +84,7 @@ export async function POST(
 
     return NextResponse.json({ id, message: 'Knowledge entry created' }, { status: 201 });
   } catch (error) {
-    console.error('Failed to create knowledge entry:', error);
+    logger.error('Failed to create knowledge entry:', error);
     return NextResponse.json({ error: 'Failed to create entry' }, { status: 500 });
   }
 }

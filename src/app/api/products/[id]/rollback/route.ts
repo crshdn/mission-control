@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * POST /api/products/[id]/rollback — Manual rollback trigger
  * Body: { pr_url: string, commit_sha: string, reason?: string, task_id?: string }
@@ -29,16 +30,17 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [params.id]);
+    const { id } = await params;
+    const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [id]);
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    const history = listRollbackHistory(params.id);
-    const unacknowledged = getUnacknowledgedRollbacks(params.id);
+    const history = listRollbackHistory(id);
+    const unacknowledged = getUnacknowledgedRollbacks(id);
 
     return NextResponse.json({
       rollbacks: history,
@@ -47,7 +49,7 @@ export async function GET(
       currentTier: getProductSettings(product).automation_tier || null,
     });
   } catch (err) {
-    console.error('[API] Failed to list product rollbacks:', err);
+    logger.error('[API] Failed to list product rollbacks:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Failed to list rollbacks' },
       { status: 500 }
@@ -61,10 +63,11 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [params.id]);
+    const { id } = await params;
+    const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [id]);
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
@@ -80,10 +83,10 @@ export async function POST(
     }
 
     // Stop any active monitor for this product
-    stopMonitor(params.id);
+    stopMonitor(id);
 
     const result = await executeRollback({
-      productId: params.id,
+      productId: id,
       taskId: task_id,
       triggerType: 'manual',
       triggerDetails: reason || 'Manual rollback triggered via API',
@@ -98,7 +101,7 @@ export async function POST(
       revertSuccess: result.success,
     }, { status: 201 });
   } catch (err) {
-    console.error('[API] Failed to trigger rollback:', err);
+    logger.error('[API] Failed to trigger rollback:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Failed to trigger rollback' },
       { status: 500 }
@@ -112,10 +115,11 @@ export async function POST(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [params.id]);
+    const { id } = await params;
+    const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [id]);
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
@@ -135,7 +139,7 @@ export async function PATCH(
 
     // Optionally restore automation tier
     if (restore_tier && ['supervised', 'semi_auto', 'full_auto'].includes(restore_tier)) {
-      updateProductSettings(params.id, { automation_tier: restore_tier });
+      updateProductSettings(id, { automation_tier: restore_tier });
     }
 
     return NextResponse.json({
@@ -144,7 +148,7 @@ export async function PATCH(
       restoredTier: restore_tier || null,
     });
   } catch (err) {
-    console.error('[API] Failed to acknowledge rollback:', err);
+    logger.error('[API] Failed to acknowledge rollback:', err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Failed to acknowledge rollback' },
       { status: 500 }

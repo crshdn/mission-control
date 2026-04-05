@@ -208,7 +208,7 @@ describe('DB Schema - Migration 022', () => {
       'INSERT INTO idea_embeddings (id, idea_id, product_id, embedding, text_hash) VALUES (?, ?, ?, ?, ?)'
     ).run('emb-1', 'idea-1', 'test-product', JSON.stringify(embedding), 'hash123');
 
-    const row = db.prepare('SELECT * FROM idea_embeddings WHERE idea_id = ?').get('idea-1') as any;
+    const row = db.prepare('SELECT * FROM idea_embeddings WHERE idea_id = ?').get('idea-1') as { idea_id: string; product_id: string; embedding: string } | undefined;
     assert.ok(row, 'Embedding row should exist');
     assert.equal(row.idea_id, 'idea-1');
     assert.equal(row.product_id, 'test-product');
@@ -244,7 +244,7 @@ describe('DB Schema - Migration 022', () => {
       'INSERT INTO idea_suppressions (id, product_id, suppressed_title, suppressed_description, similar_to_idea_id, similarity_score, reason) VALUES (?, ?, ?, ?, ?, ?, ?)'
     ).run('sup-1', 'test-product', 'New Similar Idea', 'Similar desc', 'rejected-1', 0.95, '95% similar to rejected idea');
 
-    const row = db.prepare('SELECT * FROM idea_suppressions WHERE id = ?').get('sup-1') as any;
+    const row = db.prepare('SELECT * FROM idea_suppressions WHERE id = ?').get('sup-1') as { suppressed_title: string; similarity_score: number } | undefined;
     assert.ok(row);
     assert.equal(row.suppressed_title, 'New Similar Idea');
     assert.equal(row.similarity_score, 0.95);

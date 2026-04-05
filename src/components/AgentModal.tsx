@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 import { X, Save, Trash2 } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
@@ -70,7 +72,7 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
           }
         }
       } catch (error) {
-        console.error('Failed to load models:', error);
+        logger.error('Failed to load models:', error);
       } finally {
         setModelsLoading(false);
       }
@@ -113,7 +115,7 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
         onClose();
       }
     } catch (error) {
-      console.error('Failed to save agent:', error);
+      logger.error('Failed to save agent:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -133,7 +135,7 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
         onClose();
       }
     } catch (error) {
-      console.error('Failed to delete agent:', error);
+      logger.error('Failed to delete agent:', error);
     }
   };
 

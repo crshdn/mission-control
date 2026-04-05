@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { updateSkill, reportSkillUsage } from '@/lib/skills';
 import { queryOne } from '@/lib/db';
@@ -28,7 +29,7 @@ export async function PATCH(
 
     return NextResponse.json(skill);
   } catch (error) {
-    console.error('Failed to update skill:', error);
+    logger.error('Failed to update skill:', error);
     return NextResponse.json({ error: 'Failed to update skill' }, { status: 500 });
   }
 }

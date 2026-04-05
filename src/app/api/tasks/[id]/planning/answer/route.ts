@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
@@ -89,12 +90,12 @@ If planning is complete, respond with JSON:
     // Connect to OpenClaw and send the answer
     const client = getOpenClawClient();
     if (!client.isConnected()) {
-      console.log('[Planning Answer] Connecting to OpenClaw...');
+      logger.info('[Planning Answer] Connecting to OpenClaw...');
       await client.connect();
     }
 
-    console.log('[Planning Answer] Sending answer to OpenClaw, session:', task.planning_session_key);
-    console.log('[Planning Answer] Answer text:', answerText);
+    logger.info('[Planning Answer] Sending answer to OpenClaw, session:', task.planning_session_key);
+    logger.info('[Planning Answer] Answer text:', answerText);
 
     try {
       const sendResult = await client.call('chat.send', {
@@ -102,9 +103,9 @@ If planning is complete, respond with JSON:
         message: answerPrompt,
         idempotencyKey: `planning-answer-${taskId}-${Date.now()}`,
       });
-      console.log('[Planning Answer] Send successful, result:', sendResult);
+      logger.info('[Planning Answer] Send successful, result:', sendResult);
     } catch (sendError) {
-      console.error('[Planning Answer] Failed to send to OpenClaw:', sendError);
+      logger.error('[Planning Answer] Failed to send to OpenClaw:', sendError);
       return NextResponse.json({ error: 'Failed to send answer to orchestrator: ' + (sendError as Error).message }, { status: 500 });
     }
 
@@ -124,7 +125,7 @@ If planning is complete, respond with JSON:
       note: 'Answer submitted. Poll GET endpoint for updates.',
     });
   } catch (error) {
-    console.error('Failed to submit answer:', error);
+    logger.error('Failed to submit answer:', error);
     return NextResponse.json({ error: 'Failed to submit answer: ' + (error as Error).message }, { status: 500 });
   }
 }

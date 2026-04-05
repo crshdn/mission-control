@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne } from '@/lib/db';
 import {
@@ -22,10 +23,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const task = queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [id]);
     if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
 
-    const status = getWorkspaceStatus(task);
+    const status = await getWorkspaceStatus(task);
     return NextResponse.json(status);
   } catch (error) {
-    console.error('Failed to get workspace status:', error);
+    logger.error('Failed to get workspace status:', error);
     return NextResponse.json({ error: 'Failed to get workspace status' }, { status: 500 });
   }
 }
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
     }
   } catch (error) {
-    console.error('Workspace operation failed:', error);
+    logger.error('Workspace operation failed:', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

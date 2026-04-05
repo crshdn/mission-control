@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run, transaction } from '@/lib/db';
 import { broadcast } from '@/lib/events';
@@ -194,7 +195,7 @@ export function checkConvoyCompletion(convoyId: string): boolean {
       newStatus: 'review',
       passed: true,
       context: `Convoy completed successfully with ${total} sub-tasks.`,
-    }).catch(err => console.error('[Learner] convoy completion notification failed:', err));
+    }).catch(err => logger.error('[Learner] convoy completion notification failed:', err));
 
     return true;
   }
@@ -216,7 +217,7 @@ export function checkConvoyCompletion(convoyId: string): boolean {
       newStatus: 'review',
       passed: false,
       failReason: `Convoy failed: ${failed} of ${total} sub-tasks failed (threshold exceeded).`,
-    }).catch(err => console.error('[Learner] convoy failure notification failed:', err));
+    }).catch(err => logger.error('[Learner] convoy failure notification failed:', err));
   }
 
   return false;

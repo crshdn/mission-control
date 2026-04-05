@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -56,7 +58,7 @@ export default function WorkspacePage() {
           return;
         }
       } catch (error) {
-        console.error('Failed to load workspace:', error);
+        logger.error('Failed to load workspace:', error);
         setNotFound(true);
         setIsLoading(false);
         return;
@@ -95,7 +97,7 @@ export default function WorkspacePage() {
         }
         if (eventsRes.ok) setEvents(await eventsRes.json());
       } catch (error) {
-        console.error('Failed to load data:', error);
+        logger.error('Failed to load data:', error);
       } finally {
         setIsLoading(false);
       }
@@ -128,7 +130,7 @@ export default function WorkspacePage() {
           setEvents(await res.json());
         }
       } catch (error) {
-        console.error('Failed to poll events:', error);
+        logger.error('Failed to poll events:', error);
       }
     }, 30000);
 
@@ -152,7 +154,7 @@ export default function WorkspacePage() {
           }
         }
       } catch (error) {
-        console.error('Failed to poll tasks:', error);
+        logger.error('Failed to poll tasks:', error);
       }
     }, 60000);
 

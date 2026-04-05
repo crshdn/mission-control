@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
@@ -92,7 +93,7 @@ async function discoverModelsRemote(): Promise<{
       availableModels: Array.from(new Set(availableModels)).sort(),
     };
   } catch (error) {
-    console.warn('[models] Remote discovery failed:', error instanceof Error ? error.message : error);
+    logger.warn('[models] Remote discovery failed:', error instanceof Error ? error.message : error);
     return null;
   }
 }
@@ -115,7 +116,7 @@ function discoverModelsLocal(): Promise<{
     // Security: Check file size before reading to prevent DoS
     const stats = statSync(configPath);
     if (stats.size > MAX_CONFIG_SIZE_BYTES) {
-      console.warn(`[models] Local config too large (${(stats.size / 1024).toFixed(0)}KB), skipping`);
+      logger.warn(`[models] Local config too large (${(stats.size / 1024).toFixed(0)}KB), skipping`);
       return Promise.resolve(null);
     }
 
@@ -155,7 +156,7 @@ function discoverModelsLocal(): Promise<{
       availableModels: Array.from(models).sort(),
     });
   } catch (error) {
-    console.warn('[models] Local discovery failed:', error instanceof Error ? error.message : error);
+    logger.warn('[models] Local discovery failed:', error instanceof Error ? error.message : error);
     return Promise.resolve(null);
   }
 }
@@ -204,7 +205,7 @@ export async function GET() {
       source,
     });
   } catch (error) {
-    console.error('[models] Failed to discover models:', error);
+    logger.error('[models] Failed to discover models:', error);
     return NextResponse.json<OpenClawModelsResponse>({
       defaultModel: undefined,
       availableModels: FALLBACK_MODELS,

@@ -5,6 +5,8 @@
 
 'use client';
 
+
+import { logger } from '@/lib/logger';
 import { useEffect, useState, useCallback } from 'react';
 import { FileText, Link as LinkIcon, Package, ExternalLink, Eye } from 'lucide-react';
 import { debug } from '@/lib/debug';
@@ -26,7 +28,7 @@ export function DeliverablesList({ taskId }: DeliverablesListProps) {
         setDeliverables(data);
       }
     } catch (error) {
-      console.error('Failed to load deliverables:', error);
+      logger.error('Failed to load deliverables:', error);
     } finally {
       setLoading(false);
     }
@@ -82,7 +84,7 @@ export function DeliverablesList({ taskId }: DeliverablesListProps) {
           throw new Error(error.error || 'Unknown error');
         }
       } catch (error) {
-        console.error('Failed to open file:', error);
+        logger.error('Failed to open file:', error);
         // Fallback: copy path to clipboard
         try {
           await navigator.clipboard.writeText(deliverable.path);
