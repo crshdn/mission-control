@@ -22,6 +22,7 @@ export function ProductSettings({ product, onSave }: Props) {
     cost_cap_per_task: product.cost_cap_per_task ?? '',
     cost_cap_monthly: product.cost_cap_monthly ?? '',
     batch_review_threshold: product.batch_review_threshold ?? 10,
+    max_parallel_agents: product.max_parallel_agents ?? '',
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -37,7 +38,8 @@ export function ProductSettings({ product, onSave }: Props) {
     form.icon !== (product.icon || '📦') ||
     String(form.cost_cap_per_task) !== String(product.cost_cap_per_task ?? '') ||
     String(form.cost_cap_monthly) !== String(product.cost_cap_monthly ?? '') ||
-    form.batch_review_threshold !== (product.batch_review_threshold ?? 10);
+    form.batch_review_threshold !== (product.batch_review_threshold ?? 10) ||
+    String(form.max_parallel_agents) !== String(product.max_parallel_agents ?? '');
 
   async function handleSave() {
     setSaving(true);
@@ -58,6 +60,8 @@ export function ProductSettings({ product, onSave }: Props) {
       if (form.cost_cap_monthly !== '') body.cost_cap_monthly = Number(form.cost_cap_monthly);
       else body.cost_cap_monthly = null;
       body.batch_review_threshold = Number(form.batch_review_threshold) || 10;
+      if (form.max_parallel_agents !== '') body.max_parallel_agents = Number(form.max_parallel_agents);
+      else body.max_parallel_agents = null;
 
       const res = await fetch(`/api/products/${product.id}`, {
         method: 'PATCH',
@@ -226,7 +230,7 @@ export function ProductSettings({ product, onSave }: Props) {
           </select>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Cost Cap / Task ($)</label>
             <input
@@ -261,6 +265,19 @@ export function ProductSettings({ product, onSave }: Props) {
               placeholder="10"
               min={1}
               max={100}
+              step={1}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Max Parallel Agents</label>
+            <input
+              type="number"
+              value={form.max_parallel_agents}
+              onChange={e => setForm(f => ({ ...f, max_parallel_agents: e.target.value }))}
+              className={inputClass}
+              placeholder="Env: 5"
+              min={1}
+              max={20}
               step={1}
             />
           </div>
