@@ -3,7 +3,8 @@
 
 import { logger } from '@/lib/logger';
 import { useState, useEffect } from 'react';
-import { Plus, Rocket, ArrowRight } from 'lucide-react';
+import { Plus, Rocket, ArrowRight, Trash2 } from 'lucide-react';
+import { DeleteProductModal } from '@/components/autopilot/DeleteProductModal';
 import Link from 'next/link';
 import { HealthBadge } from '@/components/autopilot/HealthBadge';
 import type { Product } from '@/lib/types';
@@ -13,6 +14,7 @@ export default function AutopilotPage() {
   const [loading, setLoading] = useState(true);
   const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({});
   const [healthScores, setHealthScores] = useState<Record<string, number>>({});
+  const [deleteProduct, setDeleteProduct] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -157,6 +159,17 @@ export default function AutopilotPage() {
                         <HealthBadge score={healthScores[product.id]} size={38} />
                       </button>
                     )}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDeleteProduct({ id: product.id, name: product.name });
+                      }}
+                      className="p-1.5 rounded hover:bg-red-500/20 text-mc-text-secondary hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                      title="Delete product"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                     <ArrowRight className="w-4 h-4 text-mc-text-secondary group-hover:text-mc-accent transition-colors" />
                   </div>
                 </div>
@@ -167,6 +180,20 @@ export default function AutopilotPage() {
             ))}
           </div>
         )}
+      {deleteProduct && (
+        <DeleteProductModal
+          product={deleteProduct}
+          onClose={() => setDeleteProduct(null)}
+          onArchive={(id) => {
+            setProducts(prev => prev.filter(p => p.id !== id));
+            setDeleteProduct(null);
+          }}
+          onDeleted={(id) => {
+            setProducts(prev => prev.filter(p => p.id !== id));
+            setDeleteProduct(null);
+          }}
+        />
+      )}
       </main>
     </div>
   );
