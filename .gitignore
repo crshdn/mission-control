@@ -64,3 +64,4 @@ db-backups/
 # Large video files
 Autensa_v2.mp4
 *.mp4
+.worktrees/
