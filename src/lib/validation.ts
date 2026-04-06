@@ -123,6 +123,7 @@ export const UpdateProductSchema = z.object({
   cost_cap_per_task: z.number().min(0).optional().nullable(),
   cost_cap_monthly: z.number().min(0).optional().nullable(),
   batch_review_threshold: z.number().int().min(1).max(100).optional(),
+  max_parallel_agents: z.number().int().min(1).max(20).optional().nullable(),
 });
 
 export const SwipeActionSchema = z.object({

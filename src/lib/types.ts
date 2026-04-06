@@ -451,6 +451,7 @@ export interface Product {
   default_branch?: string;
   cost_cap_per_task?: number;
   cost_cap_monthly?: number;
+  max_parallel_agents?: number;
   health_weight_config?: string; // JSON: HealthWeightConfig
   batch_review_threshold?: number;
   created_at: string;
