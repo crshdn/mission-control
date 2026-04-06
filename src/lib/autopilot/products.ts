@@ -83,3 +83,8 @@ export function archiveProduct(id: string): boolean {
   );
   return result.changes > 0;
 }
+
+export function hardDeleteProduct(id: string): boolean {
+  const result = run(`DELETE FROM products WHERE id = ?`, [id]);
+  return result.changes > 0;
+}

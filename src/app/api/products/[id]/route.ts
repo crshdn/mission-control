@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
-import { getProduct, updateProduct, archiveProduct } from '@/lib/autopilot/products';
+import { getProduct, updateProduct, archiveProduct, hardDeleteProduct } from '@/lib/autopilot/products';
 import { UpdateProductSchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
@@ -46,11 +46,20 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const url = new URL(request.url);
+    const hard = url.searchParams.get('hard') === 'true';
+
+    if (hard) {
+      const deleted = hardDeleteProduct(id);
+      if (!deleted) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+      return NextResponse.json({ success: true, hard_deleted: true });
+    }
+
     const deleted = archiveProduct(id);
     if (!deleted) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error('Failed to archive product:', error);
-    return NextResponse.json({ error: 'Failed to archive product' }, { status: 500 });
+    logger.error('Failed to delete product:', error);
+    return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
   }
 }
