@@ -67,7 +67,7 @@ export async function GET() {
         id: gatewayId,
         name: ga.name || ga.label || gatewayId,
         label: ga.label,
-        model: ga.model,
+        model: typeof ga.model === 'object' && ga.model !== null ? ga.model.primary : ga.model,
         channel: ga.channel,
         status: ga.status,
         already_imported: alreadyImported,

@@ -80,7 +80,7 @@ export function DiscoverAgentsModal({ onClose, workspaceId }: DiscoverAgentsModa
         .map((a) => ({
           gateway_agent_id: a.id,
           name: a.name,
-          model: a.model,
+          model: typeof a.model === 'object' && a.model !== null ? (a.model as Record<string, unknown>).primary as string : a.model,
           workspace_id: workspaceId || 'default',
         }));
 
@@ -257,7 +257,7 @@ export function DiscoverAgentsModal({ onClose, workspaceId }: DiscoverAgentsModa
                           )}
                         </div>
                         <div className="flex items-center gap-3 text-xs text-mc-text-secondary mt-0.5">
-                          {agent.model && <span>Model: {agent.model}</span>}
+                          {agent.model && <span>Model: {typeof agent.model === 'object' ? (agent.model as Record<string, unknown>).primary as string : agent.model}</span>}
                           {agent.channel && <span>Channel: {agent.channel}</span>}
                           {agent.status && <span>Status: {agent.status}</span>}
                           <span className="text-mc-text-secondary/60">ID: {agent.id}</span>
