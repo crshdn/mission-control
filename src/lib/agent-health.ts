@@ -8,6 +8,7 @@ import type { Agent, AgentHealth, AgentHealthState, Task } from '@/lib/types';
 const STALL_THRESHOLD_MINUTES = 5;
 const STUCK_THRESHOLD_MINUTES = 15;
 const AUTO_NUDGE_AFTER_STALLS = 3;
+const ZOMBIE_REDISPATCH_THROTTLE_MINUTES = 5;
 
 /**
  * Check health state for a single agent.
@@ -139,6 +140,62 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
         nudgeAgent(agentId).catch(err =>
           console.error(`[Health] Auto-nudge failed for agent ${agentId}:`, err)
         );
+      }
+
+      // Auto-recover zombie agents (no active OpenClaw session for an agent that
+      // still has an active task). Re-dispatch creates a new session. Throttle
+      // by ZOMBIE_REDISPATCH_THROTTLE_MINUTES so we don't double-fire on every
+      // health check tick.
+      if (healthState === 'zombie' && activeTask) {
+        const lastRedispatch = queryOne<{ created_at: string }>(
+          `SELECT created_at FROM task_activities
+           WHERE task_id = ? AND message LIKE 'Auto-recovered zombie%'
+           ORDER BY created_at DESC LIMIT 1`,
+          [activeTask.id]
+        );
+        const sinceLastMin = lastRedispatch
+          ? (Date.now() - new Date(lastRedispatch.created_at).getTime()) / 60_000
+          : Infinity;
+
+        if (sinceLastMin >= ZOMBIE_REDISPATCH_THROTTLE_MINUTES) {
+          console.log(`[Health] Zombie agent ${agentId} detected for task "${activeTask.title}" — re-dispatching to create fresh session`);
+          // Reset to 'assigned' so dispatch will create a new session and
+          // transition the task back to in_progress.
+          run(
+            `UPDATE tasks SET status = 'assigned', updated_at = ? WHERE id = ? AND status != 'done'`,
+            [now, activeTask.id]
+          );
+          run(
+            `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, created_at)
+             VALUES (?, ?, ?, 'status_changed', 'Auto-recovered zombie agent (re-dispatching with fresh session)', ?)`,
+            [uuidv4(), activeTask.id, agentId, now]
+          );
+
+          // Fire-and-forget redispatch via the dispatch API (handles session creation)
+          const missionControlUrl = getMissionControlUrl();
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (process.env.MC_API_TOKEN) {
+            headers['Authorization'] = `Bearer ${process.env.MC_API_TOKEN}`;
+          }
+          fetch(`${missionControlUrl}/api/tasks/${activeTask.id}/dispatch`, {
+            method: 'POST',
+            headers,
+            signal: AbortSignal.timeout(30_000),
+          }).then(async (res) => {
+            if (!res.ok) {
+              const errorText = await res.text();
+              console.error(`[Health] Zombie auto-recovery dispatch failed for "${activeTask.title}": ${errorText}`);
+              run(
+                `UPDATE tasks SET planning_dispatch_error = ?, updated_at = ? WHERE id = ?`,
+                [`Zombie auto-recovery failed: ${errorText.substring(0, 200)}`, new Date().toISOString(), activeTask.id]
+              );
+            } else {
+              console.log(`[Health] Zombie auto-recovery dispatched "${activeTask.title}"`);
+            }
+          }).catch((err) => {
+            console.error(`[Health] Zombie auto-recovery error for "${activeTask.title}":`, (err as Error).message);
+          });
+        }
       }
     }
   }
