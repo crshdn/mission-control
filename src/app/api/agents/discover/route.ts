@@ -6,15 +6,27 @@ import type { Agent, DiscoveredAgent } from '@/lib/types';
 // This route must always be dynamic - it queries live Gateway state + DB
 export const dynamic = 'force-dynamic';
 
-// Shape of an agent returned by the OpenClaw Gateway `agents.list` call
+// Shape of an agent returned by the OpenClaw Gateway `agents.list` call.
+// `model` may be a plain string or an object like { primary: string, fallbacks: string[] }
+// depending on the OpenClaw version.
 interface GatewayAgent {
   id?: string;
   name?: string;
   label?: string;
-  model?: string;
+  model?: string | { primary?: string; fallbacks?: string[]; [key: string]: unknown };
   channel?: string;
   status?: string;
   [key: string]: unknown;
+}
+
+/** Normalise the gateway model field to a plain string. */
+function normaliseModel(
+  model: GatewayAgent['model'],
+): string | undefined {
+  if (!model) return undefined;
+  if (typeof model === 'string') return model;
+  // Object form: { primary: "provider/model", fallbacks: [...] }
+  return model.primary ?? undefined;
 }
 
 // GET /api/agents/discover - Discover existing agents from the OpenClaw Gateway
@@ -59,7 +71,9 @@ export async function GET() {
       existingAgents.map((a) => [a.gateway_agent_id, a.id])
     );
 
-    // Map gateway agents to our DiscoveredAgent type
+    // Map gateway agents to our DiscoveredAgent type.
+    // Normalise `model` to a string here so the UI never receives an object
+    // (which would trigger React error #31 — "Objects are not valid as a React child").
     const discovered: DiscoveredAgent[] = gatewayAgents.map((ga) => {
       const gatewayId = ga.id || ga.name || '';
       const alreadyImported = importedGatewayIds.has(gatewayId);
@@ -67,7 +81,7 @@ export async function GET() {
         id: gatewayId,
         name: ga.name || ga.label || gatewayId,
         label: ga.label,
-        model: ga.model,
+        model: normaliseModel(ga.model),
         channel: ga.channel,
         status: ga.status,
         already_imported: alreadyImported,

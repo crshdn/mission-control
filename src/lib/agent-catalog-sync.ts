@@ -5,7 +5,17 @@ interface GatewayAgent {
   id?: string;
   name?: string;
   label?: string;
-  model?: string;
+  // OpenClaw may return model as a string or as { primary: string, fallbacks: string[] }
+  model?: string | { primary?: string; fallbacks?: string[]; [key: string]: unknown };
+}
+
+/** Normalise the gateway model field to a plain string for DB storage. */
+function normaliseModel(
+  model: GatewayAgent['model'],
+): string | null {
+  if (!model) return null;
+  if (typeof model === 'string') return model;
+  return model.primary ?? null;
 }
 
 const SYNC_INTERVAL_MS = Number(process.env.AGENT_CATALOG_SYNC_INTERVAL_MS || 60_000);
@@ -59,13 +69,13 @@ export async function syncGatewayAgentsToCatalog(options?: { force?: boolean; re
         if (existingId) {
           run(
             `UPDATE agents SET name = ?, role = CASE WHEN role IS NULL OR role = 'builder' THEN ? ELSE role END, model = COALESCE(?, model), source = 'gateway', updated_at = ? WHERE id = ?`,
-            [name, role, ga.model || null, ts, existingId]
+            [name, role, normaliseModel(ga.model), ts, existingId]
           );
         } else {
           run(
             `INSERT INTO agents (id, name, role, description, avatar_emoji, is_master, workspace_id, model, source, gateway_agent_id, created_at, updated_at)
              VALUES (lower(hex(randomblob(16))), ?, ?, ?, '🔗', 0, 'default', ?, 'gateway', ?, ?, ?)`,
-            [name, role, `Auto-synced from OpenClaw (${gatewayId})`, ga.model || null, gatewayId, ts, ts]
+            [name, role, `Auto-synced from OpenClaw (${gatewayId})`, normaliseModel(ga.model), gatewayId, ts, ts]
           );
         }
         changed += 1;
