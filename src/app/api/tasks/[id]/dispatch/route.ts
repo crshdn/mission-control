@@ -12,6 +12,7 @@ import { buildCheckpointContext } from '@/lib/checkpoint';
 import { formatMailForDispatch } from '@/lib/mailbox';
 import { getPendingNotesForDispatch } from '@/lib/task-notes';
 import { createTaskWorkspace, determineIsolationStrategy } from '@/lib/workspace-isolation';
+import { formatMCPToolsForDispatch } from '@/lib/mcp/proxy';
 import type { Task, Agent, Product, OpenClawSession, WorkflowStage, TaskImage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -282,6 +283,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Inject MCP tool descriptions (best-effort)
+    let mcpSection = '';
+    if (task.product_id) {
+      try {
+        mcpSection = formatMCPToolsForDispatch(task.product_id);
+      } catch {
+        // MCP injection is best-effort
+      }
+    }
+
     // Determine role-specific instructions based on workflow template
     const workflow = getTaskWorkflow(id);
     let currentStage: WorkflowStage | undefined;
@@ -420,7 +431,7 @@ ${task.description ? `**Description:** ${task.description}\n` : ''}
 **Priority:** ${task.priority.toUpperCase()}
 ${task.due_date ? `**Due:** ${task.due_date}\n` : ''}
 **Task ID:** ${task.id}
-${planningSpecSection}${agentInstructionsSection}${skillsSection}${knowledgeSection}${imagesSection}${buildCheckpointContext(task.id) || ''}${formatMailForDispatch(agent.id) || ''}${repoSection}
+${planningSpecSection}${agentInstructionsSection}${skillsSection}${mcpSection}${knowledgeSection}${imagesSection}${buildCheckpointContext(task.id) || ''}${formatMailForDispatch(agent.id) || ''}${repoSection}
 ${isBuilder ? (workspaceIsolated
   ? `**\u{1F512} ISOLATED WORKSPACE:** ${taskProjectDir}\n- **Port:** ${workspacePort || 'default'} (use this for dev server, NOT the default)\n${workspaceBranchName ? `- **Branch:** ${workspaceBranchName}\n` : ''}- **IMPORTANT:** Do NOT modify files outside this workspace directory. Other agents may be working on the same project in parallel. All your work must stay within: ${taskProjectDir}\nCreate this directory if needed and save all deliverables there.\n`
   : `**OUTPUT DIRECTORY:** ${taskProjectDir}\nCreate this directory and save all deliverables there.\n`)

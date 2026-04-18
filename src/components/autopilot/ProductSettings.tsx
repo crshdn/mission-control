@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Save, Loader, ExternalLink } from 'lucide-react';
+import { Save, Loader, ExternalLink, Plug } from 'lucide-react';
 import { HealthWeightSliders } from './HealthWeightSliders';
+import { MCPTab } from '@/components/MCPTab';
 import type { Product, BuildMode, HealthWeightConfig } from '@/lib/types';
 
 interface Props {
@@ -275,6 +276,15 @@ export function ProductSettings({ product, onSave }: Props) {
             try { return JSON.parse(product.health_weight_config); } catch { return undefined; }
           })() : undefined}
         />
+      </div>
+
+      {/* MCP Integrations */}
+      <div className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Plug className="w-4 h-4 text-mc-text-secondary" />
+          <h3 className="text-sm font-medium text-mc-text-secondary uppercase tracking-wider">External Tools (MCP)</h3>
+        </div>
+        <MCPTab productId={product.id} />
       </div>
 
       {/* Danger Zone */}
