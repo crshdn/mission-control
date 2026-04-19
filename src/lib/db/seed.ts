@@ -100,6 +100,21 @@ async function seed() {
     `INSERT OR IGNORE INTO businesses (id, name, description, created_at) VALUES (?, ?, ?, ?)`
   ).run(businessId, 'Mission Control HQ', 'Default workspace for all operations', now);
 
+  // Guard agent seeding: if the DB already has gateway-linked or session-routed
+  // agents (e.g. imported from OpenClaw), do not seed the stock example team.
+  // Overwriting them silently produced ghost duplicates after every reseed.
+  const realAgentCount = db.prepare(
+    `SELECT COUNT(*) as n FROM agents
+     WHERE gateway_agent_id IS NOT NULL OR session_key_prefix IS NOT NULL`
+  ).get() as { n: number };
+
+  if (realAgentCount.n > 0) {
+    console.log(`⏭️  Skipping agent seed — ${realAgentCount.n} gateway-linked agent(s) already exist.`);
+    console.log('✅ Database seed skipped (agents preserved)');
+    closeDb();
+    return;
+  }
+
   // Create master orchestrator agent
   const orchestratorId = uuidv4();
   db.prepare(

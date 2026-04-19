@@ -3,6 +3,7 @@ import { getDb, queryAll, queryOne, run } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
 import { extractJSON } from '@/lib/planning-utils';
+import { getAgentRoster, formatRosterForPrompt } from '@/lib/agent-resolver';
 // File system imports removed - using OpenClaw API instead
 
 export const dynamic = 'force-dynamic';
@@ -141,11 +142,26 @@ export async function POST(
     const planningPrefix = basePrefix + 'planning:';
     const sessionKey = `${planningPrefix}${taskId}`;
 
+    // Fetch the gateway-linked agent roster and surface it to the planner.
+    // Without this context the planner invents new agents every run, which is
+    // the root of the ghost-agent duplication bug: the real gateway agents
+    // sit idle while newly-created rows with no session_key_prefix receive
+    // the dispatch. When the planner emits its final `agents` list at status
+    // "complete", it may now return `agent_id` per agent to reuse one of these
+    // existing rows — see the polling handler for reuse/verify logic.
+    const roster = getAgentRoster(task.workspace_id);
+    const rosterBlock = formatRosterForPrompt(roster);
+
     // Build the initial planning prompt
     const planningPrompt = `PLANNING REQUEST
 
 Task Title: ${task.title}
 Task Description: ${task.description || 'No description provided'}
+
+AVAILABLE AGENTS (workspace roster):
+${rosterBlock}
+
+When you later emit the final plan (status: "complete") with an "agents" array, prefer assigning roles to the agents listed above by including their "agent_id" in each entry. Only propose a new agent (agent_id: null) when no listed agent is a suitable fit — and include a "rationale" explaining the specific capability gap.
 
 You are starting a planning session for this task. Read PLANNING.md for your protocol.
 

@@ -7,7 +7,10 @@ import type { Convoy, ConvoySubtask, Task, ConvoyStatus, DecompositionStrategy }
 interface CreateSubtaskInput {
   title: string;
   description?: string;
-  agent_id?: string;
+  /** Pre-assigned agent from the decomposition LLM (may be null when the planner
+   *  explicitly asks to create a new agent). Dispatch falls back to role-based
+   *  pick when this is null/undefined. */
+  agent_id?: string | null;
   depends_on?: string[];
   /** Role hint for dispatch. If omitted, convoy dispatch falls back to 'builder'. */
   suggested_role?: string;

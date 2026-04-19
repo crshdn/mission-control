@@ -4,6 +4,7 @@ import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
 import { extractJSON, getMessagesFromOpenClaw } from '@/lib/planning-utils';
+import { findAgentForRole, verifyAgentInWorkspace } from '@/lib/agent-resolver';
 import { Task } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +38,7 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
       const masterAgent = task ? db.prepare(
         `SELECT session_key_prefix FROM agents WHERE is_master = 1 AND workspace_id = ? ORDER BY created_at ASC LIMIT 1`
       ).get(task.workspace_id) as { session_key_prefix?: string } | undefined : undefined;
-      
+
       const sessionKeyPrefix = masterAgent?.session_key_prefix || 'agent:main:';
 
       const insertAgent = db.prepare(`
@@ -45,20 +46,49 @@ async function handlePlanningCompletion(taskId: string, parsed: any, messages: a
         VALUES (?, (SELECT workspace_id FROM tasks WHERE id = ?), ?, ?, ?, ?, 'standby', ?, ?, datetime('now'), datetime('now'))
       `);
 
-      for (const agent of parsed.agents) {
-        const agentId = crypto.randomUUID();
-        if (!firstAgentId) firstAgentId = agentId;
+      const workspaceId = task?.workspace_id;
 
-        insertAgent.run(
-          agentId,
-          taskId,
-          agent.name,
-          agent.role,
-          agent.instructions || '',
-          agent.avatar_emoji || '🤖',
-          agent.soul_md || '',
-          sessionKeyPrefix
-        );
+      // For each agent the planner wants to spin up, first check whether the
+      // workspace already has a gateway-linked (or session-routed) agent that
+      // fills this role. If so, reuse it — this is the core fix for the ghost
+      // agent duplication bug. Only when no existing agent matches (or the
+      // planner gave an explicit agent_id that we've verified) do we create a
+      // new row.
+      for (const agent of parsed.agents) {
+        let resolvedId: string | null = null;
+
+        if (workspaceId && agent.agent_id) {
+          const verified = verifyAgentInWorkspace(workspaceId, agent.agent_id);
+          if (verified) {
+            resolvedId = verified.id;
+          } else {
+            console.warn(`[Planning Poll] Planner returned unknown agent_id ${agent.agent_id} for role "${agent.role}" — falling back to role match`);
+          }
+        }
+
+        if (!resolvedId && workspaceId && agent.role) {
+          const existing = findAgentForRole(workspaceId, agent.role);
+          if (existing) {
+            resolvedId = existing.id;
+            console.log(`[Planning Poll] Reusing existing agent ${existing.name} (${existing.id}) for role "${agent.role}" — skipping insert`);
+          }
+        }
+
+        if (!resolvedId) {
+          resolvedId = crypto.randomUUID();
+          insertAgent.run(
+            resolvedId,
+            taskId,
+            agent.name,
+            agent.role,
+            agent.instructions || '',
+            agent.avatar_emoji || '🤖',
+            agent.soul_md || '',
+            sessionKeyPrefix
+          );
+        }
+
+        if (!firstAgentId) firstAgentId = resolvedId;
       }
     } else if (!allowDynamicAgents && parsed.agents && parsed.agents.length > 0) {
       console.log(`[Planning Poll] Dynamic agent generation disabled (ALLOW_DYNAMIC_AGENTS=false), skipping creation of ${parsed.agents.length} agent(s)`);
@@ -257,6 +287,10 @@ export async function GET(
               avatar_emoji?: string;
               soul_md?: string;
               instructions?: string;
+              /** Optional: planner may reuse an existing workspace agent by id. */
+              agent_id?: string | null;
+              /** Optional: why a new agent is needed vs. reusing one from the roster. */
+              rationale?: string;
             }>;
             execution_plan?: object;
           } | null;

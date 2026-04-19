@@ -138,15 +138,30 @@ export function pickDynamicAgent(taskId: string, stageRole?: string | null): { i
   }
 
   if (stageRole) {
+    // Prefer gateway-linked / session-routed agents. A matching-role "ghost"
+    // (no gateway_agent_id, no session_key_prefix) is never actually reachable
+    // via OpenClaw, so picking one silently breaks the dispatch.
     const byRole = queryOne<{ id: string; name: string }>(
-      `SELECT id, name FROM agents WHERE role = ? AND status != 'offline' ORDER BY status = 'standby' DESC, updated_at DESC LIMIT 1`,
+      `SELECT id, name FROM agents
+       WHERE role = ? AND status != 'offline'
+       ORDER BY
+         (gateway_agent_id IS NOT NULL OR session_key_prefix IS NOT NULL) DESC,
+         status = 'standby' DESC,
+         updated_at DESC
+       LIMIT 1`,
       [stageRole]
     );
     if (byRole) return byRole;
   }
 
   const fallback = queryOne<{ id: string; name: string }>(
-    `SELECT id, name FROM agents WHERE status != 'offline' ORDER BY is_master ASC, updated_at DESC LIMIT 1`
+    `SELECT id, name FROM agents
+     WHERE status != 'offline'
+     ORDER BY
+       (gateway_agent_id IS NOT NULL OR session_key_prefix IS NOT NULL) DESC,
+       is_master ASC,
+       updated_at DESC
+     LIMIT 1`
   );
   if (fallback && !checked.has(fallback.id)) return fallback;
 
