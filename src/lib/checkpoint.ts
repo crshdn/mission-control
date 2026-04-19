@@ -13,6 +13,24 @@ interface SaveCheckpointInput {
 }
 
 /**
+ * Save a checkpoint only if no checkpoint has been saved for this task in
+ * the last `thresholdSeconds`. Used by dispatch / stage-transition /
+ * stall-detection call sites to avoid duplicate rows when recovery loops
+ * hammer the task in quick succession.
+ */
+export function saveCheckpointThrottled(
+  input: SaveCheckpointInput,
+  thresholdSeconds: number
+): WorkCheckpoint | null {
+  const latest = getLatestCheckpoint(input.taskId);
+  if (latest) {
+    const ageSeconds = (Date.now() - new Date(latest.created_at).getTime()) / 1000;
+    if (ageSeconds < thresholdSeconds) return null;
+  }
+  return saveCheckpoint(input);
+}
+
+/**
  * Save a work checkpoint for a task.
  */
 export function saveCheckpoint(input: SaveCheckpointInput): WorkCheckpoint {

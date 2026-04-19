@@ -3,7 +3,14 @@ import { queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
 import { buildCheckpointContext } from '@/lib/checkpoint';
+import { logTaskActivityThrottled } from '@/lib/activity-log';
+import { scanStalledTasks } from '@/lib/stall-detection';
 import type { Agent, AgentHealth, AgentHealthState, Task } from '@/lib/types';
+
+// Heartbeat rows are throttled so the activity feed stays readable. 5 min
+// is a good default: runHealthCheckCycle fires every 2 min (see the SSE
+// stream route), so every 2nd-3rd pulse lands a row.
+const HEARTBEAT_THROTTLE_SECONDS = 300;
 
 const STALL_THRESHOLD_MINUTES = 5;
 const STUCK_THRESHOLD_MINUTES = 15;
@@ -130,6 +137,23 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
       );
     }
 
+    // Healthy heartbeats were previously not logged at all — agents' 2-minute
+    // pings landed as `activity_type = null` elsewhere, so a task could look
+    // idle (no typed activity rows) even while its agent was alive. The stall
+    // scanner (Phase 3) trusts `task_activities` as the source of truth, so
+    // we need a typed row here. Throttled to 5 min to avoid feed noise.
+    if (activeTask && healthState === 'working') {
+      logTaskActivityThrottled(
+        {
+          taskId: activeTask.id,
+          type: 'heartbeat',
+          agentId,
+          message: `Agent alive — last real activity confirmed by health pulse`,
+        },
+        HEARTBEAT_THROTTLE_SECONDS
+      );
+    }
+
     // Auto-nudge after consecutive stall checks
     const updatedHealth = queryOne<AgentHealth>('SELECT * FROM agent_health WHERE agent_id = ?', [agentId]);
     if (updatedHealth) {
@@ -204,6 +228,17 @@ export async function runHealthCheckCycle(): Promise<AgentHealth[]> {
         [uuidv4(), agentId, now]
       );
     }
+  }
+
+  // Run the stall scanner after the per-agent pass. This is the natural
+  // place for it: both share the same 2-minute cadence from the SSE
+  // stream, and the scanner's throttle windows (NOTIFY_THROTTLE_MINUTES,
+  // STALL_DETECTION_MINUTES) make repeated calls cheap. A scanner failure
+  // should never break the health cycle — so we catch and log.
+  try {
+    await scanStalledTasks();
+  } catch (err) {
+    console.error('[Health] scanStalledTasks failed:', err);
   }
 
   return results;

@@ -1595,6 +1595,87 @@ const migrations: Migration[] = [
 
       console.log('[Migration 028] product_skills and skill_reports tables created');
     }
+  },
+  {
+    id: '029',
+    name: 'add_cancelled_task_status',
+    up: (db) => {
+      console.log('[Migration 029] Adding cancelled status to tasks CHECK constraint...');
+
+      const taskSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='tasks'").get() as { sql: string } | undefined;
+      if (!taskSchema || taskSchema.sql.includes("'cancelled'")) {
+        console.log('[Migration 029] cancelled already present — skipping');
+        return;
+      }
+
+      // SQLite can't ALTER a CHECK constraint — recreate the tasks table.
+      // legacy_alter_table is ON during migrations (see runMigrations), so the
+      // RENAME below will NOT rewrite FKs in other tables to point at the
+      // temporary name — the gotcha that migration 011 had to clean up.
+      const oldCols = (db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[]).map(c => c.name);
+
+      db.exec(`ALTER TABLE tasks RENAME TO _tasks_old_029`);
+      db.exec(`
+        CREATE TABLE tasks (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          description TEXT,
+          status TEXT DEFAULT 'inbox' CHECK (status IN ('pending_dispatch', 'planning', 'inbox', 'assigned', 'in_progress', 'convoy_active', 'testing', 'review', 'verification', 'done', 'cancelled')),
+          priority TEXT DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+          assigned_agent_id TEXT REFERENCES agents(id),
+          created_by_agent_id TEXT REFERENCES agents(id),
+          workspace_id TEXT DEFAULT 'default' REFERENCES workspaces(id),
+          business_id TEXT DEFAULT 'default',
+          due_date TEXT,
+          workflow_template_id TEXT REFERENCES workflow_templates(id),
+          planning_session_key TEXT,
+          planning_messages TEXT,
+          planning_complete INTEGER DEFAULT 0,
+          planning_spec TEXT,
+          planning_agents TEXT,
+          planning_dispatch_error TEXT,
+          status_reason TEXT,
+          images TEXT,
+          convoy_id TEXT,
+          is_subtask INTEGER DEFAULT 0,
+          product_id TEXT REFERENCES products(id),
+          idea_id TEXT REFERENCES ideas(id),
+          estimated_cost_usd REAL,
+          actual_cost_usd REAL DEFAULT 0,
+          repo_url TEXT,
+          repo_branch TEXT,
+          pr_url TEXT,
+          pr_status TEXT CHECK (pr_status IN ('pending', 'open', 'merged', 'closed')),
+          workspace_path TEXT,
+          workspace_strategy TEXT,
+          workspace_port INTEGER,
+          workspace_base_commit TEXT,
+          merge_status TEXT,
+          merge_pr_url TEXT,
+          retry_count INTEGER DEFAULT 0,
+          next_retry_at TEXT,
+          dispatch_lock TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now'))
+        )
+      `);
+
+      // Copy data — only columns present in BOTH old and new tables. This is
+      // forward-compatible: any column the old schema has that the new one
+      // doesn't is silently dropped; any new column gets its default.
+      const newCols = new Set(
+        (db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[]).map(c => c.name)
+      );
+      const safeCols = oldCols.filter(c => newCols.has(c)).join(', ');
+      db.exec(`INSERT INTO tasks (${safeCols}) SELECT ${safeCols} FROM _tasks_old_029`);
+      db.exec(`DROP TABLE _tasks_old_029`);
+
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_agent_id)`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_workspace ON tasks(workspace_id)`);
+
+      console.log('[Migration 029] Tasks table recreated with cancelled status');
+    }
   }
 ];
 

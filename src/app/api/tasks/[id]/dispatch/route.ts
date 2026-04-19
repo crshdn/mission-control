@@ -8,7 +8,8 @@ import { getRelevantKnowledge, formatKnowledgeForDispatch } from '@/lib/learner'
 import { getTaskWorkflow } from '@/lib/workflow-engine';
 import { syncGatewayAgentsToCatalog } from '@/lib/agent-catalog-sync';
 import { pickDynamicAgent } from '@/lib/task-governance';
-import { buildCheckpointContext } from '@/lib/checkpoint';
+import { buildCheckpointContext, saveCheckpoint, getLatestCheckpoint } from '@/lib/checkpoint';
+import { clearStallFlag } from '@/lib/stall-detection';
 import { formatMailForDispatch } from '@/lib/mailbox';
 import { getPendingNotesForDispatch } from '@/lib/task-notes';
 import { createTaskWorkspace, determineIsolationStrategy } from '@/lib/workspace-isolation';
@@ -484,6 +485,37 @@ If you need help or clarification, ask the orchestrator.`;
          VALUES (?, ?, ?, ?, ?, ?)`,
         [activityId, task.id, agent.id, 'status_changed', `Task dispatched to ${agent.name} - Agent is now working on this task`, now]
       );
+
+      // A successful dispatch is the canonical "coordinator (or operator)
+      // has acted" signal. Clear any stalled_* status_reason so the
+      // scanner doesn't re-flag the task on its next pass.
+      clearStallFlag(task.id);
+
+      // Auto-checkpoint on dispatch. Throttled to 60s so rapid re-dispatch
+      // during nudge/recovery doesn't write duplicate rows. Gives
+      // checkpoint/restore a viable starting point even before the agent
+      // writes any of its own checkpoints — previously the restore route
+      // returned 404 for long-running tasks because nothing ever called
+      // saveCheckpoint().
+      try {
+        const latestCheckpoint = getLatestCheckpoint(task.id);
+        const recent = latestCheckpoint
+          && (Date.now() - new Date(latestCheckpoint.created_at).getTime()) / 1000 < 60;
+        if (!recent) {
+          saveCheckpoint({
+            taskId: task.id,
+            agentId: agent.id,
+            checkpointType: 'auto',
+            stateSummary: `Dispatched to ${agent.name} (status=${task.status}, role=${currentStage?.role || 'unknown'})`,
+            contextData: {
+              stage: currentStage?.label,
+              dispatch_message_length: finalMessage.length,
+            },
+          });
+        }
+      } catch (err) {
+        console.warn('[Dispatch] saveCheckpoint failed:', err);
+      }
 
       return NextResponse.json({
         success: true,

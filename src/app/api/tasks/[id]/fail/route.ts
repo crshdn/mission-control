@@ -50,8 +50,26 @@ export async function POST(
       failReason: reason,
     }).catch(err => console.error('[Learner] notification failed:', err));
 
-    // Trigger the fail-loopback via the workflow engine
-    const result = await handleStageFailure(taskId, task.status, reason);
+    // Trigger the fail-loopback via the workflow engine. Wrap in try/catch so
+    // an internal throw (e.g. DB error, dispatch timeout) returns a clean 400
+    // instead of the bare 500 "Internal server error" that masked the real
+    // problem before. Operators hitting this endpoint for stalled tasks got
+    // the opaque 500 and had no path forward — the admin release-stall
+    // endpoint now covers the "can't recover" case.
+    let result: Awaited<ReturnType<typeof handleStageFailure>>;
+    try {
+      result = await handleStageFailure(taskId, task.status, reason);
+    } catch (err) {
+      const message = (err as Error).message || 'handleStageFailure threw';
+      console.error('[Fail] handleStageFailure threw:', err);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Stage failure could not be processed: ${message}. If the task is stuck, use POST /api/tasks/${taskId}/admin/release-stall.`,
+        },
+        { status: 400 }
+      );
+    }
 
     if (result.success) {
       // Fail-loopback freed a slot (testing/verification) — drain the queue
@@ -64,14 +82,28 @@ export async function POST(
         message: `Task returned to ${result.newAgentName ? result.newAgentName : 'previous stage'} for rework`,
         newAgent: result.newAgentName,
       });
-    } else {
-      return NextResponse.json({
+    }
+
+    // result.success === false with a structured error — return 400, not 500.
+    // A 500 implies the server is broken; the server is fine, the transition
+    // is just rejected. This was the original bug: callers saw 500 and
+    // assumed the server had crashed when the real issue was a missing
+    // workflow template or fail_target.
+    return NextResponse.json(
+      {
         success: false,
         error: result.error || 'Failed to process stage failure',
-      }, { status: 500 });
-    }
+        hint: result.error?.includes('No workflow template') || result.error?.includes('No fail target')
+          ? `Task has no recovery path. Use POST /api/tasks/${taskId}/admin/release-stall to cancel it.`
+          : undefined,
+      },
+      { status: 400 }
+    );
   } catch (error) {
     console.error('Failed to process stage failure:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: `Failed to process stage failure: ${(error as Error).message}` },
+      { status: 500 }
+    );
   }
 }

@@ -9,6 +9,7 @@ import { queryOne, queryAll, run } from '@/lib/db';
 import { pickDynamicAgent, escalateFailureIfNeeded, recordLearnerOnTransition } from '@/lib/task-governance';
 import { getMissionControlUrl } from '@/lib/config';
 import { broadcast } from '@/lib/events';
+import { saveCheckpointThrottled } from '@/lib/checkpoint';
 import type { Task, WorkflowTemplate, WorkflowStage, TaskRole } from '@/lib/types';
 
 interface StageTransitionResult {
@@ -203,6 +204,39 @@ export async function handleStageTransition(
       now
     ]
   );
+
+  // Auto-checkpoint on every stage transition. Counts + status are cheap
+  // to compute and give checkpoint/restore a reliable recovery point even
+  // if the agent never saves one itself. Throttled to 60s so a rapid
+  // handoff chain doesn't bloat work_checkpoints.
+  try {
+    const counts = queryOne<{ act: number; del: number }>(
+      `SELECT
+         (SELECT COUNT(*) FROM task_activities WHERE task_id = ?) as act,
+         (SELECT COUNT(*) FROM task_deliverables WHERE task_id = ?) as del`,
+      [taskId, taskId]
+    );
+    saveCheckpointThrottled(
+      {
+        taskId,
+        agentId: roleAgent.id,
+        checkpointType: 'auto',
+        stateSummary: `Stage handoff to "${targetStage.label}" (role=${targetStage.role})`,
+        contextData: {
+          previous_status: options?.previousStatus,
+          new_status: newStatus,
+          stage_label: targetStage.label,
+          activity_count: counts?.act ?? 0,
+          deliverable_count: counts?.del ?? 0,
+          fail_reason: options?.failReason,
+        },
+      },
+      60
+    );
+  } catch (err) {
+    // Non-fatal: checkpoint failures shouldn't block a stage transition.
+    console.warn('[Workflow] saveCheckpoint on transition failed:', err);
+  }
 
   recordLearnerOnTransition(taskId, options?.previousStatus || newStatus, newStatus, true).catch(err =>
     console.error('[Learner] transition record failed:', err)

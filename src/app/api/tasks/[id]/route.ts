@@ -4,7 +4,7 @@ import { queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
 import { handleStageTransition, handleStageFailure, getTaskWorkflow, drainQueue, populateTaskRolesFromAgents } from '@/lib/workflow-engine';
-import { hasStageEvidence, canUseBoardOverride, auditBoardOverride, taskCanBeDone, recordLearnerOnTransition } from '@/lib/task-governance';
+import { hasStageEvidence, canUseBoardOverride, auditBoardOverride, taskCanBeDone, recordLearnerOnTransition, isTerminalStatus } from '@/lib/task-governance';
 import { updateConvoyProgress, checkConvoyCompletion } from '@/lib/convoy';
 import { syncGatewayAgentsToCatalog } from '@/lib/agent-catalog-sync';
 import { triggerWorkspaceMerge } from '@/lib/workspace-isolation';
@@ -174,6 +174,16 @@ export async function PATCH(
     if (nextStatus !== undefined && nextStatus !== existing.status) {
       const boardOverrideRequested = Boolean(body.board_override);
       const boardOverrideAllowed = boardOverrideRequested && canUseBoardOverride(request);
+
+      // Cancelled is terminal: PATCH cannot move a cancelled task back into an
+      // active state. Use /admin/release-stall to un-cancel via a deliberate
+      // administrative action (which re-dispatches separately).
+      if (isTerminalStatus(existing.status) && existing.status === 'cancelled' && !boardOverrideAllowed) {
+        return NextResponse.json(
+          { error: `Cannot transition cancelled task to ${nextStatus}. Create a new task or use board_override.` },
+          { status: 400 }
+        );
+      }
 
       // Hard evidence gate for forward-stage transitions and completion
       const enteringQualityStage = ['testing', 'review', 'verification', 'done'].includes(nextStatus);
@@ -520,14 +530,31 @@ export async function DELETE(
       run('DELETE FROM convoys WHERE id = ?', [convoy.id]);
     }
 
-    // Delete or nullify related records first (foreign key constraints)
-    // Note: task_activities and task_deliverables have ON DELETE CASCADE
+    // Delete or nullify related records first (foreign key constraints).
+    // Tables with ON DELETE CASCADE: task_activities, task_deliverables,
+    // task_roles, task_notes, planning_questions, planning_specs,
+    // user_task_reads — these handle themselves.
+    //
+    // Tables with a plain REFERENCES (no cascade) to tasks(id) will block
+    // the delete with an FK error unless we handle them here. These were
+    // the silent "Failed to delete task" cause for stalled tasks that had
+    // agent_health / workspace_ports rows.
     run('DELETE FROM work_checkpoints WHERE task_id = ?', [id]);
     run('DELETE FROM openclaw_sessions WHERE task_id = ?', [id]);
     run('DELETE FROM events WHERE task_id = ?', [id]);
-    // Conversations and Knowledge reference tasks - nullify or delete
+    run('DELETE FROM agent_health WHERE task_id = ?', [id]);
+    run('DELETE FROM workspace_ports WHERE task_id = ?', [id]);
+    run('DELETE FROM workspace_merges WHERE task_id = ?', [id]);
+    // Product-autopilot tables: null out rather than cascade-delete so the
+    // parent product/idea/skill history is preserved across task deletion.
     run('UPDATE conversations SET task_id = NULL WHERE task_id = ?', [id]);
     run('UPDATE knowledge_entries SET task_id = NULL WHERE task_id = ?', [id]);
+    run('UPDATE ideas SET task_id = NULL WHERE task_id = ?', [id]);
+    run('UPDATE content_inventory SET task_id = NULL WHERE task_id = ?', [id]);
+    run('UPDATE cost_events SET task_id = NULL WHERE task_id = ?', [id]);
+    run('UPDATE product_skills SET created_by_task_id = NULL WHERE created_by_task_id = ?', [id]);
+    // skill_reports.task_id is NOT NULL — drop the rows rather than null them.
+    run('DELETE FROM skill_reports WHERE task_id = ?', [id]);
 
     // Now delete the task (cascades to task_activities and task_deliverables)
     run('DELETE FROM tasks WHERE id = ?', [id]);

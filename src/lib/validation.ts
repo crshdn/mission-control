@@ -18,7 +18,8 @@ const TaskStatus = z.enum([
   'testing',
   'review',
   'verification',
-  'done'
+  'done',
+  'cancelled'
 ]);
 
 const TaskPriority = z.enum(['low', 'normal', 'high', 'urgent']);
@@ -60,6 +61,15 @@ export const UpdateTaskSchema = z.object({
   override_reason: z.string().max(2000).optional(),
   pr_url: z.string().url().optional().nullable(),
   pr_status: z.enum(['pending', 'open', 'merged', 'closed']).optional(),
+});
+
+// Admin release-stall schema — escape hatch for deadlocked tasks that
+// cannot clear the evidence gate. Deliberately restricted to the two
+// terminal statuses so operators can't use it to bypass normal workflow.
+export const ReleaseStallSchema = z.object({
+  reason: z.string().min(1, 'reason is required').max(500),
+  terminal_state: z.enum(['cancelled', 'done']).optional(),
+  released_by: z.string().max(200).optional(),
 });
 
 // Activity validation schema

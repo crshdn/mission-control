@@ -3,6 +3,11 @@ import { notifyLearner } from '@/lib/learner';
 import type { Task } from '@/lib/types';
 
 const ACTIVE_STATUSES = ['assigned', 'in_progress', 'convoy_active', 'testing', 'review', 'verification'];
+const TERMINAL_STATUSES = ['done', 'cancelled'];
+
+export function isTerminalStatus(status: string): boolean {
+  return TERMINAL_STATUSES.includes(status);
+}
 
 export function hasStageEvidence(taskId: string): boolean {
   const deliverable = queryOne<{ count: number }>('SELECT COUNT(*) as count FROM task_deliverables WHERE task_id = ?', [taskId]);
