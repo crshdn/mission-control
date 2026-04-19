@@ -63,7 +63,7 @@ Respond with ONLY valid JSON in this exact format:
  * Run AI decomposition via OpenClaw: send prompt, poll for response, parse sub-tasks.
  */
 async function runAIDecomposition(task: Task): Promise<{
-  subtasks: Array<{ title: string; description?: string; depends_on?: string[] }>;
+  subtasks: Array<{ title: string; description?: string; depends_on?: string[]; suggested_role?: string }>;
   reasoning: string;
 }> {
   // Find master agent for this workspace
@@ -125,6 +125,12 @@ async function runAIDecomposition(task: Task): Promise<{
             title: st.title,
             description: st.description,
             depends_on: st.depends_on,
+            // Preserve the AI's per-sub-task role hint so convoy dispatch can
+            // route researcher/writer/reviewer work to the right agent. Before
+            // this, the role was dropped here and dispatch fell back to the
+            // hardcoded 'builder' in convoy/dispatch/route.ts — every sub-task
+            // landed on whichever agent had role='builder'.
+            suggested_role: st.suggested_role,
           })),
           reasoning: parsed.reasoning || 'AI decomposition',
         };
@@ -143,7 +149,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { strategy = 'manual', name, subtasks, decomposition_spec } = body as {
       strategy?: DecompositionStrategy;
       name?: string;
-      subtasks?: Array<{ title: string; description?: string; agent_id?: string; depends_on?: string[] }>;
+      subtasks?: Array<{ title: string; description?: string; agent_id?: string; depends_on?: string[]; suggested_role?: string }>;
       decomposition_spec?: string;
     };
 

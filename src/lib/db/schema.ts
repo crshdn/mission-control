@@ -279,6 +279,7 @@ CREATE TABLE IF NOT EXISTS convoy_subtasks (
   task_id TEXT NOT NULL UNIQUE REFERENCES tasks(id) ON DELETE CASCADE,
   sort_order INTEGER DEFAULT 0,
   depends_on TEXT,
+  suggested_role TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
 

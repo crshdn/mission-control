@@ -58,10 +58,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const task = queryOne<Task>('SELECT * FROM tasks WHERE id = ?', [subtask.task_id]);
       if (!task) continue;
 
-      // Auto-assign agent if not assigned
+      // Auto-assign agent if not assigned. Use the decomposition's role hint
+      // so researcher/writer/reviewer sub-tasks reach their own agent;
+      // `pickDynamicAgent` falls back to any non-offline agent if no match
+      // for the role exists (see src/lib/task-governance.ts). Prior to this,
+      // every sub-task passed 'builder' here — which is why every sub-task
+      // in a convoy landed on the single builder agent.
       let agentId = task.assigned_agent_id;
       if (!agentId) {
-        const picked = pickDynamicAgent(subtask.task_id, 'builder');
+        const roleHint = subtask.suggested_role || 'builder';
+        const picked = pickDynamicAgent(subtask.task_id, roleHint);
         if (picked) {
           agentId = picked.id;
           run('UPDATE tasks SET assigned_agent_id = ?, updated_at = datetime(\'now\') WHERE id = ?', [agentId, subtask.task_id]);

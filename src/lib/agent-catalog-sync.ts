@@ -24,11 +24,20 @@ let syncing: Promise<number> | null = null;
 
 function normalizeRole(name: string): string {
   const n = name.toLowerCase();
+  // Order matters: more-specific patterns first. Without the research /
+  // write / coord branches below, gateway-synced agents named "Researcher",
+  // "Writer", or "Coordinator" all fell through to 'builder', which hid
+  // them from pickDynamicAgent's role-based lookup and caused every
+  // convoy sub-task to route to the single `role='builder'` agent.
   if (n.includes('learn')) return 'learner';
   if (n.includes('test')) return 'tester';
   if (n.includes('review') || n.includes('verif')) return 'reviewer';
   if (n.includes('fix')) return 'fixer';
   if (n.includes('senior')) return 'senior';
+  if (n.includes('research')) return 'researcher';
+  if (n.includes('writ')) return 'writer';
+  if (n.includes('design')) return 'designer';
+  if (n.includes('coord')) return 'coordinator';
   if (n.includes('plan') || n.includes('orch')) return 'orchestrator';
   return 'builder';
 }

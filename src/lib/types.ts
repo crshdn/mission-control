@@ -766,6 +766,10 @@ export interface ConvoySubtask {
   task_id: string;
   sort_order: number;
   depends_on?: string[];
+  /** Role hint produced by decomposition (e.g. 'researcher', 'writer').
+   *  Read by convoy dispatch to route each sub-task to an agent whose
+   *  `agents.role` matches. NULL means "no hint — pick a builder". */
+  suggested_role?: string | null;
   created_at: string;
   // Joined
   task?: Task;

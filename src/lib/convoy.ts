@@ -9,6 +9,8 @@ interface CreateSubtaskInput {
   description?: string;
   agent_id?: string;
   depends_on?: string[];
+  /** Role hint for dispatch. If omitted, convoy dispatch falls back to 'builder'. */
+  suggested_role?: string;
 }
 
 interface CreateConvoyInput {
@@ -64,9 +66,9 @@ export function createConvoy(input: CreateConvoyInput): Convoy {
 
       // Create the convoy_subtasks relationship
       run(
-        `INSERT INTO convoy_subtasks (id, convoy_id, task_id, sort_order, depends_on, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [convoySubtaskId, convoyId, subtaskId, i, sub.depends_on ? JSON.stringify(sub.depends_on) : null, now]
+        `INSERT INTO convoy_subtasks (id, convoy_id, task_id, sort_order, depends_on, suggested_role, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [convoySubtaskId, convoyId, subtaskId, i, sub.depends_on ? JSON.stringify(sub.depends_on) : null, sub.suggested_role || null, now]
       );
     }
 
@@ -281,12 +283,12 @@ export function addSubtasks(convoyId: string, subtasks: CreateSubtaskInput[]): C
       );
 
       run(
-        `INSERT INTO convoy_subtasks (id, convoy_id, task_id, sort_order, depends_on, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [convoySubtaskId, convoyId, subtaskId, maxOrder + i + 1, sub.depends_on ? JSON.stringify(sub.depends_on) : null, now]
+        `INSERT INTO convoy_subtasks (id, convoy_id, task_id, sort_order, depends_on, suggested_role, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [convoySubtaskId, convoyId, subtaskId, maxOrder + i + 1, sub.depends_on ? JSON.stringify(sub.depends_on) : null, sub.suggested_role || null, now]
       );
 
-      created.push({ id: convoySubtaskId, convoy_id: convoyId, task_id: subtaskId, sort_order: maxOrder + i + 1, depends_on: sub.depends_on, created_at: now });
+      created.push({ id: convoySubtaskId, convoy_id: convoyId, task_id: subtaskId, sort_order: maxOrder + i + 1, depends_on: sub.depends_on, suggested_role: sub.suggested_role || null, created_at: now });
     }
 
     // Update total count

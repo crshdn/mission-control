@@ -1676,6 +1676,20 @@ const migrations: Migration[] = [
 
       console.log('[Migration 029] Tasks table recreated with cancelled status');
     }
+  },
+  {
+    id: '030',
+    name: 'add_suggested_role_to_convoy_subtasks',
+    up: (db) => {
+      console.log('[Migration 030] Adding suggested_role to convoy_subtasks...');
+      const cols = db.prepare("PRAGMA table_info(convoy_subtasks)").all() as { name: string }[];
+      if (cols.some(c => c.name === 'suggested_role')) {
+        console.log('[Migration 030] suggested_role already present — skipping');
+        return;
+      }
+      db.exec(`ALTER TABLE convoy_subtasks ADD COLUMN suggested_role TEXT`);
+      console.log('[Migration 030] convoy_subtasks.suggested_role added');
+    }
   }
 ];
 
