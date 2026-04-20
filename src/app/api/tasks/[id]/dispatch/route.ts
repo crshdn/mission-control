@@ -359,6 +359,17 @@ their persona, memory, and channel bindings.
       }
     }
 
+    // Every /api/tasks/* and /api/agents/* callback requires the MC bearer
+    // token when MC_API_TOKEN is set — which is always in practice, since
+    // unauthenticated dev mode is only for local experiments. Every
+    // completion-instruction branch embeds this header line so agents
+    // paste a ready-to-use curl rather than being told to POST to a URL
+    // and silently 401-ing.
+    const mcAuthToken = process.env.MC_API_TOKEN || '';
+    const authHeaderLine = mcAuthToken
+      ? `  -H "Authorization: Bearer ${mcAuthToken}" \\\n`
+      : '';
+
     let completionInstructions: string;
     if (isCoordinator) {
       completionInstructions = `**YOUR ROLE: COORDINATOR** — Break this task down and delegate to the persistent agents above. Track their progress and roll the results up to Mission Control.
@@ -369,25 +380,53 @@ their persona, memory, and channel bindings.
   - \`message\`: include the task id (\`${task.id}\`), the specific slice of work you want them to do, and any context they need. Prefix each message with \"You are the <role> for this task\" so they receive the role framing they would get from Mission Control directly.
   - \`timeoutSeconds\`: use \`0\` (fire-and-forget) for parallel work; use a positive value only when you need a synchronous reply.
 - **DO NOT use \`sessions_spawn\`** for this workflow. Spawned subagents inherit a stripped context (no SOUL.md/IDENTITY.md) and won't know the role they're meant to play. We want the pinned persona of the persistent agents.
-- If \`sessions_send\` is rejected with a permissions/allow-list error, surface that by calling \`${failEndpoint}\` with the error details — it means the OpenClaw allow-list needs to be updated for this coordinator.
+- If \`sessions_send\` is rejected with a permissions/allow-list error (e.g. *"Session send visibility is restricted"*), the OpenClaw allow-list on this coordinator needs \`tools.sessions.visibility: "all"\` — or an explicit list of peer agent ids. Surface the blocker via:
+  \`\`\`bash
+  curl -sS -X POST "${missionControlUrl}/api/tasks/${task.id}/fail" \\
+    -H "Content-Type: application/json" \\
+${authHeaderLine}    -d '{"reason":"sessions_send blocked by allow-list: <error text>"}'
+  \`\`\`
 
-**TRACKING & REPORTING:**
-1. Log activity whenever you delegate or receive results: POST ${missionControlUrl}/api/tasks/${task.id}/activities
-   Body: {"activity_type": "updated", "message": "Delegated <slice> to <agent name>"}
-2. Register any deliverables the agents produce: POST ${missionControlUrl}/api/tasks/${task.id}/deliverables
-3. When the whole task is complete, update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
-   Body: {"status": "${nextStatus}"}
+**TRACKING & REPORTING** (all calls require the Authorization header):
+
+\`\`\`bash
+# Log each delegation / receipt
+curl -sS -X POST "${missionControlUrl}/api/tasks/${task.id}/activities" \\
+  -H "Content-Type: application/json" \\
+${authHeaderLine}  -d '{"activity_type":"updated","message":"Delegated <slice> to <agent name>"}'
+
+# Register aggregated deliverable (after all peers report in)
+curl -sS -X POST "${missionControlUrl}/api/tasks/${task.id}/deliverables" \\
+  -H "Content-Type: application/json" \\
+${authHeaderLine}  -d '{"deliverable_type":"file","title":"<title>","path":"${taskProjectDir}/<filename>"}'
+
+# Close the task
+curl -sS -X PATCH "${missionControlUrl}/api/tasks/${task.id}" \\
+  -H "Content-Type: application/json" \\
+${authHeaderLine}  -d '{"status":"${nextStatus}"}'
+\`\`\`
 
 When complete, reply with:
 \`TASK_COMPLETE: [summary of what was delegated, to whom, and the aggregate outcome]\``;
     } else if (isBuilder) {
-      completionInstructions = `**IMPORTANT:** After completing work, you MUST call these APIs:
-1. Log activity: POST ${missionControlUrl}/api/tasks/${task.id}/activities
-   Body: {"activity_type": "completed", "message": "Description of what was done"}
-2. Register deliverable: POST ${missionControlUrl}/api/tasks/${task.id}/deliverables
-   Body: {"deliverable_type": "file", "title": "File name", "path": "${taskProjectDir}/filename.html"}
-3. Update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
-   Body: {"status": "${nextStatus}"}
+      completionInstructions = `**IMPORTANT:** After completing work, you MUST make these three calls in order — all require the Authorization header:
+
+\`\`\`bash
+# 1. Register deliverable
+curl -sS -X POST "${missionControlUrl}/api/tasks/${task.id}/deliverables" \\
+  -H "Content-Type: application/json" \\
+${authHeaderLine}  -d '{"deliverable_type":"file","title":"<file name>","path":"${taskProjectDir}/<filename>"}'
+
+# 2. Log activity (must have both a deliverable AND an activity before step 3 will pass the evidence gate)
+curl -sS -X POST "${missionControlUrl}/api/tasks/${task.id}/activities" \\
+  -H "Content-Type: application/json" \\
+${authHeaderLine}  -d '{"activity_type":"completed","message":"<what you built in one line>"}'
+
+# 3. Transition status
+curl -sS -X PATCH "${missionControlUrl}/api/tasks/${task.id}" \\
+  -H "Content-Type: application/json" \\
+${authHeaderLine}  -d '{"status":"${nextStatus}"}'
+\`\`\`
 
 When complete, reply with:
 \`TASK_COMPLETE: [brief summary of what you did]\``;
@@ -396,15 +435,25 @@ When complete, reply with:
 
 Review the output directory for deliverables and run any applicable tests.
 
-**If tests PASS:**
-1. Log activity: POST ${missionControlUrl}/api/tasks/${task.id}/activities
-   Body: {"activity_type": "completed", "message": "Tests passed: [summary]"}
-2. Update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
-   Body: {"status": "${nextStatus}"}
+**If tests PASS** — all calls require the Authorization header:
+
+\`\`\`bash
+curl -sS -X POST "${missionControlUrl}/api/tasks/${task.id}/activities" \\
+  -H "Content-Type: application/json" \\
+${authHeaderLine}  -d '{"activity_type":"completed","message":"Tests passed: <summary>"}'
+
+curl -sS -X PATCH "${missionControlUrl}/api/tasks/${task.id}" \\
+  -H "Content-Type: application/json" \\
+${authHeaderLine}  -d '{"status":"${nextStatus}"}'
+\`\`\`
 
 **If tests FAIL:**
-1. ${failEndpoint}
-   Body: {"reason": "Detailed description of what failed and what needs fixing"}
+
+\`\`\`bash
+curl -sS -X POST "${missionControlUrl}/api/tasks/${task.id}/fail" \\
+  -H "Content-Type: application/json" \\
+${authHeaderLine}  -d '{"reason":"<detailed description of what failed and what needs fixing>"}'
+\`\`\`
 
 Reply with: \`TEST_PASS: [summary]\` or \`TEST_FAIL: [what failed]\``;
     } else if (isVerifier) {
@@ -412,22 +461,36 @@ Reply with: \`TEST_PASS: [summary]\` or \`TEST_FAIL: [what failed]\``;
 
 Review deliverables, test results, and task requirements.
 
-**If verification PASSES:**
-1. Log activity: POST ${missionControlUrl}/api/tasks/${task.id}/activities
-   Body: {"activity_type": "completed", "message": "Verification passed: [summary]"}
-2. Update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
-   Body: {"status": "${nextStatus}"}
+**If verification PASSES** — all calls require the Authorization header:
+
+\`\`\`bash
+curl -sS -X POST "${missionControlUrl}/api/tasks/${task.id}/activities" \\
+  -H "Content-Type: application/json" \\
+${authHeaderLine}  -d '{"activity_type":"completed","message":"Verification passed: <summary>"}'
+
+curl -sS -X PATCH "${missionControlUrl}/api/tasks/${task.id}" \\
+  -H "Content-Type: application/json" \\
+${authHeaderLine}  -d '{"status":"${nextStatus}"}'
+\`\`\`
 
 **If verification FAILS:**
-1. ${failEndpoint}
-   Body: {"reason": "Detailed description of what failed and what needs fixing"}
+
+\`\`\`bash
+curl -sS -X POST "${missionControlUrl}/api/tasks/${task.id}/fail" \\
+  -H "Content-Type: application/json" \\
+${authHeaderLine}  -d '{"reason":"<detailed description of what failed and what needs fixing>"}'
+\`\`\`
 
 Reply with: \`VERIFY_PASS: [summary]\` or \`VERIFY_FAIL: [what failed]\``;
     } else {
       // Fallback for unknown roles
-      completionInstructions = `**IMPORTANT:** After completing work:
-1. Update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
-   Body: {"status": "${nextStatus}"}`;
+      completionInstructions = `**IMPORTANT:** After completing work, update status — the call requires the Authorization header:
+
+\`\`\`bash
+curl -sS -X PATCH "${missionControlUrl}/api/tasks/${task.id}" \\
+  -H "Content-Type: application/json" \\
+${authHeaderLine}  -d '{"status":"${nextStatus}"}'
+\`\`\``;
     }
 
     // Build image references section

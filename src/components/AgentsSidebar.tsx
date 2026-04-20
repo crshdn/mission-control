@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, ChevronRight, ChevronLeft, Zap, ZapOff, Loader2, Search, Power, Megaphone, X, MoreVertical } from 'lucide-react';
+import { Plus, ChevronRight, ChevronLeft, Zap, ZapOff, Loader2, Search, Power, Megaphone, X, MoreVertical, RotateCcw } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import type { Agent, AgentStatus, AgentHealthState, OpenClawSession } from '@/lib/types';
 import { AgentModal } from './AgentModal';
@@ -50,6 +50,7 @@ export function AgentsSidebar({ workspaceId, mobileMode = false, isPortrait = tr
   const [rollCallBusy, setRollCallBusy] = useState(false);
   const [rollCallResult, setRollCallResult] = useState<RollCallResultView | null>(null);
   const [showActionMenu, setShowActionMenu] = useState(false);
+  const [resetSessionsBusy, setResetSessionsBusy] = useState(false);
 
   // Close the action menu when clicking outside it. We watch document mousedown
   // and check that the target isn't inside the menu or the trigger button.
@@ -207,6 +208,53 @@ export function AgentsSidebar({ workspaceId, mobileMode = false, isPortrait = tr
     }
   };
 
+  // Reset all OpenClaw sessions — both MC-side (session rows) and
+  // gateway-side (via `/reset` sent to each active gateway-synced agent's
+  // main session, which forces the gateway to re-init and reload the
+  // agent's persona files on its next turn). One click, two phases.
+  const resetAllSessions = async () => {
+    if (!confirm(
+      'Reset ALL agent sessions?\n\n' +
+      'This does two things:\n' +
+      '  1. Wipes Mission Control\'s session tracking (the "OpenClaw Connected" badges).\n' +
+      '  2. Sends `/reset` to every active gateway-synced agent\'s main session, which forces OpenClaw to re-initialize the session and reload the agent\'s SOUL.md / AGENTS.md / MESSAGING-PROTOCOL.md on its next turn.\n\n' +
+      'Use this after editing agent persona files, or when sessionKey routing has drifted.'
+    )) return;
+    setResetSessionsBusy(true);
+    try {
+      const res = await fetch('/api/openclaw/sessions', { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to reset sessions');
+        return;
+      }
+      // Drop in-memory OpenClaw session state so badges update immediately.
+      for (const agent of agents) {
+        setAgentOpenClawSession(agent.id, null);
+      }
+      // Summarise both phases. Gateway /reset can fail per-agent (allow-list,
+      // offline, etc.) — surface those in the alert so the operator knows
+      // which ones to hit manually in the chat.
+      const resets: Array<{ name: string; ok: boolean; error?: string }> = data.agents_reset || [];
+      const ok = resets.filter(r => r.ok).map(r => r.name);
+      const failed = resets.filter(r => !r.ok);
+      const lines: string[] = [
+        `Cleared ${data.deleted} MC session record(s).`,
+      ];
+      if (ok.length) lines.push(`Sent /reset to: ${ok.join(', ')}`);
+      if (failed.length) {
+        lines.push(`Failed to /reset: ${failed.map(f => `${f.name} (${f.error || 'unknown'})`).join('; ')}`);
+        lines.push('Fall back: run `/reset` in those agents\' OpenClaw chats directly.');
+      }
+      if (data.gateway_error) lines.push(`Gateway unreachable: ${data.gateway_error}`);
+      alert(lines.join('\n'));
+    } catch (err) {
+      alert(`Failed to reset sessions: ${(err as Error).message}`);
+    } finally {
+      setResetSessionsBusy(false);
+    }
+  };
+
   // Poll roll-call status while panel is open and timer hasn't expired.
   // SSE would be nicer; polling is simpler and fine for the small entry
   // counts this feature fans out to.
@@ -314,6 +362,15 @@ export function AgentsSidebar({ workspaceId, mobileMode = false, isPortrait = tr
                     >
                       {rollCallBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Megaphone className="w-4 h-4" />}
                       {rollCallBusy ? 'Calling…' : 'Roll Call'}
+                    </button>
+                    <button
+                      onClick={() => { setShowActionMenu(false); resetAllSessions(); }}
+                      disabled={resetSessionsBusy}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-amber-300 hover:bg-amber-500/10 disabled:opacity-50 disabled:cursor-not-allowed text-left"
+                      title="Clear all OpenClaw session records so next dispatch starts fresh"
+                    >
+                      {resetSessionsBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                      {resetSessionsBusy ? 'Resetting…' : 'Reset all sessions'}
                     </button>
                     <div className="h-px bg-mc-border my-1" />
                     <button
