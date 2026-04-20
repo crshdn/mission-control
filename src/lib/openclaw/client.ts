@@ -4,6 +4,7 @@ import { EventEmitter } from 'events';
 import type { OpenClawMessage, OpenClawSessionInfo } from '../types';
 import { loadOrCreateDeviceIdentity, signDevicePayload, buildDeviceAuthPayload, publicKeyRawBase64Url } from './device-identity';
 import { createHash } from 'crypto';
+import { logDebugEvent } from '../debug-log';
 
 // Types for gateway model discovery (matches OpenClaw models.list response)
 export interface GatewayModelChoice {
@@ -217,6 +218,14 @@ export class OpenClawClient extends EventEmitter {
           console.log('[OpenClaw] WebSocket opened, waiting for challenge...');
           // Don't send anything yet - wait for Gateway challenge
           // Token is in URL query string
+          logDebugEvent({
+            type: 'ws.connect',
+            direction: 'internal',
+            metadata: {
+              url: this.url,
+              phase: 'socket_open',
+            },
+          });
         };
 
         this.ws.onclose = (event) => {
@@ -230,6 +239,17 @@ export class OpenClawClient extends EventEmitter {
           this.emit('disconnected');
           // Log close reason for debugging
           console.log(`[OpenClaw] Disconnected from Gateway (code: ${event.code}, reason: "${event.reason}", wasClean: ${event.wasClean})`);
+          logDebugEvent({
+            type: 'ws.disconnect',
+            direction: 'internal',
+            metadata: {
+              code: event.code,
+              reason: event.reason,
+              was_clean: event.wasClean,
+              was_connected: wasConnected,
+              auto_reconnect: this.autoReconnect,
+            },
+          });
           // Only auto-reconnect if we were previously connected (not on initial connection failure)
           if (this.autoReconnect && wasConnected) {
             this.scheduleReconnect();
@@ -240,6 +260,12 @@ export class OpenClawClient extends EventEmitter {
           clearTimeout(connectionTimeout);
           console.error('[OpenClaw] WebSocket error');
           this.emit('error', error);
+          logDebugEvent({
+            type: 'ws.error',
+            direction: 'internal',
+            error: (error as unknown as { message?: string })?.message || 'WebSocket error',
+            metadata: { connected: this.connected },
+          });
           if (!this.connected) {
             this.connecting = null;
             reject(new Error('Failed to connect to OpenClaw Gateway'));
@@ -280,9 +306,23 @@ export class OpenClawClient extends EventEmitter {
             // Forward gateway streaming events so subscribers can tap in
             if (data.type === 'event' && data.event === 'agent' && data.payload) {
               this.emit('agent_event', data.payload);
+              logDebugEvent({
+                type: 'agent.event',
+                direction: 'inbound',
+                sessionKey: (data.payload as { sessionKey?: string })?.sessionKey ?? null,
+                responseBody: data.payload,
+                metadata: { seq: data.seq, event: data.event },
+              });
             }
             if (data.type === 'event' && data.event === 'chat' && data.payload) {
               this.emit('chat_event', data.payload);
+              logDebugEvent({
+                type: 'chat.response',
+                direction: 'inbound',
+                sessionKey: (data.payload as { sessionKey?: string })?.sessionKey ?? null,
+                responseBody: data.payload,
+                metadata: { seq: data.seq, event: data.event },
+              });
             }
 
             // Handle challenge-response authentication (OpenClaw RequestFrame format)
@@ -351,11 +391,26 @@ export class OpenClawClient extends EventEmitter {
                   this.connecting = null;
                   this.emit('connected');
                   console.log('[OpenClaw] Authenticated successfully');
+                  logDebugEvent({
+                    type: 'ws.authenticated',
+                    direction: 'internal',
+                    metadata: {
+                      role,
+                      scopes,
+                      device_id: this.deviceIdentity?.deviceId ?? null,
+                    },
+                  });
                   resolve();
                 },
                 reject: (error: Error) => {
                   this.connecting = null;
                   this.ws?.close();
+                  logDebugEvent({
+                    type: 'ws.error',
+                    direction: 'internal',
+                    error: `Authentication failed: ${error.message}`,
+                    metadata: { phase: 'authentication' },
+                  });
                   reject(new Error(`Authentication failed: ${error.message}`));
                 }
               });
@@ -431,6 +486,11 @@ export class OpenClawClient extends EventEmitter {
       if (!this.autoReconnect) return;
 
       console.log('[OpenClaw] Attempting reconnect...');
+      logDebugEvent({
+        type: 'ws.reconnect',
+        direction: 'internal',
+        metadata: { trigger: 'scheduled', interval_ms: 10000 },
+      });
       try {
         await this.connect();
       } catch {
@@ -442,14 +502,60 @@ export class OpenClawClient extends EventEmitter {
 
   async call<T = unknown>(method: string, params?: Record<string, unknown>): Promise<T> {
     if (!this.ws || !this.connected || !this.authenticated) {
+      logDebugEvent({
+        type: 'gateway.rpc',
+        direction: 'outbound',
+        error: 'Not connected to OpenClaw Gateway',
+        metadata: { method, pre_flight: true },
+      });
       throw new Error('Not connected to OpenClaw Gateway');
     }
 
     const id = crypto.randomUUID();
     const message = { type: 'req', id, method, params };
+    const started = Date.now();
+
+    // Keep the request body summary out of the hot path's closure so the
+    // GC can release the full payload once the debug row is serialised.
+    // Some params (chat.send message) can be 10KB+; we store the preview
+    // rather than the full thing when it exceeds a reasonable bound.
+    const paramPreview = (() => {
+      if (!params) return null;
+      try {
+        const s = JSON.stringify(params);
+        return s.length > 4096 ? { _truncated: true, length: s.length, head: s.slice(0, 4096) } : params;
+      } catch {
+        return { _unstringifiable: true };
+      }
+    })();
 
     return new Promise((resolve, reject) => {
-      this.pendingRequests.set(id, { resolve: resolve as (value: unknown) => void, reject });
+      this.pendingRequests.set(id, {
+        resolve: (value: unknown) => {
+          logDebugEvent({
+            type: 'gateway.rpc',
+            direction: 'outbound',
+            sessionKey: (params as { sessionKey?: string } | undefined)?.sessionKey ?? null,
+            durationMs: Date.now() - started,
+            requestBody: { method, params: paramPreview },
+            responseBody: value,
+            metadata: { method, request_id: id },
+          });
+          (resolve as (v: unknown) => void)(value);
+        },
+        reject: (error: Error) => {
+          logDebugEvent({
+            type: 'gateway.rpc',
+            direction: 'outbound',
+            sessionKey: (params as { sessionKey?: string } | undefined)?.sessionKey ?? null,
+            durationMs: Date.now() - started,
+            requestBody: { method, params: paramPreview },
+            error: error.message,
+            metadata: { method, request_id: id },
+          });
+          reject(error);
+        },
+      });
 
       // Timeout after 30 seconds
       setTimeout(() => {

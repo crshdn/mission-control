@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { CreateActivitySchema } from '@/lib/validation';
+import { logDebugEvent } from '@/lib/debug-log';
 import type { TaskActivity } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -148,6 +149,15 @@ export async function POST(
     broadcast({
       type: 'activity_logged',
       payload: result,
+    });
+
+    logDebugEvent({
+      type: 'agent.activity_post',
+      direction: 'inbound',
+      taskId,
+      agentId: agent_id ?? null,
+      requestBody: body,
+      metadata: { activity_type },
     });
 
     return NextResponse.json(result, { status: 201 });

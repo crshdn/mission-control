@@ -18,18 +18,31 @@ import { broadcast } from '@/lib/events';
  */
 
 export type DebugEventType =
-  // Outbound
+  // Outbound (MC → agent/gateway)
   | 'chat.send'
-  // Reserved for future instrumentation
-  | 'chat.response'
   | 'session.create'
   | 'session.end'
+  | 'gateway.list_agents'
+  | 'gateway.rpc'
+  | 'gateway.health_ping'
+  // Inbound (agent/gateway → MC)
+  | 'chat.response'
+  | 'agent.event'
   | 'agent.activity_post'
   | 'agent.deliverable_post'
   | 'agent.status_patch'
   | 'agent.fail_post'
-  | 'gateway.list_agents'
-  | 'gateway.health_ping';
+  // WebSocket lifecycle (internal)
+  | 'ws.connect'
+  | 'ws.authenticated'
+  | 'ws.disconnect'
+  | 'ws.error'
+  | 'ws.reconnect'
+  // Scheduler / detectors (internal)
+  | 'stall.flagged'
+  | 'stall.cleared'
+  // Diagnostic flow (internal)
+  | 'diagnostic.step';
 
 export type DebugEventDirection = 'outbound' | 'inbound' | 'internal';
 

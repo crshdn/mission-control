@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { queryOne } from '@/lib/db';
 import { handleStageFailure, drainQueue } from '@/lib/workflow-engine';
 import { notifyLearner } from '@/lib/learner';
+import { logDebugEvent } from '@/lib/debug-log';
 import type { Task } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -32,6 +33,14 @@ export async function POST(
     if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
+
+    logDebugEvent({
+      type: 'agent.fail_post',
+      direction: 'inbound',
+      taskId,
+      requestBody: body,
+      metadata: { from_status: task.status },
+    });
 
     // Only allow failure from testing, review, or verification stages
     const failableStatuses = ['testing', 'review', 'verification'];

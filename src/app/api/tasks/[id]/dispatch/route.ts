@@ -136,7 +136,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       // Create session record
       const sessionId = uuidv4();
       const openclawSessionId = `mission-control-${agent.name.toLowerCase().replace(/\s+/g, '-')}-${id}`;
-      
+
       run(
         `INSERT INTO openclaw_sessions (id, agent_id, openclaw_session_id, task_id, channel, status, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -154,6 +154,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
          VALUES (?, ?, ?, ?, ?)`,
         [uuidv4(), 'agent_status_changed', agent.id, `${agent.name} session created`, now]
       );
+
+      logDebugEvent({
+        type: 'session.create',
+        direction: 'internal',
+        taskId: id,
+        agentId: agent.id,
+        sessionKey: openclawSessionId,
+        metadata: {
+          agent_name: agent.name,
+          reason: 'no_active_session_found',
+        },
+      });
     }
 
     if (!session) {
@@ -300,14 +312,74 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    const isBuilder = !currentStage || currentStage.role === 'builder' || task.status === 'assigned';
-    const isTester = currentStage?.role === 'tester';
-    const isVerifier = currentStage?.role === 'verifier' || currentStage?.role === 'reviewer';
+    // Role detection. Coordinator/orchestrator must be checked *before*
+    // the builder fallback — `isBuilder` is true whenever `currentStage` is
+    // unresolved, which was bucketing coordinator dispatches as "go build
+    // something" and triggering the legacy sessions_spawn path.
+    const isCoordinator =
+      (agent as Agent & { role?: string }).role === 'coordinator' ||
+      (agent as Agent & { role?: string }).role === 'orchestrator' ||
+      Boolean(agent.is_master);
+    const isBuilder = !isCoordinator && (!currentStage || currentStage.role === 'builder' || task.status === 'assigned');
+    const isTester = !isCoordinator && currentStage?.role === 'tester';
+    const isVerifier = !isCoordinator && (currentStage?.role === 'verifier' || currentStage?.role === 'reviewer');
     const nextStatus = nextStage?.status || 'review';
     const failEndpoint = `POST ${missionControlUrl}/api/tasks/${task.id}/fail`;
 
+    // For coordinator dispatches, enumerate the persistent gateway-synced
+    // agents so the coordinator can delegate via `sessions_send` rather than
+    // spawning ephemeral subagents (which inherit a stripped context — no
+    // SOUL.md / IDENTITY.md — and are therefore "confused" about their
+    // role). We only list agents with a gateway_agent_id so local/test
+    // agents don't leak into the coordinator's dispatch surface.
+    let delegationRosterSection = '';
+    if (isCoordinator) {
+      const siblings = queryAll<{ id: string; name: string; role: string; gateway_agent_id: string }>(
+        `SELECT id, name, role, gateway_agent_id
+           FROM agents
+          WHERE gateway_agent_id IS NOT NULL
+            AND id != ?
+            AND COALESCE(status, 'standby') != 'offline'
+          ORDER BY role ASC, name ASC`,
+        [agent.id]
+      );
+      if (siblings.length > 0) {
+        const rosterLines = siblings
+          .map(s => `- **${s.name}** (role: \`${s.role}\`, gateway id: \`${s.gateway_agent_id}\`)`)
+          .join('\n');
+        delegationRosterSection = `\n---
+**👥 AVAILABLE PERSISTENT AGENTS — delegate here, do NOT spawn new ones:**
+${rosterLines}
+
+Each of these is a long-lived agent with its own pinned identity
+(\`SOUL.md\`, \`AGENTS.md\`, \`USER.md\`). Route work to them so they keep
+their persona, memory, and channel bindings.
+`;
+      }
+    }
+
     let completionInstructions: string;
-    if (isBuilder) {
+    if (isCoordinator) {
+      completionInstructions = `**YOUR ROLE: COORDINATOR** — Break this task down and delegate to the persistent agents above. Track their progress and roll the results up to Mission Control.
+
+**CRITICAL — HOW TO DELEGATE:**
+- Use the \`sessions_send\` tool (a.k.a. \`agent.send\`) to dispatch work to each persistent agent.
+  - \`sessionKey\`: call \`sessions_list\` first to discover the target agent's active session, or target its main session. The gateway ids above identify each agent.
+  - \`message\`: include the task id (\`${task.id}\`), the specific slice of work you want them to do, and any context they need. Prefix each message with \"You are the <role> for this task\" so they receive the role framing they would get from Mission Control directly.
+  - \`timeoutSeconds\`: use \`0\` (fire-and-forget) for parallel work; use a positive value only when you need a synchronous reply.
+- **DO NOT use \`sessions_spawn\`** for this workflow. Spawned subagents inherit a stripped context (no SOUL.md/IDENTITY.md) and won't know the role they're meant to play. We want the pinned persona of the persistent agents.
+- If \`sessions_send\` is rejected with a permissions/allow-list error, surface that by calling \`${failEndpoint}\` with the error details — it means the OpenClaw allow-list needs to be updated for this coordinator.
+
+**TRACKING & REPORTING:**
+1. Log activity whenever you delegate or receive results: POST ${missionControlUrl}/api/tasks/${task.id}/activities
+   Body: {"activity_type": "updated", "message": "Delegated <slice> to <agent name>"}
+2. Register any deliverables the agents produce: POST ${missionControlUrl}/api/tasks/${task.id}/deliverables
+3. When the whole task is complete, update status: PATCH ${missionControlUrl}/api/tasks/${task.id}
+   Body: {"status": "${nextStatus}"}
+
+When complete, reply with:
+\`TASK_COMPLETE: [summary of what was delegated, to whom, and the aggregate outcome]\``;
+    } else if (isBuilder) {
       completionInstructions = `**IMPORTANT:** After completing work, you MUST call these APIs:
 1. Log activity: POST ${missionControlUrl}/api/tasks/${task.id}/activities
    Body: {"activity_type": "completed", "message": "Description of what was done"}
@@ -415,18 +487,24 @@ Reply with: \`VERIFY_PASS: [summary]\` or \`VERIFY_FAIL: [what failed]\``;
     }
 
     const roleLabel = currentStage?.label || 'Task';
-    const taskMessage = `${priorityEmoji} **${isBuilder ? 'NEW TASK ASSIGNED' : `${roleLabel.toUpperCase()} STAGE — ${task.title}`}**
+    const headline = isCoordinator
+      ? `COORDINATOR DISPATCH — ${task.title}`
+      : isBuilder
+        ? 'NEW TASK ASSIGNED'
+        : `${roleLabel.toUpperCase()} STAGE — ${task.title}`;
+
+    const taskMessage = `${priorityEmoji} **${headline}**
 
 **Title:** ${task.title}
 ${task.description ? `**Description:** ${task.description}\n` : ''}
 **Priority:** ${task.priority.toUpperCase()}
 ${task.due_date ? `**Due:** ${task.due_date}\n` : ''}
 **Task ID:** ${task.id}
-${planningSpecSection}${agentInstructionsSection}${skillsSection}${knowledgeSection}${imagesSection}${buildCheckpointContext(task.id) || ''}${formatMailForDispatch(agent.id) || ''}${repoSection}
+${planningSpecSection}${agentInstructionsSection}${skillsSection}${knowledgeSection}${imagesSection}${buildCheckpointContext(task.id) || ''}${formatMailForDispatch(agent.id) || ''}${repoSection}${delegationRosterSection}
 ${isBuilder ? (workspaceIsolated
   ? `**\u{1F512} ISOLATED WORKSPACE:** ${taskProjectDir}\n- **Port:** ${workspacePort || 'default'} (use this for dev server, NOT the default)\n${workspaceBranchName ? `- **Branch:** ${workspaceBranchName}\n` : ''}- **IMPORTANT:** Do NOT modify files outside this workspace directory. Other agents may be working on the same project in parallel. All your work must stay within: ${taskProjectDir}\nCreate this directory if needed and save all deliverables there.\n`
   : `**OUTPUT DIRECTORY:** ${taskProjectDir}\nCreate this directory and save all deliverables there.\n`)
-: `**OUTPUT DIRECTORY:** ${taskProjectDir}\n`}
+: isCoordinator ? '' : `**OUTPUT DIRECTORY:** ${taskProjectDir}\n`}
 ${completionInstructions}
 
 If you need help or clarification, ask the orchestrator.`;

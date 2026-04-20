@@ -3,6 +3,7 @@ import { queryOne, queryAll, run } from '@/lib/db';
 import { sendMail } from '@/lib/mailbox';
 import { logTaskActivity } from '@/lib/activity-log';
 import { saveCheckpointThrottled } from '@/lib/checkpoint';
+import { logDebugEvent } from '@/lib/debug-log';
 import type { Task } from '@/lib/types';
 
 // Active statuses that can go stale. Kept in sync with
@@ -107,6 +108,18 @@ export async function scanStalledTasks(): Promise<StallReport> {
         type: 'stall_detected',
         message: `Task idle for ${Math.round(minutesIdle)}m with no deliverables`,
         metadata: { minutes_idle: Math.round(minutesIdle), threshold: thresholdMinutes },
+      });
+
+      logDebugEvent({
+        type: 'stall.flagged',
+        direction: 'internal',
+        taskId: task.id,
+        agentId: task.assigned_agent_id,
+        metadata: {
+          minutes_idle: Math.round(minutesIdle),
+          threshold_minutes: thresholdMinutes,
+          task_status: task.status,
+        },
       });
 
       // Snapshot a checkpoint so a subsequent /checkpoint/restore has
@@ -333,5 +346,12 @@ export function clearStallFlag(taskId: string): void {
     taskId,
     type: 'stall_recovered',
     message: 'Stall cleared by subsequent action (dispatch / reassign / mail from coordinator)',
+  });
+
+  logDebugEvent({
+    type: 'stall.cleared',
+    direction: 'internal',
+    taskId,
+    metadata: { prior_status_reason: task.status_reason },
   });
 }

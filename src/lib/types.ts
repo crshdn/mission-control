@@ -854,7 +854,9 @@ export type SSEEventType =
   | 'skills_extracted'
   | 'debug_event_logged'
   | 'debug_collection_toggled'
-  | 'debug_events_cleared';
+  | 'debug_events_cleared'
+  | 'agents_cleared'
+  | 'tasks_cleared';
 
 export interface SSEEvent {
   type: SSEEventType;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, run } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
+import { logDebugEvent } from '@/lib/debug-log';
 import type { Agent, OpenClawSession } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -109,6 +110,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       [sessionId]
     );
 
+    logDebugEvent({
+      type: 'session.create',
+      direction: 'internal',
+      agentId: id,
+      sessionKey: openclawSessionId,
+      metadata: {
+        agent_name: agent.name,
+        channel: 'mission-control',
+        reason: 'manual_link',
+      },
+    });
+
     return NextResponse.json({ linked: true, session }, { status: 201 });
   } catch (error) {
     console.error('Failed to link agent to OpenClaw:', error);
@@ -147,6 +160,17 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       'UPDATE openclaw_sessions SET status = ?, updated_at = ? WHERE id = ?',
       ['inactive', now, existingSession.id]
     );
+
+    logDebugEvent({
+      type: 'session.end',
+      direction: 'internal',
+      agentId: id,
+      sessionKey: existingSession.openclaw_session_id,
+      metadata: {
+        agent_name: agent.name,
+        reason: 'manual_unlink',
+      },
+    });
 
     // Log event
     run(

@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { CreateDeliverableSchema } from '@/lib/validation';
+import { logDebugEvent } from '@/lib/debug-log';
 import { existsSync } from 'fs';
 
 import type { TaskDeliverable } from '@/lib/types';
@@ -103,6 +104,14 @@ export async function POST(
     broadcast({
       type: 'deliverable_added',
       payload: deliverable,
+    });
+
+    logDebugEvent({
+      type: 'agent.deliverable_post',
+      direction: 'inbound',
+      taskId,
+      requestBody: body,
+      metadata: { deliverable_type, title, file_exists: fileExists },
     });
 
     // Return with warning if file doesn't exist

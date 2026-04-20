@@ -2,16 +2,35 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Trash2, Play, Pause, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Trash2, Play, Pause, ChevronDown, ChevronRight, Users, ListX, Activity } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import type { DebugEvent, DebugEventType, DebugEventDirection } from '@/lib/debug-log';
 
 const EVENT_TYPE_OPTIONS: Array<{ value: '' | DebugEventType; label: string }> = [
   { value: '', label: 'All event types' },
-  { value: 'chat.send', label: 'chat.send (outbound)' },
-  { value: 'chat.response', label: 'chat.response' },
-  { value: 'session.create', label: 'session.create' },
-  { value: 'session.end', label: 'session.end' },
+  // Outbound
+  { value: 'chat.send', label: '↑ chat.send' },
+  { value: 'gateway.rpc', label: '↑ gateway.rpc (all RPCs)' },
+  { value: 'gateway.list_agents', label: '↑ gateway.list_agents' },
+  // Inbound
+  { value: 'chat.response', label: '↓ chat.response' },
+  { value: 'agent.event', label: '↓ agent.event (stream)' },
+  { value: 'agent.activity_post', label: '↓ agent.activity_post' },
+  { value: 'agent.deliverable_post', label: '↓ agent.deliverable_post' },
+  { value: 'agent.status_patch', label: '↓ agent.status_patch' },
+  { value: 'agent.fail_post', label: '↓ agent.fail_post' },
+  // Lifecycle
+  { value: 'session.create', label: '• session.create' },
+  { value: 'session.end', label: '• session.end' },
+  { value: 'ws.connect', label: '• ws.connect' },
+  { value: 'ws.authenticated', label: '• ws.authenticated' },
+  { value: 'ws.disconnect', label: '• ws.disconnect' },
+  { value: 'ws.error', label: '• ws.error' },
+  { value: 'ws.reconnect', label: '• ws.reconnect' },
+  // Scheduler / diagnostic
+  { value: 'stall.flagged', label: '• stall.flagged' },
+  { value: 'stall.cleared', label: '• stall.cleared' },
+  { value: 'diagnostic.step', label: '• diagnostic.step' },
 ];
 
 const DIRECTION_OPTIONS: Array<{ value: '' | DebugEventDirection; label: string }> = [
@@ -33,6 +52,13 @@ export default function DebugConsolePage() {
     direction: '' as '' | DebugEventDirection,
   });
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [diagnosticBusy, setDiagnosticBusy] = useState(false);
+  const [diagnosticResult, setDiagnosticResult] = useState<null | {
+    ok: boolean;
+    message: string;
+    task_id?: string;
+    steps?: Array<{ name: string; ok: boolean; detail?: string; duration_ms?: number }>;
+  }>(null);
 
   // Keep the latest filter in a ref so the SSE handler (which is stable
   // across renders) reads the current value without having to re-register.
@@ -110,6 +136,61 @@ export default function DebugConsolePage() {
     setExpandedIds(new Set());
   };
 
+  const clearLocalAgents = async () => {
+    if (!confirm('Delete all non-gateway (local) agents from Mission Control? Gateway-synced agents will be kept.')) return;
+    try {
+      const res = await fetch('/api/agents/local', { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to clear local agents');
+        return;
+      }
+      alert(`Cleared ${data.deleted} local agent(s).`);
+    } catch (err) {
+      alert(`Failed to clear local agents: ${(err as Error).message}`);
+    }
+  };
+
+  const clearAllTasks = async () => {
+    if (!confirm('Delete ALL tasks from the Mission Control DB? This cannot be undone. (OpenClaw and workspace directories are not affected.)')) return;
+    try {
+      const res = await fetch('/api/tasks/clear', { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to clear tasks');
+        return;
+      }
+      alert(`Cleared ${data.deleted} task(s).`);
+    } catch (err) {
+      alert(`Failed to clear tasks: ${(err as Error).message}`);
+    }
+  };
+
+  const runDiagnostic = async () => {
+    setDiagnosticBusy(true);
+    setDiagnosticResult(null);
+    try {
+      const res = await fetch('/api/debug/diagnostic', { method: 'POST' });
+      const data = await res.json();
+      setDiagnosticResult({
+        ok: Boolean(data.ok),
+        message: data.hint || data.error || (data.ok ? 'Diagnostic complete' : 'Diagnostic failed'),
+        task_id: data.task_id,
+        steps: data.steps,
+      });
+      // Auto-filter the event stream to this run so the operator can see
+      // exactly the traffic this test triggered, without the rest of the
+      // noise on the page.
+      if (data.task_id) {
+        setFilter(f => ({ ...f, taskId: data.task_id }));
+      }
+    } catch (err) {
+      setDiagnosticResult({ ok: false, message: (err as Error).message });
+    } finally {
+      setDiagnosticBusy(false);
+    }
+  };
+
   const toggleExpanded = (id: string) => {
     setExpandedIds(prev => {
       const next = new Set(prev);
@@ -171,6 +252,72 @@ export default function DebugConsolePage() {
             : enabled
             ? `Collection is ON — capturing every outbound chat.send. ${total} event(s) stored.`
             : `Collection is OFF. ${total} event(s) stored from previous sessions. Click "Start collection" to capture new traffic.`}
+        </div>
+
+        {/* Diagnostic tools */}
+        <div className="mb-4 px-4 py-3 rounded-lg border border-mc-border bg-mc-bg-secondary">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm">
+              <div className="font-medium">Diagnostic tools</div>
+              <div className="text-xs text-mc-text-secondary">
+                Reset local state and run an end-to-end ping against the coordinator.
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={runDiagnostic}
+                disabled={diagnosticBusy}
+                className="min-h-11 px-4 rounded-lg border border-blue-500/40 bg-blue-500/15 text-blue-300 hover:bg-blue-500/25 flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Activity className="w-4 h-4" />
+                {diagnosticBusy ? 'Running...' : 'Run diagnostic'}
+              </button>
+              <button
+                onClick={clearLocalAgents}
+                className="min-h-11 px-4 rounded-lg border border-mc-border bg-mc-bg text-mc-text-secondary hover:text-mc-text hover:bg-mc-bg-tertiary flex items-center gap-2 text-sm"
+                title="Delete every agent that was not synced from the OpenClaw Gateway"
+              >
+                <Users className="w-4 h-4" />
+                Clear local agents
+              </button>
+              <button
+                onClick={clearAllTasks}
+                className="min-h-11 px-4 rounded-lg border border-mc-border bg-mc-bg text-mc-text-secondary hover:text-mc-text hover:bg-mc-bg-tertiary flex items-center gap-2 text-sm"
+                title="Delete all tasks from the Mission Control DB (OpenClaw untouched)"
+              >
+                <ListX className="w-4 h-4" />
+                Clear all tasks
+              </button>
+            </div>
+          </div>
+
+          {diagnosticResult && (
+            <div className={`mt-3 px-3 py-2 rounded border text-xs ${
+              diagnosticResult.ok
+                ? 'border-green-500/30 bg-green-500/10 text-green-300'
+                : 'border-red-500/40 bg-red-500/10 text-red-300'
+            }`}>
+              <div className="font-medium mb-1">
+                {diagnosticResult.ok ? '✅' : '❌'} {diagnosticResult.message}
+              </div>
+              {diagnosticResult.task_id && (
+                <div className="text-mc-text-secondary font-mono">
+                  task_id={diagnosticResult.task_id} (filter applied below)
+                </div>
+              )}
+              {diagnosticResult.steps && diagnosticResult.steps.length > 0 && (
+                <ul className="mt-2 space-y-0.5 font-mono">
+                  {diagnosticResult.steps.map((s, i) => (
+                    <li key={i}>
+                      {s.ok ? '✓' : '✗'} {s.name}
+                      {s.duration_ms != null && ` (${s.duration_ms}ms)`}
+                      {s.detail && ` — ${s.detail}`}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Filters */}

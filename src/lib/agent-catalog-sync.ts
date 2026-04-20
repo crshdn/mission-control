@@ -1,5 +1,6 @@
 import { queryAll, queryOne, run, transaction } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
+import { logDebugEvent } from '@/lib/debug-log';
 
 interface GatewayAgent {
   id?: string;
@@ -57,7 +58,25 @@ export async function syncGatewayAgentsToCatalog(options?: { force?: boolean; re
       await client.connect();
     }
 
-    const gatewayAgents = (await client.listAgents()) as GatewayAgent[];
+    const listStart = Date.now();
+    let gatewayAgents: GatewayAgent[] = [];
+    let listError: string | null = null;
+    try {
+      gatewayAgents = (await client.listAgents()) as GatewayAgent[];
+    } catch (err) {
+      listError = (err as Error).message;
+      throw err;
+    } finally {
+      logDebugEvent({
+        type: 'gateway.list_agents',
+        direction: 'outbound',
+        durationMs: Date.now() - listStart,
+        responseBody: { count: gatewayAgents.length, agents: gatewayAgents.map(a => ({ id: a.id, name: a.name })) },
+        error: listError,
+        metadata: { reason: options?.reason || 'automatic' },
+      });
+    }
+
     const existing = queryAll<{ id: string; gateway_agent_id: string | null }>(
       `SELECT id, gateway_agent_id FROM agents WHERE gateway_agent_id IS NOT NULL`
     );

@@ -9,6 +9,7 @@ import { updateConvoyProgress, checkConvoyCompletion } from '@/lib/convoy';
 import { syncGatewayAgentsToCatalog } from '@/lib/agent-catalog-sync';
 import { triggerWorkspaceMerge } from '@/lib/workspace-isolation';
 import { UpdateTaskSchema } from '@/lib/validation';
+import { logDebugEvent } from '@/lib/debug-log';
 import type { Task, UpdateTaskRequest, Agent, TaskDeliverable } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -66,6 +67,21 @@ export async function PATCH(
     if (!existing) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
+
+    // Log the PATCH attempt up front so failed transitions (evidence-gate
+    // rejections, forbidden moves, etc.) still appear in the debug feed —
+    // those are the cases operators most need to see.
+    logDebugEvent({
+      type: 'agent.status_patch',
+      direction: 'inbound',
+      taskId: id,
+      agentId: validatedData.updated_by_agent_id ?? null,
+      requestBody: validatedData,
+      metadata: {
+        from_status: existing.status,
+        requested_status: validatedData.status ?? null,
+      },
+    });
 
     // Keep OpenClaw agent catalog synced opportunistically on task updates
     await syncGatewayAgentsToCatalog({ reason: 'task_patch' }).catch(err => {

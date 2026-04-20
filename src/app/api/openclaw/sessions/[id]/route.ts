@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { getDb } from '@/lib/db';
 import { broadcast } from '@/lib/events';
+import { logDebugEvent } from '@/lib/debug-log';
 
 export const dynamic = 'force-dynamic';
 interface RouteParams {
@@ -183,6 +184,15 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     // Delete the session
     db.prepare('DELETE FROM openclaw_sessions WHERE id = ?').run(session.id);
+
+    logDebugEvent({
+      type: 'session.end',
+      direction: 'internal',
+      agentId: agentId,
+      taskId: taskId,
+      sessionKey: session.openclaw_session_id,
+      metadata: { reason: 'session_delete_endpoint' },
+    });
 
     // If there's an associated agent that was auto-created (role = 'Sub-Agent'), delete it too
     if (agentId) {
