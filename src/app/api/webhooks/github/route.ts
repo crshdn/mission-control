@@ -17,7 +17,9 @@ import {
   startPostMergeMonitor,
   getProductSettings,
 } from '@/lib/rollback';
+import { handlePRReviewFix } from '@/lib/pr-review-handler';
 import type { Product, Task } from '@/lib/types';
+import type { ReviewComment } from '@/lib/pr-review-handler';
 
 export const dynamic = 'force-dynamic';
 
@@ -170,6 +172,185 @@ async function handleCIFailure(payload: {
 }
 
 // ---------------------------------------------------------------------------
+// PR Review Auto-Fix handlers
+// ---------------------------------------------------------------------------
+
+async function handlePullRequestReview(payload: {
+  action: string;
+  review: {
+    state: string;
+    body?: string;
+    user: { login: string };
+    html_url: string;
+  };
+  pull_request: {
+    html_url: string;
+    user: { login: string };
+  };
+  repository: { full_name: string };
+}) {
+  // Only handle 'submitted' reviews
+  if (payload.action !== 'submitted') return;
+
+  const reviewState = payload.review.state; // 'approved', 'changes_requested', 'commented'
+
+  // Skip approved reviews — no fix needed
+  if (reviewState === 'approved') {
+    console.log(`[GitHub Webhook] PR approved by ${payload.review.user.login} — no action needed`);
+    return;
+  }
+
+  // Only act on changes_requested
+  if (reviewState !== 'changes_requested') return;
+
+  const task = findTaskByPrUrl(payload.pull_request.html_url);
+  if (!task) {
+    console.log(`[GitHub Webhook] No task found for PR ${payload.pull_request.html_url} — skipping review`);
+    return;
+  }
+
+  const comments: ReviewComment[] = [];
+  if (payload.review.body) {
+    comments.push({
+      body: payload.review.body,
+      author: payload.review.user.login,
+    });
+  }
+
+  await handlePRReviewFix({
+    taskId: task.id,
+    taskTitle: task.title,
+    prUrl: payload.pull_request.html_url,
+    reviewerName: payload.review.user.login,
+    comments,
+    eventType: 'review',
+  });
+}
+
+async function handlePullRequestReviewComment(payload: {
+  action: string;
+  comment: {
+    body: string;
+    path?: string;
+    line?: number;
+    original_line?: number;
+    user: { login: string };
+  };
+  pull_request: {
+    html_url: string;
+    user: { login: string };
+  };
+  repository: { full_name: string };
+}) {
+  if (payload.action !== 'created') return;
+
+  // Skip comments from the PR author (likely the bot)
+  if (payload.comment.user.login === payload.pull_request.user.login) return;
+
+  const task = findTaskByPrUrl(payload.pull_request.html_url);
+  if (!task) {
+    console.log(`[GitHub Webhook] No task found for PR ${payload.pull_request.html_url} — skipping comment`);
+    return;
+  }
+
+  const comments: ReviewComment[] = [{
+    body: payload.comment.body,
+    path: payload.comment.path,
+    line: payload.comment.line ?? payload.comment.original_line,
+    author: payload.comment.user.login,
+  }];
+
+  await handlePRReviewFix({
+    taskId: task.id,
+    taskTitle: task.title,
+    prUrl: payload.pull_request.html_url,
+    reviewerName: payload.comment.user.login,
+    comments,
+    eventType: 'comment',
+  });
+}
+
+async function handleIssueComment(payload: {
+  action: string;
+  issue: {
+    pull_request?: { html_url: string };
+    html_url: string;
+    user: { login: string };
+  };
+  comment: {
+    body: string;
+    user: { login: string };
+  };
+  repository: { full_name: string };
+}) {
+  if (payload.action !== 'created') return;
+
+  // Only handle comments on PRs (issue_comment fires for both issues and PRs)
+  if (!payload.issue.pull_request) return;
+
+  // Skip comments from the PR author (likely the bot)
+  if (payload.comment.user.login === payload.issue.user.login) return;
+
+  const prUrl = payload.issue.pull_request.html_url;
+  const task = findTaskByPrUrl(prUrl);
+  if (!task) {
+    console.log(`[GitHub Webhook] No task found for PR ${prUrl} — skipping issue comment`);
+    return;
+  }
+
+  const comments: ReviewComment[] = [{
+    body: payload.comment.body,
+    author: payload.comment.user.login,
+  }];
+
+  await handlePRReviewFix({
+    taskId: task.id,
+    taskTitle: task.title,
+    prUrl,
+    reviewerName: payload.comment.user.login,
+    comments,
+    eventType: 'comment',
+  });
+}
+
+async function handleCheckSuiteForReviewFix(payload: {
+  action: string;
+  check_suite: {
+    conclusion: string;
+    head_sha: string;
+    pull_requests?: Array<{ url: string; html_url?: string; number: number }>;
+  };
+  repository: { full_name: string; html_url: string };
+}) {
+  if (payload.action !== 'completed') return;
+  if (payload.check_suite.conclusion !== 'failure') return;
+
+  // Find the PR associated with this check suite
+  const prs = payload.check_suite.pull_requests;
+  if (!prs || prs.length === 0) return;
+
+  for (const pr of prs) {
+    // Build the PR HTML URL if not provided
+    const prHtmlUrl = pr.html_url || `${payload.repository.html_url}/pull/${pr.number}`;
+    const task = findTaskByPrUrl(prHtmlUrl);
+    if (!task) continue;
+
+    await handlePRReviewFix({
+      taskId: task.id,
+      taskTitle: task.title,
+      prUrl: prHtmlUrl,
+      reviewerName: 'CI',
+      comments: [{
+        body: `CI check suite failed (conclusion: ${payload.check_suite.conclusion}, sha: ${payload.check_suite.head_sha.slice(0, 7)})`,
+        author: 'CI',
+      }],
+      ciStatus: 'fail',
+      eventType: 'ci_failure',
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Route handler
 // ---------------------------------------------------------------------------
 
@@ -201,9 +382,23 @@ export async function POST(request: NextRequest) {
         }
         break;
 
+      case 'pull_request_review':
+        await handlePullRequestReview(payload);
+        break;
+
+      case 'pull_request_review_comment':
+        await handlePullRequestReviewComment(payload);
+        break;
+
+      case 'issue_comment':
+        await handleIssueComment(payload);
+        break;
+
       case 'check_suite':
         if (payload.action === 'completed') {
           await handleCIFailure(payload);
+          // Also check for PR review auto-fix on CI failures
+          await handleCheckSuiteForReviewFix(payload);
         }
         break;
 
