@@ -125,6 +125,7 @@ export const UpdateProductSchema = z.object({
   cost_cap_per_task: z.number().min(0).optional().nullable(),
   cost_cap_monthly: z.number().min(0).optional().nullable(),
   batch_review_threshold: z.number().int().min(1).max(100).optional(),
+  exploration_depth: z.enum(['shallow', 'standard', 'deep']).optional(),
 });
 
 export const SwipeActionSchema = z.object({

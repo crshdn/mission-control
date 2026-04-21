@@ -12,6 +12,7 @@ import { buildCheckpointContext } from '@/lib/checkpoint';
 import { formatMailForDispatch } from '@/lib/mailbox';
 import { getPendingNotesForDispatch } from '@/lib/task-notes';
 import { createTaskWorkspace, determineIsolationStrategy } from '@/lib/workspace-isolation';
+import { getCachedCodebaseContext, type ExplorationDepth } from '@/lib/codebase-explorer';
 import type { Task, Agent, Product, OpenClawSession, WorkflowStage, TaskImage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -282,6 +283,29 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Inject codebase context from explorer (best-effort)
+    let codebaseContextSection = '';
+    if (task.product_id && isBuilderDispatch) {
+      try {
+        const product = queryOne<Product>('SELECT * FROM products WHERE id = ?', [task.product_id]);
+        if (product?.repo_url) {
+          const depth = (product.exploration_depth as ExplorationDepth) || 'standard';
+          const context = getCachedCodebaseContext(
+            task.product_id,
+            product.repo_url,
+            depth,
+            task.title,
+            task.description || undefined,
+          );
+          if (context) {
+            codebaseContextSection = `\n---\n${context}\n`;
+          }
+        }
+      } catch {
+        // Codebase context injection is best-effort
+      }
+    }
+
     // Determine role-specific instructions based on workflow template
     const workflow = getTaskWorkflow(id);
     let currentStage: WorkflowStage | undefined;
@@ -420,7 +444,7 @@ ${task.description ? `**Description:** ${task.description}\n` : ''}
 **Priority:** ${task.priority.toUpperCase()}
 ${task.due_date ? `**Due:** ${task.due_date}\n` : ''}
 **Task ID:** ${task.id}
-${planningSpecSection}${agentInstructionsSection}${skillsSection}${knowledgeSection}${imagesSection}${buildCheckpointContext(task.id) || ''}${formatMailForDispatch(agent.id) || ''}${repoSection}
+${planningSpecSection}${agentInstructionsSection}${skillsSection}${knowledgeSection}${codebaseContextSection}${imagesSection}${buildCheckpointContext(task.id) || ''}${formatMailForDispatch(agent.id) || ''}${repoSection}
 ${isBuilder ? (workspaceIsolated
   ? `**\u{1F512} ISOLATED WORKSPACE:** ${taskProjectDir}\n- **Port:** ${workspacePort || 'default'} (use this for dev server, NOT the default)\n${workspaceBranchName ? `- **Branch:** ${workspaceBranchName}\n` : ''}- **IMPORTANT:** Do NOT modify files outside this workspace directory. Other agents may be working on the same project in parallel. All your work must stay within: ${taskProjectDir}\nCreate this directory if needed and save all deliverables there.\n`
   : `**OUTPUT DIRECTORY:** ${taskProjectDir}\nCreate this directory and save all deliverables there.\n`)
