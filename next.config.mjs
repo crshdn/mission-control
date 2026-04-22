@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['better-sqlite3'],
-  },
+  allowedDevOrigins: ['127.0.0.1'], // 将配置放入 experimental 属性中
+  serverExternalPackages: ['better-sqlite3'],
   webpack: (config) => {
     config.externals.push({
       'better-sqlite3': 'commonjs better-sqlite3',
