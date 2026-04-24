@@ -14,7 +14,7 @@
     "db:reset": "rm -f mission-control.db mission-control.db-* && npm run db:seed"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1014.0",
+    "@aws-sdk/client-s3": "^3.893.0",
     "@hello-pangea/dnd": "^17.0.0",
     "better-sqlite3": "^12.6.2",
     "clsx": "^2.1.1",
@@ -27,9 +27,12 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "source-map-js": "^1.2.1",
-    "uuid": "^11.0.4",
+    "uuid": "^14.0.0",
     "zod": "^4.3.6",
     "zustand": "^5.0.3"
+  },
+  "overrides": {
+    "fast-xml-parser": "5.7.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
@@ -39,7 +42,7 @@
     "@types/react-dom": "^18.2.25",
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.20",
-    "eslint": "^8.57.0",
+    "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.4",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",

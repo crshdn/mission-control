@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync, existsSync } from 'fs';
 import path from 'path';
+import { getWorkspaceBasePath, getProjectsPath } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
@@ -24,10 +25,10 @@ export async function GET(request: NextRequest) {
   const expandedPath = filePath.replace(/^~/, process.env.HOME || '');
   const normalizedPath = path.normalize(expandedPath);
 
-  // Security check - only allow paths from environment config
+  // Security check - only allow paths from app config or env config
   const allowedPaths = [
-    process.env.WORKSPACE_BASE_PATH?.replace(/^~/, process.env.HOME || ''),
-    process.env.PROJECTS_PATH?.replace(/^~/, process.env.HOME || ''),
+    getWorkspaceBasePath()?.replace(/^~/, process.env.HOME || ''),
+    getProjectsPath()?.replace(/^~/, process.env.HOME || ''),
   ].filter(Boolean) as string[];
 
   const isAllowed = allowedPaths.some(allowed =>

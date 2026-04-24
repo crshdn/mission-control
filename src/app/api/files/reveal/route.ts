@@ -8,6 +8,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { existsSync } from 'fs';
 import path from 'path';
+import { getWorkspaceBasePath, getProjectsPath } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,10 +25,10 @@ export async function POST(request: NextRequest) {
     // Expand tilde
     const expandedPath = filePath.replace(/^~/, process.env.HOME || '');
 
-    // Security: Ensure path is within allowed directories (from env config)
+    // Security: Ensure path is within allowed directories from app config or env config
     const allowedPaths = [
-      process.env.WORKSPACE_BASE_PATH?.replace(/^~/, process.env.HOME || ''),
-      process.env.PROJECTS_PATH?.replace(/^~/, process.env.HOME || ''),
+      getWorkspaceBasePath()?.replace(/^~/, process.env.HOME || ''),
+      getProjectsPath()?.replace(/^~/, process.env.HOME || ''),
     ].filter(Boolean) as string[];
 
     const normalizedPath = path.normalize(expandedPath);
