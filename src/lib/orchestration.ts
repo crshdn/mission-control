@@ -240,7 +240,7 @@ export async function onSubAgentCompleted(params: {
  * // When spawning a sub-agent:
  * await orchestrator.onSubAgentSpawned({
  *   taskId: 'task-123',
- *   sessionId: 'agent:main:subagent:abc123',
+ *   sessionId: 'agent:my-openclaw-agent:subagent:abc123',
  *   agentName: 'mission-control-integration-fixes',
  *   description: 'Fix Mission Control real-time updates',
  * });
@@ -255,7 +255,7 @@ export async function onSubAgentCompleted(params: {
  * // When complete:
  * await orchestrator.onSubAgentCompleted({
  *   taskId: 'task-123',
- *   sessionId: 'agent:main:subagent:abc123',
+ *   sessionId: 'agent:my-openclaw-agent:subagent:abc123',
  *   agentName: 'mission-control-integration-fixes',
  *   summary: 'All integration issues fixed and tested',
  *   deliverables: [

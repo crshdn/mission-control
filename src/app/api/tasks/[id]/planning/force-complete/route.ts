@@ -3,8 +3,9 @@ import { queryOne, run } from '@/lib/db';
 import { extractJSON } from '@/lib/planning-utils';
 import { broadcast } from '@/lib/events';
 import { getMissionControlUrl } from '@/lib/config';
+import { resolveAgentSessionKeyPrefix } from '@/lib/agent-routing';
 import { v4 as uuidv4 } from 'uuid';
-import type { Task } from '@/lib/types';
+import type { Agent, Task } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,11 +83,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     let firstAgentId: string | null = null;
 
     if (allowDynamicAgents && completionParsed.agents?.length > 0) {
-      const masterAgent = queryOne<{ session_key_prefix?: string }>(
-        `SELECT session_key_prefix FROM agents WHERE is_master = 1 AND workspace_id = ? ORDER BY created_at ASC LIMIT 1`,
+      const masterAgent = queryOne<Agent>(
+        `SELECT * FROM agents WHERE is_master = 1 AND workspace_id = ? ORDER BY created_at ASC LIMIT 1`,
         [task.workspace_id]
       );
-      const sessionKeyPrefix = masterAgent?.session_key_prefix || 'agent:main:';
+      if (!masterAgent) {
+        throw new Error('No orchestrator route is configured for generated planning agents');
+      }
+      const sessionKeyPrefix = resolveAgentSessionKeyPrefix(masterAgent);
 
       for (const agent of completionParsed.agents) {
         const agentId = crypto.randomUUID();

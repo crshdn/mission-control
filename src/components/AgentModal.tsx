@@ -305,10 +305,10 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
                   value={form.session_key_prefix}
                   onChange={(e) => setForm({ ...form, session_key_prefix: e.target.value })}
                   className="w-full min-h-11 bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
-                  placeholder="agent:main:"
+                  placeholder="agent:my-openclaw-agent:"
                 />
                 <p className="text-xs text-mc-text-secondary mt-1">
-                  OpenClaw session routing prefix. Defaults to &quot;agent:main:&quot; if not set.
+                  OpenClaw session routing prefix. Required for local agents that dispatch to OpenClaw.
                 </p>
               </div>
             </div>

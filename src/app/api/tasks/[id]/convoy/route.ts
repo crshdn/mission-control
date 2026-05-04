@@ -3,6 +3,7 @@ import { createConvoy, getConvoy, updateConvoyStatus, deleteConvoy } from '@/lib
 import { queryOne, queryAll } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { extractJSON, getMessagesFromOpenClaw } from '@/lib/planning-utils';
+import { resolveAgentSessionKeyPrefix } from '@/lib/agent-routing';
 import type { Task, Agent, ConvoyStatus, DecompositionStrategy } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -82,7 +83,7 @@ async function runAIDecomposition(task: Task): Promise<{
   }
 
   // Create a unique session key for this decomposition
-  const prefix = masterAgent.session_key_prefix || 'agent:main:';
+  const prefix = resolveAgentSessionKeyPrefix(masterAgent);
   const sessionKey = `${prefix}decompose:${task.id}`;
 
   const prompt = buildDecompositionPrompt(task);

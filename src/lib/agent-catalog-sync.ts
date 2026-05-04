@@ -1,5 +1,6 @@
 import { queryAll, queryOne, run, transaction } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
+import { routePrefixForGatewayAgent } from '@/lib/agent-routing';
 
 interface GatewayAgent {
   id?: string;
@@ -68,14 +69,21 @@ export async function syncGatewayAgentsToCatalog(options?: { force?: boolean; re
 
         if (existingId) {
           run(
-            `UPDATE agents SET name = ?, role = CASE WHEN role IS NULL OR role = 'builder' THEN ? ELSE role END, model = COALESCE(?, model), source = 'gateway', updated_at = ? WHERE id = ?`,
-            [name, role, normaliseModel(ga.model), ts, existingId]
+            `UPDATE agents
+             SET name = ?,
+                 role = CASE WHEN role IS NULL OR role = 'builder' THEN ? ELSE role END,
+                 model = COALESCE(?, model),
+                 source = 'gateway',
+                 session_key_prefix = COALESCE(session_key_prefix, ?),
+                 updated_at = ?
+             WHERE id = ?`,
+            [name, role, normaliseModel(ga.model), routePrefixForGatewayAgent(gatewayId), ts, existingId]
           );
         } else {
           run(
-            `INSERT INTO agents (id, name, role, description, avatar_emoji, is_master, workspace_id, model, source, gateway_agent_id, created_at, updated_at)
-             VALUES (lower(hex(randomblob(16))), ?, ?, ?, '🔗', 0, 'default', ?, 'gateway', ?, ?, ?)`,
-            [name, role, `Auto-synced from OpenClaw (${gatewayId})`, normaliseModel(ga.model), gatewayId, ts, ts]
+            `INSERT INTO agents (id, name, role, description, avatar_emoji, is_master, workspace_id, model, source, gateway_agent_id, session_key_prefix, created_at, updated_at)
+             VALUES (lower(hex(randomblob(16))), ?, ?, ?, '🔗', 0, 'default', ?, 'gateway', ?, ?, ?, ?)`,
+            [name, role, `Auto-synced from OpenClaw (${gatewayId})`, normaliseModel(ga.model), gatewayId, routePrefixForGatewayAgent(gatewayId), ts, ts]
           );
         }
         changed += 1;

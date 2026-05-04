@@ -8,7 +8,8 @@
 import { queryOne, queryAll, run } from '@/lib/db';
 import { getMissionControlUrl } from '@/lib/config';
 import { getOpenClawClient } from '@/lib/openclaw/client';
-import type { KnowledgeEntry, TaskRole, OpenClawSession } from '@/lib/types';
+import { resolveAgentSessionKeyPrefix } from '@/lib/agent-routing';
+import type { Agent, KnowledgeEntry, TaskRole, OpenClawSession } from '@/lib/types';
 
 /**
  * Notify the Learner agent about a stage transition.
@@ -25,8 +26,8 @@ export async function notifyLearner(
   }
 ): Promise<void> {
   // Find learner role assignment for this task
-  const learnerRole = queryOne<TaskRole & { agent_name: string; session_key_prefix?: string }>(
-    `SELECT tr.*, a.name as agent_name, a.session_key_prefix
+  const learnerRole = queryOne<TaskRole & { agent_name: string } & Agent>(
+    `SELECT tr.*, a.*, a.name as agent_name
      FROM task_roles tr
      JOIN agents a ON tr.agent_id = a.id
      WHERE tr.task_id = ? AND tr.role = 'learner'`,
@@ -98,7 +99,7 @@ Focus on:
     }
 
     if (session) {
-      const prefix = learnerRole.session_key_prefix || 'agent:main:';
+      const prefix = resolveAgentSessionKeyPrefix(learnerRole);
       const sessionKey = `${prefix}${session.openclaw_session_id}`;
       await client.call('chat.send', {
         sessionKey,

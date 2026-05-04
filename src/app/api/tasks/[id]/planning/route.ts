@@ -3,13 +3,11 @@ import { getDb, queryAll, queryOne, run } from '@/lib/db';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
 import { extractJSON } from '@/lib/planning-utils';
+import { normalizeSessionKeyPrefix, resolveAgentSessionKeyPrefix } from '@/lib/agent-routing';
+import type { Agent } from '@/lib/types';
 // File system imports removed - using OpenClaw API instead
 
 export const dynamic = 'force-dynamic';
-
-// Default planning session prefix for OpenClaw
-// Can be overridden per-agent via the session_key_prefix column on agents table
-const DEFAULT_SESSION_KEY_PREFIX = 'agent:main:';
 
 // GET /api/tasks/[id]/planning - Get planning state
 export async function GET(
@@ -100,18 +98,18 @@ export async function POST(
 
     // Check if there are other orchestrators available before starting planning with the default master agent
     // Get the default master agent for this workspace
-    const defaultMaster = queryOne<{ id: string; session_key_prefix?: string }>(
-      `SELECT id, session_key_prefix FROM agents WHERE is_master = 1 AND workspace_id = ? ORDER BY created_at ASC LIMIT 1`,
+    const defaultMaster = queryOne<Agent>(
+      `SELECT * FROM agents WHERE is_master = 1 AND workspace_id = ? ORDER BY created_at ASC LIMIT 1`,
       [task.workspace_id]
     );
 
     // Get assigned agent if any (for session_key_prefix)
     const taskWithAgent = getDb().prepare(`
-      SELECT a.session_key_prefix 
+      SELECT a.*
       FROM tasks t 
       LEFT JOIN agents a ON t.assigned_agent_id = a.id 
       WHERE t.id = ?
-    `).get(taskId) as { session_key_prefix?: string } | undefined;
+    `).get(taskId) as Agent | undefined;
 
     const otherOrchestrators = queryAll<{
       id: string;
@@ -135,9 +133,30 @@ export async function POST(
       }, { status: 409 }); // 409 Conflict
     }
 
-    // Create session key for this planning task
-    // Priority: custom prefix > assigned agent's prefix > master agent's prefix > default prefix
-    const basePrefix = customSessionKeyPrefix || taskWithAgent?.session_key_prefix || defaultMaster?.session_key_prefix || DEFAULT_SESSION_KEY_PREFIX;
+    let basePrefix: string;
+    try {
+      if (customSessionKeyPrefix) {
+        const normalized = normalizeSessionKeyPrefix(customSessionKeyPrefix);
+        if (!normalized || normalized === 'agent:main:') {
+          throw new Error('Planning session_key_prefix must point to a live OpenClaw agent and cannot be agent:main:');
+        }
+        basePrefix = normalized;
+      } else if (taskWithAgent?.id) {
+        basePrefix = resolveAgentSessionKeyPrefix(taskWithAgent);
+      } else if (defaultMaster) {
+        basePrefix = resolveAgentSessionKeyPrefix(defaultMaster);
+      } else {
+        throw new Error('No orchestrator route is configured for planning');
+      }
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : 'No valid OpenClaw route is configured for planning' },
+        { status: 409 }
+      );
+    }
+
+    // Create session key for this planning task.
+    // Priority: custom prefix > assigned agent route > master agent route.
     const planningPrefix = basePrefix + 'planning:';
     const sessionKey = `${planningPrefix}${taskId}`;
 

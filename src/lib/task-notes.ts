@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { getOpenClawClient } from '@/lib/openclaw/client';
+import { resolveAgentSessionKeyPrefix } from '@/lib/agent-routing';
 import type { TaskNote, OpenClawSession, Agent } from '@/lib/types';
 
 /**
@@ -98,7 +99,10 @@ export async function deliverPendingNotesAtCheckpoint(taskId: string): Promise<n
 
     // Get the agent's session key prefix
     const agent = queryOne<Agent>('SELECT * FROM agents WHERE id = ?', [activeSession.agent_id]);
-    const prefix = agent?.session_key_prefix || 'agent:main:';
+    if (!agent) {
+      throw new Error(`Agent not found for active session ${activeSession.id}`);
+    }
+    const prefix = resolveAgentSessionKeyPrefix(agent);
     const sessionKey = `${prefix}${activeSession.openclaw_session_id}`;
 
     // Build the message
@@ -161,7 +165,8 @@ export function getActiveSessionForTask(taskId: string): { session: OpenClawSess
   if (!session) return null;
 
   const agent = queryOne<Agent>('SELECT * FROM agents WHERE id = ?', [session.agent_id]);
-  const prefix = agent?.session_key_prefix || 'agent:main:';
+  if (!agent) return null;
+  const prefix = resolveAgentSessionKeyPrefix(agent);
   const sessionKey = `${prefix}${session.openclaw_session_id}`;
 
   return { session, sessionKey };

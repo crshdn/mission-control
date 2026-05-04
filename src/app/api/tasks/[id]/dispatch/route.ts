@@ -12,6 +12,7 @@ import { buildCheckpointContext } from '@/lib/checkpoint';
 import { formatMailForDispatch } from '@/lib/mailbox';
 import { getPendingNotesForDispatch } from '@/lib/task-notes';
 import { createTaskWorkspace, determineIsolationStrategy } from '@/lib/workspace-isolation';
+import { resolveAgentSessionKeyPrefix } from '@/lib/agent-routing';
 import type { Task, Agent, Product, OpenClawSession, WorkflowStage, TaskImage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -94,6 +95,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (!agent) {
       return dispatchErrorResponse(id, 'Assigned agent not found', 404);
+    }
+
+    let sessionKeyPrefix: string;
+    try {
+      sessionKeyPrefix = resolveAgentSessionKeyPrefix(agent);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Assigned agent has no valid OpenClaw route';
+      return dispatchErrorResponse(id, message, 409);
     }
 
     // Check if dispatching to the master agent while there are other orchestrators available
@@ -460,10 +469,7 @@ If you need help or clarification, ask the orchestrator.`;
 
     // Send message to agent's session using chat.send
     try {
-      // Use sessionKey for routing to the agent's session
-      // Format: {prefix}{openclaw_session_id} where prefix defaults to 'agent:main:'
-      const prefix = agent.session_key_prefix || 'agent:main:';
-      const sessionKey = `${prefix}${session.openclaw_session_id}`;
+      const sessionKey = `${sessionKeyPrefix}${session.openclaw_session_id}`;
       await client.call('chat.send', {
         sessionKey,
         message: finalMessage,

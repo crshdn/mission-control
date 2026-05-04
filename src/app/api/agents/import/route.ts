@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run, transaction } from '@/lib/db';
+import { routePrefixForGatewayAgent } from '@/lib/agent-routing';
 import type { Agent } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -96,8 +97,8 @@ export async function POST(request: NextRequest) {
         ].join('\n');
 
         run(
-          `INSERT INTO agents (id, name, role, description, avatar_emoji, is_master, workspace_id, soul_md, user_md, agents_md, model, source, gateway_agent_id, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO agents (id, name, role, description, avatar_emoji, is_master, workspace_id, soul_md, user_md, agents_md, model, source, gateway_agent_id, session_key_prefix, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             id,
             agentReq.name,
@@ -112,6 +113,7 @@ export async function POST(request: NextRequest) {
             agentReq.model || null,
             'gateway',
             agentReq.gateway_agent_id,
+            routePrefixForGatewayAgent(agentReq.gateway_agent_id),
             now,
             now,
           ]
