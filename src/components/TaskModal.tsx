@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus, FileText, CheckCircle } from 'lucide-react';
+import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus, FileText, CheckCircle, ExternalLink } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { triggerAutoDispatch, shouldTriggerAutoDispatch } from '@/lib/auto-dispatch';
 import { ActivityLog } from './ActivityLog';
@@ -9,7 +9,7 @@ import { DeliverablesList } from './DeliverablesList';
 import { SessionsList } from './SessionsList';
 import { PlanningTab } from './PlanningTab';
 import { AgentModal } from './AgentModal';
-import type { Task, TaskPriority, TaskStatus } from '@/lib/types';
+import type { Task, TaskPriority, TaskStatus, TaskType, QCStatus } from '@/lib/types';
 
 type TabType = 'overview' | 'planning' | 'activity' | 'deliverables' | 'sessions' | 'result';
 
@@ -37,6 +37,9 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
     description: task?.description || '',
     priority: task?.priority || 'normal' as TaskPriority,
     status: task?.status || 'inbox' as TaskStatus,
+    task_type: task?.task_type || '' as TaskType | '',
+    qc_status: task?.qc_status || 'pending' as QCStatus,
+    tags: task?.tags ? JSON.parse(task.tags).join(', ') : '',
     assigned_agent_id: task?.assigned_agent_id || '',
     due_date: task?.due_date || '',
   });
@@ -55,6 +58,11 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
         status: (!task && usePlanningMode) ? 'planning' : form.status,
         assigned_agent_id: form.assigned_agent_id || null,
         due_date: form.due_date || null,
+        task_type: form.task_type || null,
+        tags: form.tags
+          .split(',')
+          .map((tag: string) => tag.trim())
+          .filter(Boolean),
         workspace_id: workspaceId || task?.workspace_id || 'default',
       };
 
@@ -143,6 +151,21 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
 
   const statuses: TaskStatus[] = ['planning', 'inbox', 'assigned', 'in_progress', 'testing', 'review', 'done'];
   const priorities: TaskPriority[] = ['low', 'normal', 'high', 'urgent'];
+  const taskTypes: { value: TaskType; label: string }[] = [
+    { value: 'bug_fix', label: 'Bug Fix' },
+    { value: 'feature', label: 'Feature' },
+    { value: 'compliance_batch', label: 'Compliance Batch' },
+    { value: 'research', label: 'Research' },
+    { value: 'maintenance', label: 'Maintenance' },
+    { value: 'documentation', label: 'Documentation' },
+    { value: 'ops', label: 'Ops' },
+  ];
+  const qcStatuses: { value: QCStatus; label: string }[] = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'passed', label: 'Passed' },
+    { value: 'failed', label: 'Failed' },
+    { value: 'skipped', label: 'Skipped' },
+  ];
 
   const tabs = [
     { id: 'overview' as TabType, label: 'Overview', icon: null },
@@ -195,6 +218,25 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Output Link - Show clickable link to deliverable */}
+          {task?.output_url && (
+            <div className="p-4 bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800 rounded-lg">
+              <div className="flex items-center gap-2">
+                <ExternalLink className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+                <h3 className="font-medium text-cyan-700 dark:text-cyan-300">Output</h3>
+                <a
+                  href={task.output_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-auto text-sm text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
+                >
+                  {task.output_url.length > 60 ? task.output_url.slice(0, 60) + '...' : task.output_url}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            </div>
+          )}
+
           {/* Result Display - Show prominently if task has a result */}
           {task?.result && (
             <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
@@ -308,6 +350,54 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* PROCESS-V2: Task Type + QC Status */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Task Type */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Task Type</label>
+              <select
+                value={form.task_type}
+                onChange={(e) => setForm({ ...form, task_type: e.target.value as TaskType | '' })}
+                className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              >
+                <option value="">-- Not set --</option>
+                {taskTypes.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* QC Status */}
+            <div>
+              <label className="block text-sm font-medium mb-1">QC Status</label>
+              <select
+                value={form.qc_status}
+                onChange={(e) => setForm({ ...form, qc_status: e.target.value as QCStatus })}
+                className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              >
+                {qcStatuses.map((q) => (
+                  <option key={q.value} value={q.value}>
+                    {q.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Tags</label>
+            <input
+              type="text"
+              value={form.tags}
+              onChange={(e) => setForm({ ...form, tags: e.target.value })}
+              className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              placeholder="comma-separated tags"
+            />
           </div>
 
           {/* Assigned Agent */}

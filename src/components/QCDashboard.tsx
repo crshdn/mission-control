@@ -10,6 +10,12 @@ interface QCMetrics {
   approvedToday: number;
   rejectedToday: number;
   escalatedToday: number;
+  approvedWeek: number;
+  rejectedWeek: number;
+  escalatedWeek: number;
+  approvedMonth: number;
+  rejectedMonth: number;
+  escalatedMonth: number;
 }
 
 interface QCDecision {
@@ -39,6 +45,12 @@ export function QCDashboard({ workspaceId }: QCDashboardProps) {
     approvedToday: 0,
     rejectedToday: 0,
     escalatedToday: 0,
+    approvedWeek: 0,
+    rejectedWeek: 0,
+    escalatedWeek: 0,
+    approvedMonth: 0,
+    rejectedMonth: 0,
+    escalatedMonth: 0,
   });
   const [recentDecisions, setRecentDecisions] = useState<QCDecision[]>([]);
   const [rejectionPatterns, setRejectionPatterns] = useState<RejectionPattern[]>([]);
@@ -130,35 +142,68 @@ export function QCDashboard({ workspaceId }: QCDashboardProps) {
             </div>
           </div>
 
-          {/* Approved Today */}
+          {/* Approved - all periods */}
           <div className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="w-5 h-5 text-mc-accent-green" />
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="w-4 h-4 text-mc-accent-green" />
+              <span className="text-sm font-medium text-mc-accent-green">Approved</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
               <div>
-                <p className="text-2xl font-bold text-mc-text">{metrics.approvedToday}</p>
-                <p className="text-sm text-mc-text-secondary">Approved Today</p>
+                <p className="text-lg font-bold text-mc-text">{metrics.approvedToday}</p>
+                <p className="text-xs text-mc-text-secondary">Today</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-mc-text">{metrics.approvedWeek}</p>
+                <p className="text-xs text-mc-text-secondary">7 days</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-mc-text">{metrics.approvedMonth}</p>
+                <p className="text-xs text-mc-text-secondary">30 days</p>
               </div>
             </div>
           </div>
 
-          {/* Rejected Today */}
+          {/* Rejected - all periods */}
           <div className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <XCircle className="w-5 h-5 text-mc-accent-red" />
+            <div className="flex items-center gap-2 mb-2">
+              <XCircle className="w-4 h-4 text-mc-accent-red" />
+              <span className="text-sm font-medium text-mc-accent-red">Rejected</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
               <div>
-                <p className="text-2xl font-bold text-mc-text">{metrics.rejectedToday}</p>
-                <p className="text-sm text-mc-text-secondary">Rejected Today</p>
+                <p className="text-lg font-bold text-mc-text">{metrics.rejectedToday}</p>
+                <p className="text-xs text-mc-text-secondary">Today</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-mc-text">{metrics.rejectedWeek}</p>
+                <p className="text-xs text-mc-text-secondary">7 days</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-mc-text">{metrics.rejectedMonth}</p>
+                <p className="text-xs text-mc-text-secondary">30 days</p>
               </div>
             </div>
           </div>
 
-          {/* Escalated Today */}
+          {/* Escalated - all periods */}
           <div className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-mc-accent-purple" />
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-4 h-4 text-mc-accent-purple" />
+              <span className="text-sm font-medium text-mc-accent-purple">Escalated</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
               <div>
-                <p className="text-2xl font-bold text-mc-text">{metrics.escalatedToday}</p>
-                <p className="text-sm text-mc-text-secondary">Escalated Today</p>
+                <p className="text-lg font-bold text-mc-text">{metrics.escalatedToday}</p>
+                <p className="text-xs text-mc-text-secondary">Today</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-mc-text">{metrics.escalatedWeek}</p>
+                <p className="text-xs text-mc-text-secondary">7 days</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-mc-text">{metrics.escalatedMonth}</p>
+                <p className="text-xs text-mc-text-secondary">30 days</p>
               </div>
             </div>
           </div>

@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { broadcast } from '@/lib/events';
+import { foreignKeyErrorResponse, missingForeignKey } from '@/lib/api/foreign-key-validation';
 import { CreateActivitySchema } from '@/lib/validation';
 import type { TaskActivity } from '@/lib/types';
 
@@ -79,6 +80,12 @@ export async function POST(
   try {
     const taskId = params.id;
     const body = await request.json();
+
+    const db = getDb();
+    const taskExists = db.prepare('SELECT id FROM tasks WHERE id = ?').get(taskId) as { id: string } | undefined;
+    if (!taskExists) {
+      return foreignKeyErrorResponse({ field: 'task_id', value: taskId, table: 'tasks' });
+    }
     
     // Validate input with Zod
     const validation = CreateActivitySchema.safeParse(body);
@@ -91,7 +98,11 @@ export async function POST(
 
     const { activity_type, message, agent_id, metadata } = validation.data;
 
-    const db = getDb();
+    const foreignKeyFailure = missingForeignKey('agent_id', agent_id, 'agents');
+    if (foreignKeyFailure) {
+      return foreignKeyErrorResponse(foreignKeyFailure);
+    }
+
     const id = crypto.randomUUID();
 
     // Insert activity

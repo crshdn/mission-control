@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Growth Pipeline Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f0f;
+      color: #e5e5e5;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; margin-bottom: 4px; }
+    .subtitle { color: #666; font-size: 0.875rem; margin-bottom: 24px; }
+    .grid { display: grid; gap: 20px; }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .card h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: #666;
+      margin-bottom: 12px;
+      letter-spacing: 0.05em;
+    }
+    .stat { font-size: 2rem; font-weight: 600; }
+    .stat-label { font-size: 0.75rem; color: #666; margin-top: 4px; }
+    .status-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: #252525;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .status-count { font-weight: 600; }
+    .task-list { display: flex; flex-direction: column; gap: 8px; }
+    .task-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background: #252525;
+      border-radius: 4px;
+      font-size: 0.85rem;
+    }
+    .task-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .task-status { padding: 2px 8px; border-radius: 3px; font-size: 0.7rem; text-transform: uppercase; }
+    .task-priority { font-size: 0.7rem; margin-left: 8px; }
+    .activity-item {
+      padding: 8px 0;
+      border-bottom: 1px solid #2a2a2a;
+      font-size: 0.8rem;
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-time { color: #666; font-size: 0.7rem; }
+    .agent-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: #252525;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    .agent-emoji { font-size: 1.2rem; }
+    .agent-name { flex: 1; }
+    .agent-status { font-size: 0.7rem; padding: 2px 6px; border-radius: 3px; }
+    .agent-status.working { background: #22c55e20; color: #22c55e; }
+    .agent-status.standby { background: #3b82f620; color: #3b82f6; }
+    .agent-status.offline { background: #6b728020; color: #6b7280; }
+    .priority-bar { display: flex; gap: 12px; margin-top: 8px; }
+    .priority-item { font-size: 0.8rem; }
+    .refresh-btn {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .refresh-btn:hover { background: #1d4ed8; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>Growth Pipeline Dashboard</h1>
+        <p class="subtitle">Mission Control - Pipeline Metrics & Status</p>
+      </div>
+      <button class="refresh-btn" onclick="location.reload()">Refresh</button>
+    </div>
+
+    <div class="grid grid-4" style="margin-bottom: 20px;">
+      <div class="card">
+        <h2>Total Tasks</h2>
+        <div class="stat">116</div>
+        <div class="stat-label">All time</div>
+      </div>
+      <div class="card">
+        <h2>Completed</h2>
+        <div class="stat" style="color: #22c55e;">116</div>
+        <div class="stat-label">Done status</div>
+      </div>
+      <div class="card">
+        <h2>In Progress</h2>
+        <div class="stat" style="color: #f97316;">0</div>
+        <div class="stat-label">Active work</div>
+      </div>
+      <div class="card">
+        <h2>Inbox</h2>
+        <div class="stat" style="color: #6b7280;">0</div>
+        <div class="stat-label">Pending</div>
+      </div>
+    </div>
+
+    <div class="grid grid-3" style="margin-bottom: 20px;">
+      <div class="card">
+        <h2>Tasks by Status</h2>
+        <div class="status-bar">
+          <div class="status-item">
+              <span class="status-dot" style="background: gray"></span>
+              <span>Inbox</span>
+              <span class="status-count">0</span>
+            </div><div class="status-item">
+              <span class="status-dot" style="background: yellow"></span>
+              <span>Pending Dispatch</span>
+              <span class="status-count">0</span>
+            </div><div class="status-item">
+              <span class="status-dot" style="background: blue"></span>
+              <span>Planning</span>
+              <span class="status-count">0</span>
+            </div><div class="status-item">
+              <span class="status-dot" style="background: purple"></span>
+              <span>Assigned</span>
+              <span class="status-count">0</span>
+            </div><div class="status-item">
+              <span class="status-dot" style="background: orange"></span>
+              <span>In Progress</span>
+              <span class="status-count">0</span>
+            </div><div class="status-item">
+              <span class="status-dot" style="background: cyan"></span>
+              <span>Testing</span>
+              <span class="status-count">0</span>
+            </div><div class="status-item">
+              <span class="status-dot" style="background: indigo"></span>
+              <span>Review</span>
+              <span class="status-count">0</span>
+            </div><div class="status-item">
+              <span class="status-dot" style="background: green"></span>
+              <span>Done</span>
+              <span class="status-count">116</span>
+            </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Tasks by Priority</h2>
+        <div class="priority-bar">
+          <div class="priority-item">
+              <span class="text-red-400">Urgent: 5</span>
+            </div><div class="priority-item">
+              <span class="text-orange-400">High: 61</span>
+            </div><div class="priority-item">
+              <span class="text-gray-300">Normal: 50</span>
+            </div><div class="priority-item">
+              <span class="text-gray-500">Low: 0</span>
+            </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Agent Status</h2>
+        <div>
+          
+            <div class="agent-item">
+              <span class="agent-emoji">🔗</span>
+              <span class="agent-name">Archie</span>
+              <span class="agent-status standby">standby</span>
+            </div>
+          
+            <div class="agent-item">
+              <span class="agent-emoji">🔗</span>
+              <span class="agent-name">Bob</span>
+              <span class="agent-status standby">standby</span>
+            </div>
+          
+            <div class="agent-item">
+              <span class="agent-emoji">🔗</span>
+              <span class="agent-name">Ledger</span>
+              <span class="agent-status standby">standby</span>
+            </div>
+          
+            <div class="agent-item">
+              <span class="agent-emoji">🔗</span>
+              <span class="agent-name">Mason</span>
+              <span class="agent-status standby">standby</span>
+            </div>
+          
+            <div class="agent-item">
+              <span class="agent-emoji">🔗</span>
+              <span class="agent-name">Polly</span>
+              <span class="agent-status standby">standby</span>
+            </div>
+          
+            <div class="agent-item">
+              <span class="agent-emoji">🔍</span>
+              <span class="agent-name">Quinn</span>
+              <span class="agent-status standby">standby</span>
+            </div>
+          
+            <div class="agent-item">
+              <span class="agent-emoji">🔗</span>
+              <span class="agent-name">Scout</span>
+              <span class="agent-status standby">standby</span>
+            </div>
+          
+            <div class="agent-item">
+              <span class="agent-emoji">🔗</span>
+              <span class="agent-name">Vale</span>
+              <span class="agent-status standby">standby</span>
+            </div>
+          
+            <div class="agent-item">
+              <span class="agent-emoji">🔗</span>
+              <span class="agent-name">Lilly</span>
+              <span class="agent-status working">working</span>
+            </div>
+          
+            <div class="agent-item">
+              <span class="agent-emoji">🔗</span>
+              <span class="agent-name">Riff</span>
+              <span class="agent-status working">working</span>
+            </div>
+          
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <h2>Recent Tasks</h2>
+        <div class="task-list">
+          
+            <div class="task-item">
+              <span class="task-title">SEO Research: "test seo query"</span>
+              <span class="task-status" style="background: bg-green-50020; color: green">Done</span>
+              <span class="task-priority text-orange-400">High</span>
+            </div>
+          
+            <div class="task-item">
+              <span class="task-title">SEO Research: "test"</span>
+              <span class="task-status" style="background: bg-green-50020; color: green">Done</span>
+              <span class="task-priority text-orange-400">High</span>
+            </div>
+          
+            <div class="task-item">
+              <span class="task-title">SEO Research: "test verification"</span>
+              <span class="task-status" style="background: bg-green-50020; color: green">Done</span>
+              <span class="task-priority text-orange-400">High</span>
+            </div>
+          
+            <div class="task-item">
+              <span class="task-title">Build: Growth Dashboard for MC</span>
+              <span class="task-status" style="background: bg-green-50020; color: green">Done</span>
+              <span class="task-priority text-orange-400">High</span>
+            </div>
+          
+            <div class="task-item">
+              <span class="task-title">Deploy: Robots.txt Generator Optimization Bundle</span>
+              <span class="task-status" style="background: bg-green-50020; color: green">Done</span>
+              <span class="task-priority text-orange-400">High</span>
+            </div>
+          
+            <div class="task-item">
+              <span class="task-title">SEO: Optimize Robots.txt Generator Page Meta</span>
+              <span class="task-status" style="background: bg-green-50020; color: green">Done</span>
+              <span class="task-priority text-orange-400">High</span>
+            </div>
+          
+            <div class="task-item">
+              <span class="task-title">Content: Robots.txt Generator Guide Expansion</span>
+              <span class="task-status" style="background: bg-green-50020; color: green">Done</span>
+              <span class="task-priority text-red-400">Urgent</span>
+            </div>
+          
+            <div class="task-item">
+              <span class="task-title">Build: Add AI Bot Controls to Robots.txt Generator</span>
+              <span class="task-status" style="background: bg-green-50020; color: green">Done</span>
+              <span class="task-priority text-red-400">Urgent</span>
+            </div>
+          
+            <div class="task-item">
+              <span class="task-title">Build: Add CMS Templates to Robots.txt Generator</span>
+              <span class="task-status" style="background: bg-green-50020; color: green">Done</span>
+              <span class="task-priority text-orange-400">High</span>
+            </div>
+          
+            <div class="task-item">
+              <span class="task-title">Creative: Ad Factory Visual Identity & Sample Batch</span>
+              <span class="task-status" style="background: bg-green-50020; color: green">Done</span>
+              <span class="task-priority text-gray-300">Normal</span>
+            </div>
+          
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Recent Activity</h2>
+        <div>
+          
+            <div class="activity-item">
+              <div>[MANUAL OVERRIDE] Moved to in_progress without session. Reason: Polly dispatched agent scout via OpenClaw subagent system (external session management)</div>
+              <div class="activity-time">System - 4/4/2026, 11:46:41 AM</div>
+            </div>
+          
+            <div class="activity-item">
+              <div>[MANUAL OVERRIDE] Moved to in_progress without session. Reason: Polly dispatched agent vale via OpenClaw subagent system (external session management)</div>
+              <div class="activity-time">System - 4/4/2026, 11:16:38 AM</div>
+            </div>
+          
+            <div class="activity-item">
+              <div>[MANUAL OVERRIDE] Moved to in_progress without session. Reason: Polly dispatched agent vale via OpenClaw subagent system (external session management)</div>
+              <div class="activity-time">System - 4/4/2026, 10:31:28 AM</div>
+            </div>
+          
+            <div class="activity-item">
+              <div>[MANUAL OVERRIDE] Moved to in_progress without session. Reason: Polly dispatched agent mason via OpenClaw subagent system (external session management)</div>
+              <div class="activity-time">System - 4/4/2026, 10:16:57 AM</div>
+            </div>
+          
+            <div class="activity-item">
+              <div>QA verification pass. /growth returns 200. All APIs functional: GET /api/growth/opportunities returns 5 items, GET /api/growth/measurements returns 4 items, POST /api/growth/dispatch created task id d7952090. Sidebar nav includes Growth link. Source at /projects/mission-control/src/app/growth/page.tsx.</div>
+              <div class="activity-time">System - 4/4/2026, 10:34:23 AM</div>
+            </div>
+          
+            <div class="activity-item">
+              <div>Reviewed task. Query is "test" — this appears to be a placeholder/test dispatch from the Growth Dashboard, not a real SEO opportunity. No site URL, no business context, and the keyword "test" is dominated by tech/education/medical search intent with no viable ranking path for any niche product. Flagging as invalid task for Lilly/Ged review.</div>
+              <div class="activity-time">System - 4/4/2026, 10:17:04 AM</div>
+            </div>
+          
+            <div class="activity-item">
+              <div>Ran SEO research for test query "test seo query". Search returned 5 results pointing to generic SEO tool sites (Seobility, SEOTesting, SEO Site Checkup, SEO Scout, DebugBear). This appears to be a test/placeholder task with no real research target.</div>
+              <div class="activity-time">System - 4/4/2026, 9:31:55 AM</div>
+            </div>
+          
+            <div class="activity-item">
+              <div>Growth Dashboard complete. Route /growth live with 3 sections: Active Optimizations (growth-tagged MC tasks), Opportunity Queue (sortable by impressions/position/priority, Dispatch Research creates MC tasks), Measurement Results (Win/Loss/Neutral scoring). Sidebar Growth nav item added. API routes: /api/growth/opportunities, /api/growth/measurements, /api/growth/dispatch. Data files seeded. Build passes cleanly. All verified 200.</div>
+              <div class="activity-time">System - 4/4/2026, 9:22:51 AM</div>
+            </div>
+          
+            <div class="activity-item">
+              <div>[MANUAL OVERRIDE] Moved to in_progress without session. Reason: QA rejection — sending back to builder</div>
+              <div class="activity-time">System - 4/3/2026, 11:57:38 AM</div>
+            </div>
+          
+            <div class="activity-item">
+              <div>[MANUAL OVERRIDE] Moved to in_progress without session. Reason: Polly dispatched agent mason via OpenClaw subagent system (external session management)</div>
+              <div class="activity-time">System - 4/3/2026, 2:27:09 AM</div>
+            </div>
+          
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top: 20px; color: #444; font-size: 0.75rem;">Last updated: 2026-04-05T23:34:43.341Z</p>
+  </div>
+</body>
+</html>

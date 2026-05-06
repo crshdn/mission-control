@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { getOpenClawClient } from '@/lib/openclaw/client';
 import { queryAll } from '@/lib/db';
 import type { OpenClawSession } from '@/lib/types';

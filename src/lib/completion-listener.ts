@@ -129,7 +129,8 @@ async function checkTaskForCompletion(taskId: string, agentId: string): Promise<
     'builder': 'builder',
     'researcher': 'researcher', 
     'creative': 'creative',
-    'marketing': 'marketing',
+    'marketing': 'scout',
+    'scout': 'scout',
     'finance': 'finance'
   };
   const folder = folderMap[gatewayAgentId] || 'main';
@@ -289,10 +290,10 @@ async function checkTaskForCompletion(taskId: string, agentId: string): Promise<
     }
   }
   
-  // Mark task as done (either single-agent or final agent in chain)
+  // Agent completion moves the task into review; QC is the only path to done.
   run(
     `UPDATE tasks 
-     SET status = 'done', 
+     SET status = 'review', 
          result = ?, 
          result_captured_at = ?,
          updated_at = ?
@@ -317,7 +318,11 @@ async function checkTaskForCompletion(taskId: string, agentId: string): Promise<
     });
   }
   
-  console.log(`[COMPLETION LISTENER] Task ${taskId} marked as done`);
+  captureResultFromSession(taskId).catch(err => {
+    console.error(`[COMPLETION LISTENER] Result capture failed for task ${taskId}:`, err);
+  });
+
+  console.log(`[COMPLETION LISTENER] Task ${taskId} moved to review`);
 }
 
 // Auto-start when module is imported

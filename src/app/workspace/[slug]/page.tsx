@@ -22,7 +22,10 @@ import { GitHubActivity } from '@/components/GitHubActivity';
 import { UnreadPending } from '@/components/UnreadPending';
 import { Deployments } from '@/components/Deployments';
 import { ToolsHealthMonitor } from '@/components/ToolsHealthMonitor';
+import { LocalModelDashboard } from '@/components/LocalModelDashboard';
 import { OfficeVisualization } from '@/components/OfficeVisualization';
+import { MessageLibraryWrapper } from '@/components/MessageLibraryWrapper';
+import { QATracker } from '@/components/QATracker';
 import { LiveFeed } from '@/components/LiveFeed';
 import { SSEDebugPanel } from '@/components/SSEDebugPanel';
 import { useMissionControl } from '@/lib/store';
@@ -62,7 +65,9 @@ export default function WorkspacePage() {
       case 'qc': return <QCDashboard {...commonProps} />;
       case 'api': return <APIMonitor {...commonProps} />;
       case 'bugs': return <BugReports {...commonProps} />;
+      case 'qa': return <QATracker {...commonProps} />;
       case 'docs': return <DocsLibrary {...commonProps} />;
+      case 'library': return <MessageLibraryWrapper {...commonProps} />;
       case 'projects': return <ProjectTracker {...commonProps} />;
       case 'team': return <TeamScreen {...commonProps} />;
       case 'workload': return <AgentWorkloadBalance {...commonProps} />;
@@ -71,6 +76,7 @@ export default function WorkspacePage() {
       case 'unread': return <UnreadPending />;
       case 'deployments': return <Deployments />;
       case 'tools-health': return <ToolsHealthMonitor {...commonProps} />;
+      case 'local-models': return <LocalModelDashboard />;
       case 'office': return <OfficeVisualization {...commonProps} />;
       default: return <MissionQueue {...commonProps} />;
     }

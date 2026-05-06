@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, queryAll, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { dispatchToNextAgent } from '@/lib/enhanced-dispatch';
+import { getApprovedCompletionStamp, getDoneTransitionIssues } from '@/lib/task-completion';
 
 interface QCDecision {
   decision: 'APPROVED' | 'REVISION_NEEDED' | 'ESCALATE';
@@ -66,6 +69,12 @@ export async function POST(
       execution_state?: string;
       planning_agents?: string;
       assigned_agent_id?: string;
+      result?: string;
+      result_captured_at?: string | null;
+      verification_output?: string;
+      output_url?: string;
+      qc_status?: string;
+      qc_failures?: string;
     }>('SELECT * FROM tasks WHERE id = ?', [taskId]);
 
     if (!task) {
@@ -160,9 +169,62 @@ async function handleApproval(
   }
 
   // Single agent or final agent: mark as done
+  const deliverableCount = queryOne<{ count: number }>(
+    'SELECT COUNT(*) as count FROM task_deliverables WHERE task_id = ?',
+    [taskId]
+  )?.count ?? 0;
+  const sessionCount = queryOne<{ count: number }>(
+    'SELECT COUNT(*) as count FROM openclaw_sessions WHERE task_id = ?',
+    [taskId]
+  )?.count ?? 0;
+
+  const doneIssues = getDoneTransitionIssues(task, {
+    qc_status: 'passed',
+    qc_failures: []
+  }, {
+    deliverableCount,
+    sessionCount,
+    allowedCurrentStatuses: ['review', 'done']
+  });
+
+  if (doneIssues.length > 0) {
+    return NextResponse.json(
+      {
+        error: 'QC approval blocked by incomplete completion metadata',
+        details: doneIssues
+      },
+      { status: 400 }
+    );
+  }
+
+  const approvedCompletion = getApprovedCompletionStamp(now, task);
+  const completionUpdates = [
+    'status = ?',
+    'qc_status = ?',
+    'qc_last_run = ?',
+    'qc_failures = ?',
+    'verified_at = ?',
+    'updated_at = ?'
+  ];
+  const completionValues: Array<string> = [
+    approvedCompletion.status,
+    approvedCompletion.qc_status,
+    approvedCompletion.qc_last_run,
+    approvedCompletion.qc_failures,
+    approvedCompletion.verified_at,
+    approvedCompletion.updated_at,
+  ];
+
+  if (approvedCompletion.result_captured_at) {
+    completionUpdates.splice(5, 0, 'result_captured_at = ?');
+    completionValues.splice(5, 0, approvedCompletion.result_captured_at);
+  }
+
+  completionValues.push(taskId);
+
   run(
-    'UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?',
-    ['done', now, taskId]
+    `UPDATE tasks SET ${completionUpdates.join(', ')} WHERE id = ?`,
+    completionValues
   );
 
   // Log completion

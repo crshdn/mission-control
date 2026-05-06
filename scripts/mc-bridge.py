@@ -160,12 +160,16 @@ def cmd_agent_start(args):
         "title": args.task,
         "status": "in_progress",
         "priority": getattr(args, "priority", "normal") or "normal",
+        "task_type": getattr(args, "task_type", None) or "feature",
+        "qc_status": "pending",
         "assigned_agent_id": agent_id,
         "created_by_agent_id": agent_id,
         "workspace_id": WORKSPACE_ID,
     }
     if args.description:
         task_body["description"] = args.description
+    if getattr(args, "tags", None):
+        task_body["tags"] = [tag.strip() for tag in args.tags.split(',') if tag.strip()]
 
     task = api_post("/api/tasks", task_body)
     if not task:
@@ -201,7 +205,10 @@ def cmd_agent_done(args):
 
     # 1. Move task to review (or done if --done flag)
     target_status = "done" if args.force_done else "review"
-    api_patch(f"/api/tasks/{task_id}", {"status": target_status})
+    api_patch(f"/api/tasks/{task_id}", {
+        "status": target_status,
+        "verification_output": f"CLI bridge completion: {args.summary or 'Task completed'}. Agent: {agent_name}. Runtime handoff recorded via mc-bridge.py for Mission Control review.",
+    })
 
     # 2. Set agent back to standby
     api_patch(f"/api/agents/{agent_id}", {"status": "standby"})
@@ -358,6 +365,8 @@ Examples:
     p_start.add_argument("--label", help="Clawdbot session label (for mapping)")
     p_start.add_argument("--description", help="Task description")
     p_start.add_argument("--priority", choices=["low", "normal", "high", "urgent"], default="normal")
+    p_start.add_argument("--task-type", dest="task_type", choices=["bug_fix", "feature", "compliance_batch", "research", "maintenance", "documentation", "ops"], default="feature")
+    p_start.add_argument("--tags", help="Comma-separated task tags")
     p_start.set_defaults(func=cmd_agent_start)
 
     # -- agent-done --

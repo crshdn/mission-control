@@ -10,6 +10,7 @@ import { queryOne, run } from '@/lib/db';
 // Note: triggerPollyReview removed - Polly now uses /api/tasks/[id]/qc endpoint
 import { dispatchToNextAgent } from '@/lib/enhanced-dispatch';
 import { broadcast } from '@/lib/events';
+import { getDoneTransitionIssues } from '@/lib/task-completion';
 import * as crypto from 'crypto';
 
 interface RouteParams {
@@ -70,6 +71,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       execution_state?: string;
       status: string;
       assigned_agent_id?: string;
+      result?: string;
+      verification_output?: string;
+      output_url?: string;
+      qc_status?: string;
+      qc_failures?: string;
     }>('SELECT * FROM tasks WHERE id = ?', [taskId]);
 
     if (!task) {
@@ -106,7 +112,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Process the review decision
-    const result = await processReviewDecision(taskId, executionState, currentOutput, reviewDecision);
+    const result = await processReviewDecision(task, executionState, currentOutput, reviewDecision);
 
     return NextResponse.json(result);
 
@@ -188,11 +194,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * Process review decision and take appropriate action
  */
 async function processReviewDecision(
-  taskId: string,
+  task: {
+    id: string;
+    status: string;
+    assigned_agent_id?: string;
+    result?: string;
+    verification_output?: string;
+    output_url?: string;
+    qc_status?: string;
+    qc_failures?: string;
+  },
   executionState: ExecutionState,
   currentOutput: any,
   reviewDecision: ReviewDecisionRequest
 ): Promise<{ success: boolean; action: string; message: string }> {
+  const taskId = task.id;
   const now = new Date().toISOString();
   const reviewer = reviewDecision.reviewer || 'polly';
 
@@ -213,7 +229,7 @@ async function processReviewDecision(
 
   switch (reviewDecision.decision) {
     case 'APPROVED':
-      return await handleApprovalDecision(taskId, executionState, currentOutput);
+      return await handleApprovalDecision(task, executionState, currentOutput);
       
     case 'REVISION_NEEDED':
       return await handleRevisionDecision(taskId, executionState, currentOutput, reviewDecision);
@@ -234,10 +250,20 @@ async function processReviewDecision(
  * Handle APPROVED decision
  */
 async function handleApprovalDecision(
-  taskId: string,
+  task: {
+    id: string;
+    status: string;
+    assigned_agent_id?: string;
+    result?: string;
+    verification_output?: string;
+    output_url?: string;
+    qc_status?: string;
+    qc_failures?: string;
+  },
   executionState: ExecutionState,
   currentOutput: any
 ): Promise<{ success: boolean; action: string; message: string }> {
+  const taskId = task.id;
   const isLastAgent = executionState.current_agent_index === executionState.total_agents - 1;
   const now = new Date().toISOString();
 
@@ -247,14 +273,44 @@ async function handleApprovalDecision(
       .map(output => `## ${output.agent_name}\n${output.output}`)
       .join('\n\n');
 
+    const deliverableCount = queryOne<{ count: number }>(
+      'SELECT COUNT(*) as count FROM task_deliverables WHERE task_id = ?',
+      [taskId]
+    )?.count ?? 0;
+    const sessionCount = queryOne<{ count: number }>(
+      'SELECT COUNT(*) as count FROM openclaw_sessions WHERE task_id = ?',
+      [taskId]
+    )?.count ?? 0;
+
+    const doneIssues = getDoneTransitionIssues(task, {
+      result: finalResult,
+      qc_status: 'passed',
+      qc_failures: []
+    }, {
+      deliverableCount,
+      sessionCount
+    });
+
+    if (doneIssues.length > 0) {
+      return {
+        success: false,
+        action: 'blocked',
+        message: `Final approval blocked: ${doneIssues.join('; ')}`
+      };
+    }
+
     run(
       `UPDATE tasks SET 
         result = ?, 
         result_captured_at = ?, 
         status = 'done', 
+        qc_status = 'passed',
+        qc_last_run = ?,
+        qc_failures = ?,
+        verified_at = ?,
         updated_at = ? 
        WHERE id = ?`,
-      [finalResult, now, now, taskId]
+      [finalResult, now, now, JSON.stringify([]), now, now, taskId]
     );
 
     // Log completion

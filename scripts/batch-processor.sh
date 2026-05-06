@@ -59,7 +59,7 @@ while IFS='|' read -r TASK_ID AGENT_ID; do
     builder) FOLDER="builder" ;;
     researcher) FOLDER="researcher" ;;
     creative) FOLDER="creative" ;;
-    marketing) FOLDER="marketing" ;;
+    marketing|scout) FOLDER="scout" ;;
     finance) FOLDER="finance" ;;
     *) FOLDER="builder" ;;
   esac
