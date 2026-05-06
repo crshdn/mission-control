@@ -13,6 +13,7 @@ interface Migration {
   id: string;
   name: string;
   up: (db: Database.Database) => void;
+  transactional?: boolean;
 }
 
 // All migrations in order - NEVER remove or reorder existing migrations
@@ -238,6 +239,143 @@ const migrations: Migration[] = [
         console.log('[Migration 010] Added brief_content to tasks');
       }
     }
+  },
+  {
+    id: '011',
+    name: 'add_process_v2_fields',
+    up: (db) => {
+      console.log('[Migration 011] Adding PROCESS-V2 fields to tasks...');
+
+      const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
+
+      if (!tasksInfo.some(col => col.name === 'task_type')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN task_type TEXT CHECK (task_type IN ('bug_fix', 'feature', 'compliance_batch', 'research', 'maintenance', 'documentation', 'ops'))`);
+        console.log('[Migration 011] Added task_type to tasks');
+      }
+
+      if (!tasksInfo.some(col => col.name === 'qc_status')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN qc_status TEXT DEFAULT 'pending' CHECK (qc_status IN ('pending', 'passed', 'failed', 'skipped'))`);
+        console.log('[Migration 011] Added qc_status to tasks');
+      }
+
+      if (!tasksInfo.some(col => col.name === 'qc_last_run')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN qc_last_run TEXT`);
+        console.log('[Migration 011] Added qc_last_run to tasks');
+      }
+
+      if (!tasksInfo.some(col => col.name === 'qc_failures')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN qc_failures TEXT`);
+        console.log('[Migration 011] Added qc_failures to tasks (JSON array)');
+      }
+
+      if (!tasksInfo.some(col => col.name === 'tags')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN tags TEXT`);
+        console.log('[Migration 011] Added tags to tasks (JSON array)');
+      }
+
+      // Index for fast qc_status lookups (nightly sweep, compliance queries)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_qc_status ON tasks(qc_status)`);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_task_type ON tasks(task_type)`);
+
+      console.log('[Migration 011] PROCESS-V2 fields added successfully');
+    }
+  },
+  {
+    id: '012',
+    name: 'normalize_task_type_categories',
+    transactional: false,
+    up: (db) => {
+      console.log('[Migration 012] Normalizing task_type categories and rebuilding tasks table constraints...');
+
+      const tasksTable = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'tasks'").get() as { sql?: string } | undefined;
+      const currentSql = tasksTable?.sql || '';
+      if (currentSql.includes("task_type IN ('bug_fix', 'feature', 'compliance_batch', 'research', 'maintenance', 'documentation', 'ops')")) {
+        console.log('[Migration 012] tasks table already uses task metadata v3 categories; skipping rebuild');
+        return;
+      }
+
+      db.exec(`
+        PRAGMA foreign_keys = OFF;
+
+        ALTER TABLE tasks RENAME TO tasks_old;
+
+        CREATE TABLE tasks (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          description TEXT,
+          status TEXT DEFAULT 'inbox' CHECK (status IN ('pending_dispatch', 'planning', 'inbox', 'assigned', 'in_progress', 'testing', 'review', 'done')),
+          priority TEXT DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+          task_type TEXT CHECK (task_type IN ('bug_fix', 'feature', 'compliance_batch', 'research', 'maintenance', 'documentation', 'ops')),
+          qc_status TEXT DEFAULT 'pending' CHECK (qc_status IN ('pending', 'passed', 'failed', 'skipped')),
+          qc_last_run TEXT,
+          qc_failures TEXT,
+          tags TEXT,
+          assigned_agent_id TEXT REFERENCES agents(id),
+          created_by_agent_id TEXT REFERENCES agents(id),
+          workspace_id TEXT DEFAULT 'default' REFERENCES workspaces(id),
+          business_id TEXT DEFAULT 'default',
+          due_date TEXT,
+          planning_session_key TEXT,
+          planning_messages TEXT,
+          planning_complete INTEGER DEFAULT 0,
+          planning_spec TEXT,
+          planning_agents TEXT,
+          planning_dispatch_error TEXT,
+          execution_state TEXT,
+          result TEXT,
+          result_captured_at TEXT,
+          verification_output TEXT,
+          verified_at TEXT,
+          output_url TEXT,
+          brief_content TEXT,
+          created_at TEXT DEFAULT (datetime('now')),
+          updated_at TEXT DEFAULT (datetime('now'))
+        );
+
+        INSERT INTO tasks (
+          id, title, description, status, priority, task_type, qc_status, qc_last_run, qc_failures, tags,
+          assigned_agent_id, created_by_agent_id, workspace_id, business_id, due_date,
+          planning_session_key, planning_messages, planning_complete, planning_spec, planning_agents, planning_dispatch_error,
+          execution_state, result, result_captured_at, verification_output, verified_at, output_url, brief_content,
+          created_at, updated_at
+        )
+        SELECT
+          id, title, description, status, priority,
+          CASE
+            WHEN task_type IN ('new_tool', 'feature', 'build') THEN 'feature'
+            WHEN task_type IN ('tool_fix', 'bug', 'fix') THEN 'bug_fix'
+            WHEN task_type IN ('qa', 'compliance_batch') THEN 'compliance_batch'
+            WHEN task_type IN ('research', 'maintenance', 'documentation', 'ops', 'bug_fix') THEN task_type
+            ELSE NULL
+          END AS task_type,
+          CASE
+            WHEN qc_status = 'pass' THEN 'passed'
+            WHEN qc_status = 'fail' THEN 'failed'
+            WHEN qc_status = 'not_covered' THEN 'skipped'
+            WHEN qc_status IN ('pending', 'passed', 'failed', 'skipped') THEN qc_status
+            ELSE 'pending'
+          END AS qc_status,
+          qc_last_run, qc_failures, tags,
+          assigned_agent_id, created_by_agent_id, workspace_id, business_id, due_date,
+          planning_session_key, planning_messages, planning_complete, planning_spec, planning_agents, planning_dispatch_error,
+          execution_state, result, result_captured_at, verification_output, verified_at, output_url, brief_content,
+          created_at, updated_at
+        FROM tasks_old;
+
+        DROP TABLE tasks_old;
+
+        CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+        CREATE INDEX IF NOT EXISTS idx_tasks_assigned_agent ON tasks(assigned_agent_id);
+        CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_tasks_workspace ON tasks(workspace_id);
+        CREATE INDEX IF NOT EXISTS idx_tasks_qc_status ON tasks(qc_status);
+        CREATE INDEX IF NOT EXISTS idx_tasks_task_type ON tasks(task_type);
+
+        PRAGMA foreign_keys = ON;
+      `);
+
+      console.log('[Migration 012] task_type categories normalized successfully');
+    }
   }
 ];
 
@@ -268,11 +406,16 @@ export function runMigrations(db: Database.Database): void {
     console.log(`[DB] Running migration ${migration.id}: ${migration.name}`);
     
     try {
-      // Run migration in a transaction
-      db.transaction(() => {
+      if (migration.transactional === false) {
         migration.up(db);
         db.prepare('INSERT INTO _migrations (id, name) VALUES (?, ?)').run(migration.id, migration.name);
-      })();
+      } else {
+        // Run migration in a transaction
+        db.transaction(() => {
+          migration.up(db);
+          db.prepare('INSERT INTO _migrations (id, name) VALUES (?, ?)').run(migration.id, migration.name);
+        })();
+      }
       
       console.log(`[DB] Migration ${migration.id} completed`);
     } catch (error) {

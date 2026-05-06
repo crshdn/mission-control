@@ -13,6 +13,11 @@ const TaskStatus = z.enum([
 
 const TaskPriority = z.enum(['low', 'normal', 'high', 'urgent']);
 
+// Task categorization + QC enums
+const TaskType = z.enum(['bug_fix', 'feature', 'compliance_batch', 'research', 'maintenance', 'documentation', 'ops']);
+
+const QCStatus = z.enum(['pending', 'passed', 'failed', 'skipped']);
+
 const ActivityType = z.enum([
   'spawned',
   'updated',
@@ -29,6 +34,9 @@ export const CreateTaskSchema = z.object({
   description: z.string().max(10000, 'Description must be 10000 characters or less').optional(),
   status: TaskStatus.optional(),
   priority: TaskPriority.optional(),
+  task_type: TaskType.optional(),
+  qc_status: QCStatus.optional(),
+  tags: z.array(z.string().max(100)).max(20).optional(),
   assigned_agent_id: z.string().uuid().optional(),
   created_by_agent_id: z.string().uuid().optional(),
   business_id: z.string().optional(),
@@ -41,14 +49,22 @@ export const UpdateTaskSchema = z.object({
   description: z.string().max(10000).optional(),
   status: TaskStatus.optional(),
   priority: TaskPriority.optional(),
+  task_type: TaskType.optional(),
+  qc_status: QCStatus.optional(),
+  qc_last_run: z.string().optional(),
+  qc_failures: z.array(z.string().max(1000)).max(100).optional(),
+  tags: z.array(z.string().max(100)).max(20).optional(),
   assigned_agent_id: z.string().uuid().optional().nullable(),
   due_date: z.string().optional().nullable(),
   updated_by_agent_id: z.string().uuid().optional(),
   result: z.string().max(50000).optional(),
   verification_output: z.string().max(50000).optional(),
+  output_url: z.string().url().max(2000).optional().nullable(),
   // Manual override for status gates (requires reason for audit trail)
   manual_override: z.boolean().optional(),
   override_reason: z.string().min(10, 'Override reason must be at least 10 characters').max(500).optional(),
+  // Skip automated URL verification (for tasks where URLs aren't applicable)
+  skip_url_verification: z.boolean().optional(),
 });
 
 // Activity validation schema

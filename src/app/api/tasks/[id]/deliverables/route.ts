@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { broadcast } from '@/lib/events';
+import { foreignKeyErrorResponse } from '@/lib/api/foreign-key-validation';
 import { CreateDeliverableSchema } from '@/lib/validation';
 import { existsSync } from 'fs';
 import path from 'path';
@@ -63,6 +64,12 @@ export async function POST(
 
     const { deliverable_type, title, path, description } = validation.data;
 
+    const db = getDb();
+    const taskExists = db.prepare('SELECT id FROM tasks WHERE id = ?').get(taskId) as { id: string } | undefined;
+    if (!taskExists) {
+      return foreignKeyErrorResponse({ field: 'task_id', value: taskId, table: 'tasks' });
+    }
+
     // Validate file existence for file deliverables
     let fileExists = true;
     let normalizedPath = path;
@@ -75,7 +82,6 @@ export async function POST(
       }
     }
 
-    const db = getDb();
     const id = crypto.randomUUID();
 
     // Insert deliverable

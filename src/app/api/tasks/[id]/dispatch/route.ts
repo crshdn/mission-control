@@ -5,10 +5,17 @@ import { getOpenClawClient } from '@/lib/openclaw/client';
 import { broadcast } from '@/lib/events';
 import { getProjectsPath, getMissionControlUrl } from '@/lib/config';
 import { onSubAgentSpawned, logActivity } from '@/lib/orchestration';
+import { ensureTaskSessionTraceability } from '@/lib/task-session-traceability';
 import type { Task, Agent, OpenClawSession } from '@/lib/types';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
+}
+
+function resolveGatewayAgentId(gatewayAgentId: string | null | undefined): string {
+  // Scout replaced the old OpenClaw `marketing` target; keep DB compatibility without dispatching to a removed agent key.
+  if (gatewayAgentId === 'marketing') return 'scout';
+  return gatewayAgentId || 'main';
 }
 
 /**
@@ -94,7 +101,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Get or create OpenClaw session for this agent
     let session = queryOne<OpenClawSession>(
-      'SELECT * FROM openclaw_sessions WHERE agent_id = ? AND status = ?',
+      `SELECT *
+       FROM openclaw_sessions
+       WHERE agent_id = ? AND status = ?
+       ORDER BY updated_at DESC, created_at DESC
+       LIMIT 1`,
       [agent.id, 'active']
     );
 
@@ -135,6 +146,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         type: 'agent_spawned',
         payload: { taskId: id, agentId: agent.id, agentName: agent.name, sessionId: openclawSessionId },
       });
+    } else {
+      session = ensureTaskSessionTraceability(session, agent.id, id, now);
     }
 
     if (!session) {
@@ -215,7 +228,7 @@ If you need help or clarification, ask the orchestrator.`;
       // Use sessionKey for routing to the agent's session
       // Format: agent:{gateway_agent_id}:{openclaw_session_id}
       // The gateway_agent_id routes to the correct OpenClaw agent (e.g., "researcher" for Vale)
-      const gatewayAgentId = agent.gateway_agent_id || 'main';
+      const gatewayAgentId = resolveGatewayAgentId(agent.gateway_agent_id);
       const sessionKey = `agent:${gatewayAgentId}:${session.openclaw_session_id}`;
       await client.call('chat.send', {
         sessionKey,

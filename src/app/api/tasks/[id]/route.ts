@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { v4 as uuidv4 } from 'uuid';
 import { queryOne, run, queryAll } from '@/lib/db';
 import { broadcast } from '@/lib/events';
@@ -6,7 +8,9 @@ import { getMissionControlUrl } from '@/lib/config';
 import { UpdateTaskSchema } from '@/lib/validation';
 import { captureResultFromSession } from '@/lib/result-capture';
 import { triggerTaskStatusChange } from '@/lib/webhooks';
-import type { Task, UpdateTaskRequest, Agent, TaskDeliverable, TaskStatus } from '@/lib/types';
+import { formatDoneOverrideLog, getApprovedCompletionStamp, getDoneTransitionIssues, parseQcFailures } from '@/lib/task-completion';
+import { foreignKeyErrorResponse, missingForeignKey } from '@/lib/api/foreign-key-validation';
+import type { Task, UpdateTaskRequest, Agent, TaskDeliverable, TaskStatus, QCStatus } from '@/lib/types';
 
 // GET /api/tasks/[id] - Get a single task
 export async function GET(
@@ -60,12 +64,36 @@ export async function PATCH(
     if (!existing) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
+
+    const foreignKeyFailure =
+      missingForeignKey('assigned_agent_id', validatedData.assigned_agent_id, 'agents') ||
+      missingForeignKey('updated_by_agent_id', validatedData.updated_by_agent_id, 'agents');
+
+    if (foreignKeyFailure) {
+      return foreignKeyErrorResponse(foreignKeyFailure);
+    }
     // Store previous status for webhook trigger
     const previousStatus = existing.status;
 
     const updates: string[] = [];
     const values: unknown[] = [];
     const now = new Date().toISOString();
+    const existingQcFailures = parseQcFailures(existing.qc_failures);
+    const hasQcFailuresUpdate = validatedData.qc_failures !== undefined;
+
+    let normalizedQcStatus: QCStatus | undefined = validatedData.qc_status;
+    let normalizedQcFailures = validatedData.qc_failures;
+
+    if (hasQcFailuresUpdate && normalizedQcFailures && normalizedQcFailures.length > 0) {
+      normalizedQcStatus = 'failed';
+    }
+
+    const effectiveQcStatus = normalizedQcStatus ?? existing.qc_status;
+    const effectiveQcFailures = normalizedQcFailures ?? existingQcFailures;
+
+    if (effectiveQcStatus && effectiveQcStatus !== 'failed' && effectiveQcFailures.length > 0) {
+      normalizedQcFailures = [];
+    }
 
     // Workflow enforcement for agent-initiated approvals
     // If an agent is trying to move review→done, they must be a master agent
@@ -120,28 +148,106 @@ export async function PATCH(
       }
     }
 
-    // STATUS GATE 2: done requires evidence of completion
-    // Prevents marking tasks done without proof they were actually built
+    // STATUS GATE 2: done requires coherent completion metadata + automated verification
     if (validatedData.status === 'done') {
-      const hasEvidence = existing.result || existing.verification_output || validatedData.result || validatedData.verification_output;
+      const deliverableCount = queryOne<{ count: number }>(
+        'SELECT COUNT(*) as count FROM task_deliverables WHERE task_id = ?',
+        [id]
+      )?.count ?? 0;
+      const sessionCount = queryOne<{ count: number }>(
+        'SELECT COUNT(*) as count FROM openclaw_sessions WHERE task_id = ?',
+        [id]
+      )?.count ?? 0;
+      const doneIssues = getDoneTransitionIssues(existing, validatedData, {
+        deliverableCount,
+        sessionCount
+      });
 
-      if (!hasEvidence && !validatedData.manual_override) {
+      if (doneIssues.length > 0 && !validatedData.manual_override) {
         return NextResponse.json(
           {
-            error: 'Cannot mark done without evidence',
-            details: 'Task requires result or verification_output before completion, or provide manual_override: true with override_reason'
+            error: 'Cannot mark done with inconsistent completion metadata',
+            details: doneIssues,
+            hint: 'Fix the completion data or provide manual_override: true with override_reason for an explicit audit trail'
           },
           { status: 400 }
         );
       }
 
-      // Log override if used
-      if (!hasEvidence && validatedData.manual_override) {
+      // AUTOMATED VERIFICATION: Check that claimed URLs actually work
+      // Extract localhost URLs from verification_output and verify they don't 404
+      if (!validatedData.manual_override && !validatedData.skip_url_verification) {
+        const evidenceText = existing.verification_output || validatedData.verification_output || existing.result || validatedData.result || '';
+        
+        // Find localhost URLs (MC pages, APIs)
+        const urlPattern = /(?:http:\/\/)?localhost:\d+\/[^\s"'<>)}\]]+/gi;
+        const urls: string[] = evidenceText.match(urlPattern) || [];
+        
+        // Also check for route claims like "/bugs", "/projects" that imply localhost:4000
+        const routePattern = /(?:verified|working|deployed|live|accessible).*?(\/[a-z][a-z0-9-]*)/gi;
+        let routeMatch;
+        while ((routeMatch = routePattern.exec(evidenceText)) !== null) {
+          const route = routeMatch[1];
+          if (route && !route.includes('.') && route.length < 30) {
+            urls.push(`http://localhost:4000${route}`);
+          }
+        }
+
+        // Verify URLs don't return 404
+        const failedUrls: string[] = [];
+        for (const url of urls) {
+          try {
+            const fullUrl = url.startsWith('http') ? url : `http://${url}`;
+            const response = await fetch(fullUrl, { 
+              method: 'HEAD',
+              signal: AbortSignal.timeout(5000)
+            });
+            
+            // Check for 404 in response or in body (Next.js returns 200 with 404 title)
+            if (response.status === 404) {
+              failedUrls.push(url);
+            } else if (response.status === 200) {
+              // Double-check: fetch body and look for "404" in title (Next.js quirk)
+              const bodyResponse = await fetch(fullUrl, { signal: AbortSignal.timeout(5000) });
+              const body = await bodyResponse.text();
+              if (body.includes('<title>404') || body.includes('This page could not be found')) {
+                failedUrls.push(url);
+              }
+            }
+          } catch (e) {
+            // Network error - URL doesn't work
+            failedUrls.push(`${url} (unreachable)`);
+          }
+        }
+
+        if (failedUrls.length > 0) {
+          return NextResponse.json(
+            {
+              error: 'Verification failed - claimed URLs do not work',
+              details: `The following URLs returned 404 or are unreachable: ${failedUrls.join(', ')}`,
+              hint: 'Fix the issues and try again, or use manual_override: true with override_reason if this is a false positive'
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      if (validatedData.manual_override) {
         run(
           `INSERT INTO task_activities (id, task_id, activity_type, message, created_at)
            VALUES (?, ?, ?, ?, ?)`,
-          [uuidv4(), id, 'status_changed', `[MANUAL OVERRIDE] Marked done without evidence. Reason: ${validatedData.override_reason}`, now]
+          [uuidv4(), id, 'status_changed', formatDoneOverrideLog(doneIssues, validatedData.override_reason || 'No reason provided'), now]
         );
+      }
+
+      const approvedCompletion = getApprovedCompletionStamp(now, {
+        result: validatedData.result ?? existing.result,
+        result_captured_at: validatedData.result !== undefined ? now : existing.result_captured_at ?? null
+      });
+
+      if (approvedCompletion.result_captured_at && validatedData.result === undefined) {
+        updates.push('result_captured_at = ?');
+        values.push(approvedCompletion.result_captured_at);
       }
 
       // Set verified_at timestamp
@@ -192,6 +298,38 @@ export async function PATCH(
     if (validatedData.verification_output !== undefined) {
       updates.push('verification_output = ?');
       values.push(validatedData.verification_output);
+    }
+
+    // Handle output_url field update
+    if (validatedData.output_url !== undefined) {
+      updates.push('output_url = ?');
+      values.push(validatedData.output_url);
+    }
+
+    // Handle PROCESS-V2 field updates
+    if (validatedData.task_type !== undefined) {
+      updates.push('task_type = ?');
+      values.push(validatedData.task_type);
+    }
+
+    if (normalizedQcStatus !== undefined) {
+      updates.push('qc_status = ?');
+      values.push(normalizedQcStatus);
+    }
+
+    if (validatedData.qc_last_run !== undefined) {
+      updates.push('qc_last_run = ?');
+      values.push(validatedData.qc_last_run);
+    }
+
+    if (normalizedQcFailures !== undefined) {
+      updates.push('qc_failures = ?');
+      values.push(JSON.stringify(normalizedQcFailures));
+    }
+
+    if (validatedData.tags !== undefined) {
+      updates.push('tags = ?');
+      values.push(JSON.stringify(validatedData.tags));
     }
 
     // Track if we need to dispatch task

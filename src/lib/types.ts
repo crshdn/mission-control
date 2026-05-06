@@ -6,6 +6,11 @@ export type TaskStatus = 'planning' | 'inbox' | 'assigned' | 'in_progress' | 'te
 
 export type TaskPriority = 'low' | 'normal' | 'high' | 'urgent';
 
+// Task categorization fields
+export type TaskType = 'bug_fix' | 'feature' | 'compliance_batch' | 'research' | 'maintenance' | 'documentation' | 'ops';
+
+export type QCStatus = 'pending' | 'passed' | 'failed' | 'skipped';
+
 export type MessageType = 'text' | 'system' | 'task_update' | 'file';
 
 export type ConversationType = 'direct' | 'group' | 'task';
@@ -39,6 +44,11 @@ export interface Agent {
   gateway_agent_id?: string;
   created_at: string;
   updated_at: string;
+  // Live data from OpenClaw
+  current_session?: string | null;
+  working_on?: string | null;
+  current_task?: string | null;
+  last_active?: string | null;
 }
 
 // Agent discovered from the OpenClaw Gateway (not yet imported)
@@ -59,6 +69,12 @@ export interface Task {
   description?: string;
   status: TaskStatus;
   priority: TaskPriority;
+  // PROCESS-V2 fields
+  task_type?: TaskType;
+  qc_status?: QCStatus;
+  qc_last_run?: string;
+  qc_failures?: string; // JSON array of strings, stored as TEXT in DB
+  tags?: string; // JSON array of strings, stored as TEXT in DB
   assigned_agent_id: string | null;
   created_by_agent_id: string | null;
   workspace_id: string;
@@ -67,6 +83,7 @@ export interface Task {
   result?: string;
   result_captured_at?: string;
   verification_output?: string;
+  output_url?: string;
   planning_spec?: string;
   brief_content?: string;
   created_at: string;
@@ -259,15 +276,22 @@ export interface CreateTaskRequest {
   title: string;
   description?: string;
   priority?: TaskPriority;
+  task_type?: TaskType;
+  qc_status?: QCStatus;
+  tags?: string[];
   assigned_agent_id?: string;
   created_by_agent_id?: string;
   business_id?: string;
   due_date?: string;
   brief_path?: string;
+  workspace_id?: string;
 }
 
 export interface UpdateTaskRequest extends Partial<CreateTaskRequest> {
   status?: TaskStatus;
+  qc_status?: QCStatus;
+  qc_last_run?: string;
+  qc_failures?: string[];
 }
 
 export interface SendMessageRequest {

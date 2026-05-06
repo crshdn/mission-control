@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { v4 as uuidv4 } from 'uuid';
 import { readFileSync } from 'fs';
 import { queryAll, queryOne, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import { CreateTaskSchema } from '@/lib/validation';
 import { triggerTaskCreated } from '@/lib/webhooks';
+import { foreignKeyErrorResponse, missingForeignKey } from '@/lib/api/foreign-key-validation';
 import type { Task, CreateTaskRequest, Agent } from '@/lib/types';
 
 // GET /api/tasks - List all tasks with optional filters
@@ -76,10 +78,37 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Brief validation: ensure required fields are present
+function validateBrief(description: string | undefined, skipValidation?: boolean): { valid: boolean; missing: string[] } {
+  // Skip validation if explicitly requested (e.g., for research tasks, quick notes)
+  if (skipValidation) {
+    return { valid: true, missing: [] };
+  }
+  
+  // No description = no validation needed (simple tasks)
+  if (!description || description.length < 50) {
+    return { valid: true, missing: [] };
+  }
+  
+  const missing: string[] = [];
+  
+  // Check for **Project:** field
+  if (!description.includes('**Project:**') && !description.includes('**Project**:')) {
+    missing.push('**Project:** (which codebase/repo)');
+  }
+  
+  // Check for **Scope:** field  
+  if (!description.includes('**Scope:**') && !description.includes('**Scope**:')) {
+    missing.push('**Scope:** (shell | tool/page | feature)');
+  }
+  
+  return { valid: missing.length === 0, missing };
+}
+
 // POST /api/tasks - Create a new task
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateTaskRequest = await request.json();
+    const body: CreateTaskRequest & { skip_brief_validation?: boolean } = await request.json();
     console.log('[POST /api/tasks] Received body:', JSON.stringify(body));
 
     // Validate input with Zod
@@ -92,12 +121,35 @@ export async function POST(request: NextRequest) {
     }
 
     const validatedData = validation.data;
+    
+    // BRIEF VALIDATION: Ensure description has required fields
+    // This prevents "built in wrong project" mistakes
+    const briefValidation = validateBrief(validatedData.description, body.skip_brief_validation);
+    if (!briefValidation.valid) {
+      return NextResponse.json(
+        { 
+          error: 'Brief validation failed', 
+          details: `Missing required fields: ${briefValidation.missing.join(', ')}`,
+          hint: 'Use templates from /templates/mc-briefs/ or add skip_brief_validation: true for simple tasks'
+        },
+        { status: 400 }
+      );
+    }
 
     const id = uuidv4();
     const now = new Date().toISOString();
 
     const workspaceId = validatedData.workspace_id || 'default';
     const status = validatedData.status || 'inbox';
+
+    const foreignKeyFailure =
+      missingForeignKey('assigned_agent_id', validatedData.assigned_agent_id, 'agents') ||
+      missingForeignKey('created_by_agent_id', validatedData.created_by_agent_id, 'agents') ||
+      missingForeignKey('workspace_id', workspaceId, 'workspaces');
+
+    if (foreignKeyFailure) {
+      return foreignKeyErrorResponse(foreignKeyFailure);
+    }
     
     // Handle brief_path if provided
     let briefContent = null;
@@ -111,15 +163,20 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    const tagsJson = validatedData.tags ? JSON.stringify(validatedData.tags) : null;
+
     run(
-      `INSERT INTO tasks (id, title, description, status, priority, assigned_agent_id, created_by_agent_id, workspace_id, business_id, due_date, brief_content, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tasks (id, title, description, status, priority, task_type, qc_status, tags, assigned_agent_id, created_by_agent_id, workspace_id, business_id, due_date, brief_content, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         validatedData.title,
         validatedData.description || null,
         status,
         validatedData.priority || 'normal',
+        validatedData.task_type || null,
+        validatedData.qc_status || 'pending',
+        tagsJson,
         validatedData.assigned_agent_id || null,
         validatedData.created_by_agent_id || null,
         workspaceId,
