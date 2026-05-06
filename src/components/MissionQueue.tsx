@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Plus, ChevronRight, GripVertical } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { triggerAutoDispatch, shouldTriggerAutoDispatch } from '@/lib/auto-dispatch';
-import type { Task, TaskStatus } from '@/lib/types';
+import type { Task, TaskStatus, TaskType, QCStatus } from '@/lib/types';
 import { TaskModal } from './TaskModal';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -223,6 +223,27 @@ function TaskCard({ task, onDragStart, onClick, isDragging }: TaskCardProps) {
           </div>
         )}
 
+        {/* PROCESS-V2 badges: task_type and qc_status */}
+        {(task.task_type || task.qc_status || task.tags) && (
+          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+            {task.task_type && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium uppercase tracking-wide ${taskTypeStyles[task.task_type as TaskType]}`}>
+                {task.task_type.replaceAll('_', ' ')}
+              </span>
+            )}
+            {task.qc_status && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium uppercase tracking-wide ${qcStatusStyles[task.qc_status as QCStatus]}`}>
+                QC: {task.qc_status.replaceAll('_', ' ')}
+              </span>
+            )}
+            {task.tags && JSON.parse(task.tags).slice(0, 2).map((tag: string) => (
+              <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-mc-bg-tertiary text-mc-text-secondary">
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Footer: priority + timestamp */}
         <div className="flex items-center justify-between pt-2 border-t border-mc-border/20">
           <div className="flex items-center gap-1.5">
@@ -239,3 +260,20 @@ function TaskCard({ task, onDragStart, onClick, isDragging }: TaskCardProps) {
     </div>
   );
 }
+
+const taskTypeStyles: Record<TaskType, string> = {
+  bug_fix: 'bg-mc-accent-red/10 text-mc-accent-red',
+  feature: 'bg-mc-accent/10 text-mc-accent',
+  compliance_batch: 'bg-mc-accent-cyan/10 text-mc-accent-cyan',
+  research: 'bg-mc-accent-purple/10 text-purple-400',
+  maintenance: 'bg-mc-accent-yellow/10 text-mc-accent-yellow',
+  documentation: 'bg-mc-text-secondary/10 text-mc-text-secondary',
+  ops: 'bg-emerald-500/10 text-emerald-400',
+};
+
+const qcStatusStyles: Record<QCStatus, string> = {
+  pending: 'bg-mc-text-secondary/10 text-mc-text-secondary',
+  passed: 'bg-mc-accent-green/10 text-green-400',
+  failed: 'bg-mc-accent-red/10 text-mc-accent-red',
+  skipped: 'bg-mc-accent-yellow/10 text-mc-accent-yellow',
+};

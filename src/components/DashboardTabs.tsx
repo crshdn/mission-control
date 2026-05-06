@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckSquare, Activity, AlertTriangle, BookOpen, Server, Monitor } from 'lucide-react';
+import { CheckSquare, Activity, AlertTriangle, BookOpen, Server, Monitor, MessageSquare } from 'lucide-react';
 import { MissionQueue } from './MissionQueue';
 import { QCDashboard } from './QCDashboard';
 import { APIMonitor } from './APIMonitor';
@@ -9,6 +9,8 @@ import { BugReports } from './BugReports';
 import { DocsLibrary } from './DocsLibrary';
 import { ToolsHealthMonitor } from './ToolsHealthMonitor';
 import { OfficeVisualization } from './OfficeVisualization';
+import { MessageLibraryWrapper } from './MessageLibraryWrapper';
+import { QATracker } from './QATracker';
 
 interface DashboardTabsProps {
   workspaceId: string;
@@ -20,7 +22,9 @@ const tabs = [
   { id: 'api', label: 'API Monitor', icon: Activity, component: APIMonitor },
   { id: 'tools-health', label: 'Tools Health', icon: Server, component: ToolsHealthMonitor },
   { id: 'bugs', label: 'Bug Reports', icon: AlertTriangle, component: BugReports },
+  { id: 'qa', label: 'QA Tracker', icon: Activity, component: QATracker },
   { id: 'docs', label: 'Docs Library', icon: BookOpen, component: DocsLibrary },
+  { id: 'library', label: 'Message Library', icon: MessageSquare, component: MessageLibraryWrapper },
   { id: 'office', label: 'Office View', icon: Monitor, component: OfficeVisualization },
 ];
 

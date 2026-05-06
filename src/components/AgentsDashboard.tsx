@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Users, Plus, Play, Pause, AlertTriangle, CheckCircle, Settings, Eye, Activity, Clock, TrendingUp } from 'lucide-react';
+import { Users, Plus, Play, Pause, AlertTriangle, CheckCircle, Settings, Eye, Activity, Clock, TrendingUp, RefreshCw } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { AgentModal } from './AgentModal';
 
@@ -90,10 +90,13 @@ export function AgentsDashboard({ workspaceId }: AgentsDashboardProps) {
   useEffect(() => {
     loadData();
     
-    // Refresh session data every 30 seconds
-    const interval = setInterval(loadSessionData, 30000);
+    // Refresh agent status and session data every 15 seconds
+    const interval = setInterval(() => {
+      loadAgents();
+      loadSessionData();
+    }, 15000);
     return () => clearInterval(interval);
-  }, [loadData, loadSessionData]);
+  }, [loadData, loadAgents, loadSessionData]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -142,13 +145,22 @@ export function AgentsDashboard({ workspaceId }: AgentsDashboardProps) {
             <h2 className="text-2xl font-bold text-mc-text mb-2">Agents Dashboard</h2>
             <p className="text-mc-text-secondary">Manage and monitor AI agents in your workspace</p>
           </div>
-          <button 
-            onClick={() => setShowAgentModal(true)}
-            className="flex items-center gap-2 px-3 py-2 bg-mc-accent text-mc-bg rounded-lg hover:bg-mc-accent/90"
-          >
-            <Plus className="w-4 h-4" />
-            New Agent
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={loadData}
+              className="flex items-center gap-2 px-3 py-2 bg-mc-bg-secondary text-mc-text border border-mc-border rounded-lg hover:bg-mc-bg-tertiary"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </button>
+            <button 
+              onClick={() => setShowAgentModal(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-mc-accent text-mc-bg rounded-lg hover:bg-mc-accent/90"
+            >
+              <Plus className="w-4 h-4" />
+              New Agent
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -293,9 +305,22 @@ export function AgentsDashboard({ workspaceId }: AgentsDashboardProps) {
                   </div>
                 </div>
 
-                <div className="text-sm text-mc-text-secondary mb-4 line-clamp-2">
-                  {agent.description || 'General purpose AI agent'}
-                </div>
+                {/* Show what they're working on if active, otherwise show description */}
+                {agent.working_on ? (
+                  <div className="text-sm mb-4">
+                    <span className="text-mc-accent-green font-medium">Working on: </span>
+                    <span className="text-mc-text">{agent.working_on}</span>
+                    {agent.last_active && (
+                      <span className="text-mc-text-secondary text-xs ml-2">
+                        (as of {new Date(agent.last_active).toLocaleTimeString()})
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-mc-text-secondary mb-4 line-clamp-2">
+                    {agent.description || 'General purpose AI agent'}
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2">
                   <button 
