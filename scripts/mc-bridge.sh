@@ -62,7 +62,7 @@ sys.exit(1)
 # ---------------------------------------------------------------------------
 
 cmd_agent_start() {
-  local agent="" task="" label="" description="" priority="normal"
+  local agent="" task="" label="" description="" priority="normal" task_type="feature" tags=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -71,6 +71,8 @@ cmd_agent_start() {
       --label) label="$2"; shift 2;;
       --description) description="$2"; shift 2;;
       --priority) priority="$2"; shift 2;;
+      --task-type) task_type="$2"; shift 2;;
+      --tags) tags="$2"; shift 2;;
       *) echo "Unknown option: $1" >&2; exit 1;;
     esac
   done
@@ -89,12 +91,16 @@ d = {
     'title': $(python3 -c "import json; print(json.dumps('$task'))"),
     'status': 'in_progress',
     'priority': '$priority',
+    'task_type': '$task_type',
+    'qc_status': 'pending',
     'assigned_agent_id': '$agent_id',
     'created_by_agent_id': '$agent_id',
     'workspace_id': 'default'
 }
 if '$description':
     d['description'] = $(python3 -c "import json; print(json.dumps('$description'))")
+if '$tags':
+    d['tags'] = [t.strip() for t in '$tags'.split(',') if t.strip()]
 print(json.dumps(d))
 ")
 
@@ -137,8 +143,9 @@ cmd_agent_done() {
 
   local status="review"
   [[ "$force_done" == "true" ]] && status="done"
+  local verification="CLI bridge completion: $summary. Agent: $agent. Runtime handoff recorded via mc-bridge.sh for Mission Control review."
 
-  mc_patch "/api/tasks/$task_id" "{\"status\":\"$status\"}" >/dev/null
+  mc_patch "/api/tasks/$task_id" "{\"status\":\"$status\",\"verification_output\":\"$verification\"}" >/dev/null
   mc_patch "/api/agents/$agent_id" '{"status":"standby"}' >/dev/null
   mc_post "/api/tasks/$task_id/activities" "{\"activity_type\":\"completed\",\"message\":\"$agent: $summary\",\"agent_id\":\"$agent_id\"}" >/dev/null
 
@@ -221,7 +228,7 @@ case "${1:-}" in
     echo "ARIA ↔ Mission Control Bridge (bash)"
     echo ""
     echo "Usage:"
-    echo "  $0 agent-start --agent NAME --task TITLE [--label LABEL]"
+    echo "  $0 agent-start --agent NAME --task TITLE [--label LABEL] [--task-type TYPE] [--tags comma,separated]"
     echo "  $0 agent-done  --agent NAME --task-id ID [--summary TEXT]"
     echo "  $0 agent-error --agent NAME --task-id ID --error TEXT"
     echo "  $0 status"
