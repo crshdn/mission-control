@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 /**
  * File Preview API
  * Serves local files for preview (HTML only for security)

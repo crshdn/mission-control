@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://ewfcgdyjdnvkaejierbj.supabase.co';
@@ -105,7 +106,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch bug reports from Supabase' }, { status: 500 });
     }
 
-    return NextResponse.json(data || []);
+    // Transform Supabase data to match component expectations
+    const transformedData = (data || []).map((bug: Record<string, unknown>) => {
+      // Parse description for [BUG] or [OTHER] tags
+      const desc = (bug.description as string) || '';
+      const isBug = desc.includes('[BUG]');
+      const isOther = desc.includes('[OTHER]');
+      
+      // Derive priority from description or default
+      let priority = 'medium';
+      if (desc.toLowerCase().includes('crash') || desc.toLowerCase().includes('critical')) {
+        priority = 'critical';
+      } else if (desc.toLowerCase().includes('urgent') || desc.toLowerCase().includes('broken')) {
+        priority = 'high';
+      } else if (isOther) {
+        priority = 'low';
+      }
+      
+      // Map status: 'open' -> 'new'
+      let status = bug.status;
+      if (status === 'open') status = 'new';
+      
+      return {
+        ...bug,
+        user_email: bug.email,
+        priority,
+        status,
+        // Parse notes JSON if present
+        mc_task_id: bug.mc_task_id || null,
+      };
+    });
+
+    return NextResponse.json(transformedData);
   } catch (error) {
     console.error('Bug reports error:', error);
     return NextResponse.json({ error: 'Failed to fetch bug reports' }, { status: 500 });
