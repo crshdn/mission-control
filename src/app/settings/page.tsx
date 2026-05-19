@@ -16,10 +16,73 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hyperagentStatus, setHyperagentStatus] = useState<null | {
+    webhook_secret_configured: boolean;
+    sync_endpoint_configured: boolean;
+    sync_token_configured: boolean;
+    replay_window_ms: number;
+    sync_timeout_ms: number;
+    sync_max_retries: number;
+    recent_deliveries: Array<{
+      event_id: string;
+      event_type: string;
+      status: string;
+      created_at: string;
+      error_message?: string | null;
+    }>;
+  }>(null);
+  const [isLoadingHyperagent, setIsLoadingHyperagent] = useState(false);
+  const [isSyncingHyperagent, setIsSyncingHyperagent] = useState(false);
+  const [hyperagentMessage, setHyperagentMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setConfig(getConfig());
+    void refreshHyperagentStatus();
   }, []);
+
+  const refreshHyperagentStatus = async () => {
+    setIsLoadingHyperagent(true);
+    setHyperagentMessage(null);
+    try {
+      const res = await fetch('/api/integrations/hyperagent/status');
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to load Hyperagent status');
+      }
+      setHyperagentStatus(data);
+    } catch (err) {
+      setHyperagentMessage(err instanceof Error ? err.message : 'Failed to load Hyperagent status');
+    } finally {
+      setIsLoadingHyperagent(false);
+    }
+  };
+
+  const runHyperagentSync = async () => {
+    setIsSyncingHyperagent(true);
+    setHyperagentMessage(null);
+    try {
+      const res = await fetch('/api/integrations/hyperagent/sync', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ mode: 'full' })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to trigger Hyperagent sync');
+      }
+
+      setHyperagentMessage(
+        data.delivery?.delivered
+          ? `Sync delivered in ${data.delivery.attempts} attempt(s)`
+          : 'Sync queued locally (endpoint missing or delivery failed)'
+      );
+      await refreshHyperagentStatus();
+    } catch (err) {
+      setHyperagentMessage(err instanceof Error ? err.message : 'Failed to trigger Hyperagent sync');
+    } finally {
+      setIsSyncingHyperagent(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!config) return;
@@ -222,6 +285,62 @@ export default function SettingsPage() {
           <p className="text-xs text-blue-400 mt-3">
             Environment variables take precedence over UI settings for server-side operations.
           </p>
+        </section>
+
+        <section className="mt-8 p-6 bg-mc-bg-secondary border border-mc-border rounded-lg">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <h3 className="text-xl font-semibold text-mc-text">Hyperagent Integration</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => void refreshHyperagentStatus()}
+                disabled={isLoadingHyperagent}
+                className="px-3 py-2 border border-mc-border rounded hover:bg-mc-bg-tertiary text-mc-text-secondary disabled:opacity-50"
+              >
+                {isLoadingHyperagent ? 'Refreshing...' : 'Refresh Status'}
+              </button>
+              <button
+                onClick={() => void runHyperagentSync()}
+                disabled={isSyncingHyperagent}
+                className="px-3 py-2 bg-mc-accent text-mc-bg rounded hover:bg-mc-accent/90 disabled:opacity-50"
+              >
+                {isSyncingHyperagent ? 'Syncing...' : 'Run Full Sync'}
+              </button>
+            </div>
+          </div>
+
+          {hyperagentMessage && (
+            <div className="mb-4 p-3 rounded border border-mc-border text-sm text-mc-text-secondary bg-mc-bg">
+              {hyperagentMessage}
+            </div>
+          )}
+
+          {hyperagentStatus && (
+            <div className="space-y-3 text-sm text-mc-text-secondary">
+              <p>Webhook secret configured: <span className="text-mc-text">{hyperagentStatus.webhook_secret_configured ? 'Yes' : 'No'}</span></p>
+              <p>Sync endpoint configured: <span className="text-mc-text">{hyperagentStatus.sync_endpoint_configured ? 'Yes' : 'No'}</span></p>
+              <p>Sync token configured: <span className="text-mc-text">{hyperagentStatus.sync_token_configured ? 'Yes' : 'No'}</span></p>
+              <p>Replay window: <span className="text-mc-text">{hyperagentStatus.replay_window_ms}ms</span></p>
+              <p>Sync timeout/retries: <span className="text-mc-text">{hyperagentStatus.sync_timeout_ms}ms / {hyperagentStatus.sync_max_retries}</span></p>
+
+              <div>
+                <p className="text-mc-text mb-2">Recent webhook deliveries</p>
+                <div className="max-h-56 overflow-auto border border-mc-border rounded bg-mc-bg">
+                  {hyperagentStatus.recent_deliveries.length === 0 ? (
+                    <p className="p-3">No Hyperagent webhook deliveries yet.</p>
+                  ) : (
+                    hyperagentStatus.recent_deliveries.map((row) => (
+                      <div key={row.event_id} className="p-3 border-b last:border-b-0 border-mc-border">
+                        <p><span className="text-mc-text">{row.event_type}</span> ({row.status})</p>
+                        <p className="text-xs">{row.event_id}</p>
+                        <p className="text-xs">{row.created_at}</p>
+                        {row.error_message && <p className="text-xs text-red-400">{row.error_message}</p>}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       </div>
     </div>

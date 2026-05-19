@@ -312,7 +312,9 @@ export type SSEEventType =
   | 'activity_logged'
   | 'deliverable_added'
   | 'agent_spawned'
-  | 'agent_completed';
+  | 'agent_completed'
+  | 'event_created'
+  | 'hyperagent_sync_queued';
 
 export interface SSEEvent {
   type: SSEEventType;
@@ -324,5 +326,13 @@ export interface SSEEvent {
     deleted?: boolean;
   } | {
     id: string;  // For task_deleted events
+  } | {
+    source: string;
+    event_id?: string;
+    event_type?: string;
+    task_id?: string | null;
+  } | {
+    mode: string;
+    count: number;
   };
 }

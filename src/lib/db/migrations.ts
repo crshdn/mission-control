@@ -230,6 +230,31 @@ const migrations: Migration[] = [
         console.log('[Migration 009] Added session_key_prefix to agents');
       }
     }
+  },
+  {
+    id: '010',
+    name: 'add_hyperagent_webhook_deliveries',
+    up: (db) => {
+      console.log('[Migration 010] Adding hyperagent_webhook_deliveries table...');
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS hyperagent_webhook_deliveries (
+          id TEXT PRIMARY KEY,
+          event_id TEXT NOT NULL UNIQUE,
+          event_type TEXT NOT NULL,
+          status TEXT NOT NULL CHECK (status IN ('received', 'processed', 'failed')),
+          payload TEXT NOT NULL,
+          error_message TEXT,
+          processed_at TEXT,
+          created_at TEXT DEFAULT (datetime('now'))
+        );
+      `);
+
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_hyperagent_deliveries_created
+        ON hyperagent_webhook_deliveries(created_at DESC)
+      `);
+    }
   }
 ];
 
