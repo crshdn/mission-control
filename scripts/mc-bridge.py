@@ -108,25 +108,45 @@ def resolve_agent_name(label: str) -> str | None:
 
 
 def find_agent(name: str) -> dict | None:
-    """Find an agent by name (case-insensitive) in Mission Control."""
+    """Find an agent by name in Mission Control.
+
+    Resolution order:
+    1. Exact case-insensitive name match.
+    2. Case-insensitive prefix match (e.g. "Builder" → "Builder Agent").
+
+    Prefix matches must be unambiguous so callers do not accidentally assign
+    work to the wrong agent.
+    """
     agents = get_agents()
-    name_lower = name.lower()
+    name_lower = name.lower().strip()
+
     for a in agents:
         if a.get("name", "").lower() == name_lower:
             return a
+
+    prefix_matches = [a for a in agents if a.get("name", "").lower().startswith(name_lower)]
+    if len(prefix_matches) == 1:
+        return prefix_matches[0]
+    if len(prefix_matches) > 1:
+        names = ", ".join(a.get("name", "?") for a in prefix_matches)
+        print(f"❌ Ambiguous agent name '{name}'. Matches: {names}", file=sys.stderr)
+        return None
+
     return None
 
 
 def find_agent_by_name_or_label(name_or_label: str) -> dict | None:
-    """Try to find agent by exact name first, then by label prefix mapping."""
-    # Direct name match
+    """Try to find agent by exact/prefix name first, then by label prefix mapping."""
     agent = find_agent(name_or_label)
     if agent:
         return agent
+
     # Try label mapping
     mapped_name = resolve_agent_name(name_or_label)
     if mapped_name:
-        return find_agent(mapped_name)
+        agent = find_agent(mapped_name)
+        if agent:
+            return agent
     return None
 
 # ---------------------------------------------------------------------------
@@ -172,7 +192,16 @@ def cmd_agent_start(args):
         print("❌ Failed to create task", file=sys.stderr)
         sys.exit(1)
 
-    task_id = task["id"]
+    task_id = task.get("id") if isinstance(task, dict) else None
+    if not task_id:
+        print("❌ Task creation returned no id", file=sys.stderr)
+        print(f"   Response: {task}", file=sys.stderr)
+        sys.exit(1)
+
+    verified = api_get(f"/api/tasks/{task_id}", quiet=True)
+    if not verified or (isinstance(verified, dict) and verified.get("id") != task_id):
+        print(f"❌ Task {task_id} created but not queryable", file=sys.stderr)
+        sys.exit(1)
 
     # 2. Set agent status to working
     api_patch(f"/api/agents/{agent_id}", {"status": "working"})

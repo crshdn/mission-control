@@ -14,6 +14,12 @@ http://localhost:4000
 
 Or use the `MISSION_CONTROL_URL` environment variable.
 
+## Bridge Helper
+
+Use `scripts/mc-bridge.py` when an agent runtime needs a small command-line wrapper around the Mission Control API. It supports exact agent names and unambiguous agent-name prefixes. For example, `Builder` resolves to `Builder Agent` when that is the only matching agent.
+
+`agent-start` verifies the created task can be read back from `/api/tasks/{id}` before printing the task ID, so callers should treat any non-zero exit code as failure.
+
 ## Task Lifecycle
 
 ```

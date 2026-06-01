@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-MC_URL="${MC_URL:-http://localhost:3000}"
+MC_URL="${MC_URL:-http://localhost:4000}"
 
 # Colors
 RED='\033[0;31m'
