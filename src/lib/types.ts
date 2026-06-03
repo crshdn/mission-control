@@ -297,8 +297,10 @@ export interface TaskDeliverable {
   id: string;
   task_id: string;
   deliverable_type: DeliverableType;
+  artifact_format?: string;
   title: string;
   path?: string;
+  storage_path?: string;
   description?: string;
   created_at: string;
 }
