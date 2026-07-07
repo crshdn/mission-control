@@ -2,7 +2,12 @@
 
 import { EventEmitter } from 'events';
 import type { OpenClawMessage, OpenClawSessionInfo } from '../types';
-import { loadOrCreateDeviceIdentity, signDevicePayload, buildDeviceAuthPayload, publicKeyRawBase64Url } from './device-identity';
+import {
+  loadOrCreateDeviceIdentity,
+  signDevicePayload,
+  buildDeviceAuthPayloadV3,
+  publicKeyRawBase64Url,
+} from './device-identity';
 import { createHash } from 'crypto';
 
 // Types for gateway model discovery (matches OpenClaw models.list response)
@@ -29,6 +34,8 @@ export interface GatewayConfigSnapshot {
 
 const GATEWAY_URL = process.env.OPENCLAW_GATEWAY_URL || 'ws://127.0.0.1:18789';
 const GATEWAY_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || '';
+const PROTOCOL_VERSION = 4;
+const MIN_CLIENT_PROTOCOL_VERSION = 4;
 
 // Global deduplication cache that persists across module reloads in Next.js dev
 // Use globalThis to ensure it's shared across all instances
@@ -298,7 +305,7 @@ export class OpenClawClient extends EventEmitter {
               const clientId = 'cli';
               let device: Record<string, unknown> | undefined;
               if (this.deviceIdentity) {
-                const payload = buildDeviceAuthPayload({
+                const payload = buildDeviceAuthPayloadV3({
                   deviceId: this.deviceIdentity.deviceId,
                   clientId,
                   clientMode: 'ui',
@@ -307,6 +314,7 @@ export class OpenClawClient extends EventEmitter {
                   signedAtMs,
                   token: this.token || null,
                   nonce,
+                  platform: process.platform || 'web',
                 });
                 const signature = signDevicePayload(this.deviceIdentity.privateKeyPem, payload);
                 device = {
@@ -323,20 +331,21 @@ export class OpenClawClient extends EventEmitter {
                 });
               }
 
+              const auth = this.token ? { token: this.token } : undefined;
               const response = {
                 type: 'req',
                 id: requestId,
                 method: 'connect',
                 params: {
-                  minProtocol: 3,
-                  maxProtocol: 3,
+                  minProtocol: MIN_CLIENT_PROTOCOL_VERSION,
+                  maxProtocol: PROTOCOL_VERSION,
                   client: {
                     id: clientId,
                     version: '1.0.1',
                     platform: process.platform || 'web',
                     mode: 'ui',
                   },
-                  auth: { token: this.token },
+                  auth,
                   role,
                   scopes,
                   device,
@@ -440,6 +449,56 @@ export class OpenClawClient extends EventEmitter {
     }, 10000); // 10 seconds between reconnect attempts
   }
 
+  private describeResponseShape(result: unknown): string {
+    if (Array.isArray(result)) {
+      return `array(length=${result.length})`;
+    }
+
+    if (result === null) {
+      return 'null';
+    }
+
+    if (typeof result === 'object') {
+      const keys = Object.keys(result as Record<string, unknown>);
+      return `object(keys=${keys.length > 0 ? keys.join(',') : '<none>'})`;
+    }
+
+    return typeof result;
+  }
+
+  private unexpectedResponseShape(method: string, expected: string, result: unknown): never {
+    const actual = this.describeResponseShape(result);
+    console.error(`[OpenClaw] Unexpected response shape for ${method}: expected ${expected}, got ${actual}`);
+    throw new Error(`Unexpected OpenClaw response shape for ${method}: expected ${expected}, got ${actual}`);
+  }
+
+  private unwrapArrayResponse<T>(result: unknown, method: string, key: string): T[] {
+    if (Array.isArray(result)) {
+      return result as T[];
+    }
+
+    if (result && typeof result === 'object') {
+      const record = result as Record<string, unknown>;
+      if (Array.isArray(record[key])) {
+        return record[key] as T[];
+      }
+    }
+
+    return this.unexpectedResponseShape(method, `array or object with "${key}" array`, result);
+  }
+
+  private unwrapObjectResponse<T>(result: unknown, method: string, key: string): T {
+    if (result && typeof result === 'object' && !Array.isArray(result)) {
+      const record = result as Record<string, unknown>;
+      if (key in record) {
+        return record[key] as T;
+      }
+      return result as T;
+    }
+
+    return this.unexpectedResponseShape(method, `object or object with "${key}" property`, result);
+  }
+
   async call<T = unknown>(method: string, params?: Record<string, unknown>): Promise<T> {
     if (!this.ws || !this.connected || !this.authenticated) {
       throw new Error('Not connected to OpenClaw Gateway');
@@ -465,33 +524,36 @@ export class OpenClawClient extends EventEmitter {
 
   // Session management methods
   async listSessions(): Promise<OpenClawSessionInfo[]> {
-    return this.call<OpenClawSessionInfo[]>('sessions.list');
+    const result = await this.call<{ sessions?: OpenClawSessionInfo[] } | OpenClawSessionInfo[]>('sessions.list', {});
+    return this.unwrapArrayResponse<OpenClawSessionInfo>(result, 'sessions.list', 'sessions');
   }
 
   async getSessionHistory(sessionId: string): Promise<unknown[]> {
-    return this.call<unknown[]>('sessions.history', { session_id: sessionId });
+    const result = await this.call<{ messages?: unknown[] } | unknown[]>('chat.history', {
+      sessionKey: sessionId,
+      limit: 100,
+    });
+    return this.unwrapArrayResponse<unknown>(result, 'chat.history', 'messages');
   }
 
   async sendMessage(sessionId: string, content: string): Promise<void> {
-    await this.call('sessions.send', { session_id: sessionId, content });
+    await this.call('chat.send', {
+      sessionKey: sessionId,
+      message: content,
+      idempotencyKey: `session-send-${sessionId}-${Date.now()}`,
+    });
   }
 
   async createSession(channel: string, peer?: string): Promise<OpenClawSessionInfo> {
-    return this.call<OpenClawSessionInfo>('sessions.create', { channel, peer });
+    const result = await this.call<{ session?: OpenClawSessionInfo } | OpenClawSessionInfo>('sessions.create', { channel, peer });
+    return this.unwrapObjectResponse<OpenClawSessionInfo>(result, 'sessions.create', 'session');
   }
 
   // Agent methods
   async listAgents(): Promise<unknown[]> {
     const result = await this.call<{ agents?: unknown[] }>('agents.list');
     // Gateway returns { requester, allowAny, agents: [...] }
-    if (result && typeof result === 'object' && Array.isArray((result as Record<string, unknown>).agents)) {
-      return (result as Record<string, unknown>).agents as unknown[];
-    }
-    // Fallback: if the response is already an array
-    if (Array.isArray(result)) {
-      return result;
-    }
-    return [];
+    return this.unwrapArrayResponse<unknown>(result, 'agents.list', 'agents');
   }
 
   // Node methods (device capabilities)
@@ -505,11 +567,8 @@ export class OpenClawClient extends EventEmitter {
 
   // Model discovery methods (queries remote gateway via RPC)
   async listModels(): Promise<GatewayModelChoice[]> {
-    const result = await this.call<{ models?: GatewayModelChoice[] }>('models.list', {});
-    if (result && typeof result === 'object' && Array.isArray((result as Record<string, unknown>).models)) {
-      return (result as Record<string, unknown>).models as GatewayModelChoice[];
-    }
-    return [];
+    const result = await this.call<{ models?: GatewayModelChoice[] } | GatewayModelChoice[]>('models.list', {});
+    return this.unwrapArrayResponse<GatewayModelChoice>(result, 'models.list', 'models');
   }
 
   async getConfig(): Promise<GatewayConfigSnapshot> {
@@ -517,7 +576,7 @@ export class OpenClawClient extends EventEmitter {
     if (result && typeof result === 'object') {
       return result as GatewayConfigSnapshot;
     }
-    return {};
+    return this.unexpectedResponseShape('config.get', 'object', result);
   }
 
   /**
