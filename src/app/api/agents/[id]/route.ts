@@ -134,6 +134,7 @@ export async function DELETE(
     run('UPDATE tasks SET assigned_agent_id = NULL WHERE assigned_agent_id = ?', [id]);
     run('UPDATE tasks SET created_by_agent_id = NULL WHERE created_by_agent_id = ?', [id]);
     run('UPDATE task_activities SET agent_id = NULL WHERE agent_id = ?', [id]);
+    run('UPDATE task_roles SET agent_id = NULL WHERE agent_id = ?', [id]);
 
     // Now delete the agent
     run('DELETE FROM agents WHERE id = ?', [id]);
