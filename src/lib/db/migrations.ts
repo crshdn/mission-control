@@ -12,11 +12,13 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 import { bootstrapCoreAgentsRaw } from '@/lib/bootstrap-agents';
+import { applyDatabasePragmas, verifyDatabasePragmas } from './pragmas';
 
 interface Migration {
   id: string;
   name: string;
   up: (db: Database.Database) => void;
+  transaction?: boolean;
 }
 
 // All migrations in order - NEVER remove or reorder existing migrations
@@ -1820,6 +1822,19 @@ const migrations: Migration[] = [
 
       console.log('[Migration 037] Created jira_sync table with indexes');
     }
+  },
+  {
+    id: '038',
+    name: 'configure_sqlite_wal_pragmas',
+    transaction: false,
+    up: (db) => {
+      console.log('[Migration 038] Verifying SQLite WAL and performance PRAGMAs...');
+
+      const pragmas = applyDatabasePragmas(db);
+      verifyDatabasePragmas(db, pragmas);
+
+      console.log('[Migration 038] SQLite PRAGMAs configured:', pragmas);
+    }
   }
 ];
 
@@ -1944,10 +1959,15 @@ export function runMigrations(db: Database.Database): void {
       // Prevent ALTER TABLE RENAME from rewriting FK references in other tables.
       db.pragma('legacy_alter_table = ON');
 
-      db.transaction(() => {
+      if (migration.transaction === false) {
         migration.up(db);
         db.prepare('INSERT INTO _migrations (id, name) VALUES (?, ?)').run(migration.id, migration.name);
-      })();
+      } else {
+        db.transaction(() => {
+          migration.up(db);
+          db.prepare('INSERT INTO _migrations (id, name) VALUES (?, ?)').run(migration.id, migration.name);
+        })();
+      }
 
       // Re-enable FK checks and legacy alter table
       db.pragma('legacy_alter_table = OFF');

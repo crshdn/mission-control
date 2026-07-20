@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { schema } from './schema';
 import { runMigrations } from './migrations';
+import { applyDatabasePragmas } from './pragmas';
 import { ensureCatalogSyncScheduled } from '@/lib/agent-catalog-sync';
 
 const DB_PATH = process.env.DATABASE_PATH || path.join(process.cwd(), 'mission-control.db');
@@ -14,8 +15,7 @@ export function getDb(): Database.Database {
     const isNewDb = !fs.existsSync(DB_PATH);
     
     db = new Database(DB_PATH);
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
+    applyDatabasePragmas(db);
 
     // Initialize base schema (creates tables if they don't exist)
     db.exec(schema);
