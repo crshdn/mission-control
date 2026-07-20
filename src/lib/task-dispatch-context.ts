@@ -26,6 +26,31 @@ const RESEARCH_REPORT_MAX_CHARS = 40_000;
 const ACTIVITY_MESSAGE_MAX_CHARS = 700;
 const FINAL_MESSAGE_MAX_CHARS = 1_200;
 
+/**
+ * Sandbox-stable artifact root used as the canonical base for source deliverable
+ * paths advertised to sandboxed QA/review workers. Must be reachable inside
+ * OpenClaw sandboxes and must not be a host-only Mission Control data path.
+ */
+export const SANDBOX_ARTIFACT_ROOT: string =
+  process.env.MISSION_CONTROL_SANDBOX_ARTIFACT_ROOT || '/workspace/mission-control-artifacts';
+
+const HOST_ARTIFACT_ROOT = '/opt/openclaw/mission-control/data/task-artifacts';
+
+export function rewriteSourceArtifactPath(hostPath: string | null | undefined): string {
+  if (!hostPath) return hostPath ?? '';
+  if (!hostPath.startsWith(HOST_ARTIFACT_ROOT)) return hostPath;
+  return SANDBOX_ARTIFACT_ROOT + hostPath.slice(HOST_ARTIFACT_ROOT.length);
+}
+
+export function resolveSourceArtifactPath(path: string | null | undefined, storagePath?: string | null): string {
+  const rewrittenPath = rewriteSourceArtifactPath(path);
+  if (rewrittenPath) return rewrittenPath;
+
+  if (!storagePath) return '';
+  if (storagePath.startsWith('/')) return rewriteSourceArtifactPath(storagePath);
+  return `${SANDBOX_ARTIFACT_ROOT}/${storagePath.replace(/^\/+/, '')}`;
+}
+
 export interface DispatchContextSectionAudit {
   key: string;
   title: string;
@@ -465,7 +490,9 @@ function formatPreviousWorkSection(task: Task): string {
     lines.push('- None registered.');
   } else {
     for (const deliverable of deliverables) {
-      lines.push(`- ${deliverable.created_at} [${deliverable.deliverable_type}] ${deliverable.title}${deliverable.path ? `: ${deliverable.path}` : ''}${deliverable.description ? ` - ${deliverable.description}` : ''}`);
+      const kind = deliverable.artifact_format || deliverable.deliverable_type;
+      const location = resolveSourceArtifactPath(deliverable.path, deliverable.storage_path);
+      lines.push(`- ${deliverable.created_at} [${kind}] ${deliverable.title}${location ? `: ${location}` : ''}${deliverable.description ? ` - ${deliverable.description}` : ''}`);
     }
   }
 
