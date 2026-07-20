@@ -329,7 +329,7 @@ export class OpenClawClient extends EventEmitter {
                 method: 'connect',
                 params: {
                   minProtocol: 3,
-                  maxProtocol: 3,
+                  maxProtocol: 4,
                   client: {
                     id: clientId,
                     version: '1.0.1',
