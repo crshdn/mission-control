@@ -50,6 +50,8 @@ const FALLBACK_MODELS = [
   'anthropic/claude-haiku-4-5',
   'openai/gpt-4o',
   'openai/o1',
+  'minimax/MiniMax-M3',
+  'minimax/MiniMax-M2.7',
 ];
 
 /**
