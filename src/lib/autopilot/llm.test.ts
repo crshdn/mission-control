@@ -2,6 +2,38 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { complete } from './llm';
+import { modelChoices } from '../openclaw/model-choices';
+
+for (const model of [
+  ...modelChoices(['minimax/MiniMax-M3', 'minimax/MiniMax-M3.1-Flash']),
+  'minimax-cn/MiniMax-M3.1-Flash',
+  'openrouter/minimax/minimax-m3.1-flash:free',
+  'opencode/minimax-m3.1-flash-free',
+  'minimax/MiniMax-M2.7',
+  'custom/saved-model',
+]) {
+  test(`complete preserves the explicit ${model} override at the HTTP boundary`, async (t) => {
+    t.mock.method(global, 'fetch', async (input: string | URL | Request, init?: RequestInit) => {
+      assert.ok(String(input).endsWith('/v1/chat/completions'));
+      assert.equal(init?.method, 'POST');
+      const headers = init?.headers as Record<string, string>;
+      assert.equal(headers['x-openclaw-model'], model);
+      assert.deepEqual(JSON.parse(String(init?.body)), {
+        model: 'openclaw/default',
+        messages: [
+          { role: 'system', content: 'Keep the configured model.' },
+          { role: 'user', content: 'Say hi' },
+        ],
+        temperature: 0.1,
+        max_tokens: 256,
+      });
+      return new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }));
+    });
+    const result = await complete('Say hi', { model, systemPrompt: 'Keep the configured model.', temperature: 0.1, maxTokens: 256 });
+    assert.equal(result.model, model);
+    assert.equal(result.content, 'ok');
+  });
+}
 
 test('complete defaults to OpenClaw gateway default without an app-level provider override', async () => {
   const originalFetch = global.fetch;

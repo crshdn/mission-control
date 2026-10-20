@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Save, Trash2 } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
+import { modelChoices } from '@/lib/openclaw/model-choices';
 import type { Agent, AgentStatus } from '@/lib/types';
 
 interface AgentModalProps {
@@ -285,7 +286,7 @@ export function AgentModal({ agent, onClose, workspaceId, onAgentCreated }: Agen
                     className="w-full min-h-11 bg-mc-bg border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
                   >
                     <option value="">-- Use Default Model --</option>
-                    {availableModels.map((model) => (
+                    {modelChoices(availableModels, form.model).map((model) => (
                       <option key={model} value={model}>
                         {model}{defaultModel === model ? ' (Default)' : ''}
                       </option>
