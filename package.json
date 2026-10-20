@@ -16,6 +16,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1014.0",
     "@hello-pangea/dnd": "^17.0.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "better-sqlite3": "^12.6.2",
     "clsx": "^2.1.1",
     "css-tree": "^3.1.0",
