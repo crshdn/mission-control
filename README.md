@@ -437,6 +437,32 @@ RESEARCH → IDEATION → SWIPE → PLAN → BUILD → TEST → REVIEW → PR
 7. **Review** — Agent inspects the diff for quality, security, best practices
 8. **PR** — Pull request created on GitHub with full context and research backing
 
+### Web evidence for research
+
+Autopilot research now retrieves current web excerpts with
+[Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp)
+before asking the research model for a report. Search uses Fast mode and works
+without an account or API key. Each cycle searches for competitors and technology
+trends using the product name. Product Programs, repository URLs, learned
+preferences and gateway credentials are not sent to Parallel.
+
+The model is asked to cite source URLs in its findings. The saved report also
+includes the retrieved excerpts and timestamp under `web_research`; A/B variants
+use the same evidence. Treat web content as untrusted and verify consequential
+findings. This does not inspect the repository or fetch the product's live URL.
+
+Set `AUTOPILOT_RESEARCH_SEARCH=none` in `.env.local` and restart to keep research
+model-only, without search requests. To disable it for one product, merge
+`"research_search":"none"` into that product's existing `settings` JSON using the
+product API. `"parallel"` enables it, but cannot override a deployment-wide `none`.
+Preserve other settings when updating that JSON string. Model selection and
+product MCP server settings continue to work as before.
+
+An optional `PARALLEL_API_KEY` uses your Parallel account for higher limits.
+Search errors, quota responses and the 20-second search deadline fail the cycle
+visibly instead of silently producing an unsourced report or retrying anonymously.
+Disable search explicitly if you prefer model-only research.
+
 ### Task Flow (Manual Tasks)
 
 ```
