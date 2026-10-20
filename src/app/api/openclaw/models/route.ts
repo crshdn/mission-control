@@ -5,6 +5,7 @@ import { existsSync, readFileSync, statSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 import { getOpenClawClient } from '@/lib/openclaw/client';
+import { modelChoices } from '@/lib/openclaw/model-choices';
 
 // Maximum allowed config file size (1MB) to prevent DoS
 const MAX_CONFIG_SIZE_BYTES = 1024 * 1024;
@@ -50,6 +51,8 @@ const FALLBACK_MODELS = [
   'anthropic/claude-haiku-4-5',
   'openai/gpt-4o',
   'openai/o1',
+  // Flash is offered when advertised by the configured gateway/local catalog.
+  'minimax/MiniMax-M3',
 ];
 
 /**
@@ -200,7 +203,7 @@ export async function GET() {
 
     return NextResponse.json<OpenClawModelsResponse>({
       defaultModel: result.defaultModel,
-      availableModels: result.availableModels,
+      availableModels: modelChoices(result.availableModels),
       source,
     });
   } catch (error) {
