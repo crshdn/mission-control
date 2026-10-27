@@ -8,15 +8,16 @@ import { getProduct } from '@/lib/autopilot/products';
  */
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const product = getProduct(params.id);
+    const { id } = await params;
+    const product = getProduct(id);
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    const response = getHealthResponse(params.id);
+    const response = getHealthResponse(id);
     return NextResponse.json(response);
   } catch (error) {
     console.error('[API] Health score error:', error);
